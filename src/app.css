@@ -12,3 +12,19 @@ body,
 body {
   overflow: hidden;
 }
+
+@media (max-width: 480px) {
+  .page {
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  .phone {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+}
