@@ -14,7 +14,6 @@ export interface AnswerResult {
 // optional: what evaluator returns (can be extended later)
 export interface Evaluation {
   isCorrect: boolean;
-  // for debugging/analytics (optional)
-  normalizedAnswer?: unknown;
+  normalizedAnswer?: unknown; // for debugging/analytics (optional)
   message?: string; // short feedback if you want
 }
