@@ -23,7 +23,17 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+
+    /* Paths */
+    "baseUrl": "src",
+    "paths": {
+      "@domain/*": ["domain/*"],
+      "@ui/*": ["ui/*"],
+      "@app/*": ["app/*"],
+      "@copy/*": ["copy/*"],
+      "@shared/*": ["shared/*"]
+    }
   },
   "include": ["src"]
 }
