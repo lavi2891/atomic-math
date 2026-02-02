@@ -1,5 +1,5 @@
-import { he } from "./copy/he";
-import { styles } from "./ui/styles";
+import { he } from "@copy/he";
+import { styles } from "@ui/styles";
 
 export default function App() {
   return (
