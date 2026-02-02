@@ -66,3 +66,18 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* 
+ KaTeX renders math as nested spans (.mord, .mbin, .mrel, etc.).
+ These inner elements may override the parent color.
+ Explicitly inheriting ensures consistent math coloring
+ in RTL/LTR mixed layouts.
+*/
+.math {
+  color: #b39148;
+}
+.math .mord,
+.math .mbin,
+.math .mrel {
+  color: inherit;
+}
