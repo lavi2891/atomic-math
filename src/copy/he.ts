@@ -7,8 +7,8 @@ export const he = {
     next: "הבא",
   },
   feedback: {
-    correct: "נכון",
-    incorrect: "לא נכון",
+    correct: "נכון ✅",
+    incorrect: "לא נכון ❌",
   },
   placeholders: {
     numericAnswer: "תשובה…",
