@@ -10,6 +10,10 @@ export const he = {
     correct: "נכון ✅",
     incorrect: "לא נכון ❌",
   },
+  review: {
+    yourAnswer: "התשובה שלך:",
+    correctAnswer: "התשובה הנכונה:",
+  },
   placeholders: {
     numericAnswer: "תשובה…",
   },
