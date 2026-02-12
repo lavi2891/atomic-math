@@ -1,7 +1,13 @@
+export type TopicId = string;
+
 export interface Topic {
-  id: string;
-  title: string; // Hebrew UI label
+  id: TopicId;
+  title: string;
   description?: string;
-  order?: number;
-  gradeBand?: "foundations" | "g7";
+  order: number;
+  icon: string;
+  colorToken: string;
+  parentId?: TopicId;
+  grades?: number[];
+  prerequisites?: TopicId[];
 }
