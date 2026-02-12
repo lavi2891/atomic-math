@@ -6,28 +6,28 @@ export const TOPICS: Topic[] = [
     title: "מספרים מכוונים",
     order: 1,
     icon: "signedNumbers",
-    colorToken: "blue",
+    colorToken: "topicBlue",
   },
   {
     id: "ALGEBRA_EXPRESSIONS",
     title: "ביטויים אלגבריים",
     order: 2,
     icon: "algebraExpressions",
-    colorToken: "green",
+    colorToken: "topicPurple",
   },
   {
     id: "LINEAR_EQUATIONS",
     title: "משוואות ליניאריות",
     order: 3,
     icon: "linearEquations",
-    colorToken: "orange",
+    colorToken: "topicGreen",
   },
   {
     id: "TRIANGLES",
     title: "משולשים",
     order: 4,
     icon: "triangles",
-    colorToken: "teal",
+    colorToken: "topicOrange",
   },
 ];
 
