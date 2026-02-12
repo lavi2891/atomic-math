@@ -62,8 +62,8 @@ export function evaluateAnswer(question: Question, raw: RawAnswer): Evaluation {
     case "multiChoice": {
       assertAnswerType(question.type, raw, "multiChoice");
 
-      const a = [...raw.data.optionIds].sort();
-      const b = [...question.correctOptionIds].sort();
+      const a = [...new Set(raw.data.optionIds)].sort();
+      const b = [...new Set(question.correctOptionIds)].sort();
 
       const ok = a.length === b.length && a.every((v, i) => v === b[i]);
       return { isCorrect: ok, normalizedAnswer: a };
