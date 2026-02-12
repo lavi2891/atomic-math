@@ -3,6 +3,7 @@ import type { RawAnswer } from "../questions/types";
 export interface AnswerResult {
   questionId: string;
   topicId: string;
+  attemptIndex: number;
   isCorrect: boolean;
   rawAnswer: RawAnswer;
   responseTimeMs: number;
