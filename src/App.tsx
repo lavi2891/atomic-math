@@ -11,6 +11,7 @@ import { getTopicById } from "@domain/topics/registry";
 import { he } from "@copy/he";
 import { styles } from "@ui/styles";
 import { colors, radius, spacing } from "@ui/tokens";
+import { theme } from "./theme/theme";
 
 type Screen = "home" | "topics" | "session" | "summary";
 
@@ -63,7 +64,7 @@ export default function App() {
 
   return (
     <div className="page" style={styles.page} dir="rtl">
-      <div className="phone" style={styles.phone}>
+      <div className="phone" style={{ ...styles.phone, color: theme.colors.text }}>
         <main style={styles.content}>
           {screen === "home" ? (
             <HomeScreen
