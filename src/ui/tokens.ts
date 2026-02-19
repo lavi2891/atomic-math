@@ -1,3 +1,5 @@
+import { theme } from "../theme/theme";
+
 export const spacing = { xs: 6, sm: 10, md: 14 };
 export const radius = { md: 12 };
 export const fontSize = { md: 18, sm: 12 };
@@ -22,19 +24,19 @@ export const sizes = {
 };
 
 export const colors = {
-  text: "rgba(255,255,255,0.96)",
+  text: theme.colors.text,
   textMuted: "#B0B0B0",
   surface: "#353535",
-  surface2: "rgba(255,255,255,0.12)",
-  buttonBg: "rgba(255,255,255,0.14)",
-  buttonText: "rgba(255,255,255,0.98)",
-  inputBg: "rgba(255,255,255,0.10)",
-  inputText: "rgba(255,255,255,0.98)",
-  placeholderText: "rgba(255,255,255,0.60)",
-  border: "rgba(255,255,255,0.24)",
-  borderSubtle: "rgba(255,255,255,0.18)",
+  surface2: "#3D3D3D",
+  buttonBg: "#3D3D3D",
+  buttonText: theme.colors.text,
+  inputBg: "#353535",
+  inputText: theme.colors.text,
+  placeholderText: "#8F8F8F",
+  border: "#4A4A4A",
+  borderSubtle: "#424242",
   bgSubtle: "#353535",
 
-  borderStrong: "rgba(0,0,0,0.8)",
-  bgSelected: "rgba(0,0,0,0.06)",
+  borderStrong: "#575757",
+  bgSelected: "#3D3D3D",
 };
