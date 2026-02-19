@@ -362,7 +362,7 @@ export function QuestionView({
                 cursor: !canCheck ? "not-allowed" : "pointer",
               }}
             >
-              {he.actions.check}
+              {he.session.check}
             </button>
           ) : (
             <button
@@ -376,7 +376,7 @@ export function QuestionView({
                 cursor: "pointer",
               }}
             >
-              {he.actions.next}
+              {he.session.next}
             </button>
           )}
         </div>
