@@ -17,4 +17,26 @@ export const he = {
   placeholders: {
     numericAnswer: "תשובה…",
   },
+  app: {
+    title: "Atomic Math",
+    tagline: "מפרקים את המתמטיקה לגורמים",
+  },
+
+  home: {
+    quickPractice: "תרגול מהיר",
+    practiceByTopic: "תרגול לפי נושא",
+    challenges: "אתגרים",
+  },
+
+  topics: {
+    title: "נושאים",
+    start: "התחל",
+    comingSoon: "בקרוב",
+  },
+
+  challenges: {
+    daily: "חידה יומית",
+    weekly: "אתגר שבועי",
+    monthly: "משימה חודשית",
+  },
 } as const;
