@@ -10,7 +10,7 @@ export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
   return (
     <section style={{ display: "grid", gap: spacing.md }}>
       <header style={{ display: "grid", gap: spacing.sm }}>
-        <h1 style={{ margin: 0 }}>{he.app.name}</h1>
+        <h1 style={{ margin: 0, color: colors.text }}>{he.app.name}</h1>
         <p style={{ margin: 0, color: colors.textMuted }}>{he.app.tagline}</p>
 
         <div
@@ -31,6 +31,7 @@ export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
               display: "grid",
               justifyItems: "center",
               gap: spacing.xs,
+              color: colors.text,
             }}
           >
             <span style={{ color: colors.textMuted, fontSize: fontSize.sm }}>
@@ -48,6 +49,7 @@ export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
               display: "grid",
               justifyItems: "center",
               gap: spacing.xs,
+              color: colors.text,
             }}
           >
             <span style={{ color: colors.textMuted, fontSize: fontSize.sm }}>
@@ -71,6 +73,7 @@ export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
             background: colors.bgSubtle,
             cursor: "pointer",
             fontSize: fontSize.md,
+            color: colors.text,
           }}
         >
           {he.home.quickPractice}
@@ -88,6 +91,7 @@ export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
             background: colors.bgSubtle,
             cursor: "pointer",
             fontSize: fontSize.md,
+            color: colors.text,
           }}
         >
           {he.home.practiceByTopic}
@@ -95,7 +99,7 @@ export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
       </section>
 
       <section style={{ display: "grid", gap: spacing.sm }}>
-        <h2 style={{ margin: 0 }}>{he.home.challenges}</h2>
+        <h2 style={{ margin: 0, color: colors.text }}>{he.home.challenges}</h2>
 
         {/* TODO: Implement daily/weekly/monthly challenge modes */}
         {[he.challenges.daily, he.challenges.weekly, he.challenges.monthly].map(
@@ -113,6 +117,7 @@ export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
                 alignItems: "center",
                 justifyContent: "space-between",
                 gap: spacing.sm,
+                color: colors.text,
               }}
             >
               <span>{challenge}</span>

@@ -1,15 +1,15 @@
 export const theme = {
   colors: {
-    desktopBg: "#0b1220",
-    phoneBg: "#0f172a",
-    text: "#ffffff",
-    primary: "#2563eb",
+    desktopBg: "#1F1F1F",
+    phoneBg: "#2C2C2C",
+    text: "#E4E4E4",
+    primary: "#B39CD0",
     topicBlue: "#3b82f6",
     topicPurple: "#8b5cf6",
     topicGreen: "#22c55e",
     topicOrange: "#f59e0b",
-    border: "rgba(255,255,255,0.12)",
-    shadow: "rgba(0,0,0,0.55)",
+    border: "#3A3A3A",
+    shadow: "rgba(0,0,0,0.45)",
     inset: "rgba(255,255,255,0.06)",
   },
   layout: {

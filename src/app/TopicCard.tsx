@@ -61,7 +61,8 @@ export function TopicCard({ topic, onStart, disabled = false }: Props) {
           border: `1px solid ${colors.border}`,
           borderRadius: radius.md,
           padding: `${spacing.xs}px ${spacing.md}px`,
-          background: colors.bgSubtle,
+          background: colors.buttonBg,
+          color: colors.buttonText,
           cursor: disabled ? "not-allowed" : "pointer",
         }}
       >

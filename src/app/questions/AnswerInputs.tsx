@@ -3,6 +3,7 @@ import type {
   SingleChoiceQuestion,
   MultiChoiceQuestion,
 } from "@domain/questions/types";
+import type { CSSProperties } from "react";
 import { ContentRenderer } from "@ui/ContentRenderer";
 import { he } from "@copy/he";
 import {
@@ -29,22 +30,27 @@ export function NumericAnswerInput(
 
   const inputMode =
     question.input?.allowDecimal === false ? "numeric" : "decimal";
+  const style: CSSProperties = {
+    width: "100%",
+    fontSize: fontSize.md,
+    padding: `${spacing.md - 2}px ${spacing.md}px`,
+    borderRadius: radius.md,
+    border: `${borders.normalPx}px solid ${colors.border}`,
+    background: colors.inputBg,
+    color: colors.inputText,
+    ["--numeric-placeholder-color" as string]: colors.placeholderText,
+  };
 
   return (
     <input
+      className="numeric-answer-input"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
       inputMode={inputMode}
       dir="ltr"
       placeholder={he.placeholders.numericAnswer}
-      style={{
-        width: "100%",
-        fontSize: fontSize.md,
-        padding: `${spacing.md - 2}px ${spacing.md}px`,
-        borderRadius: radius.md,
-        border: `${borders.normalPx}px solid ${colors.border}`,
-      }}
+      style={style}
     />
   );
 }
