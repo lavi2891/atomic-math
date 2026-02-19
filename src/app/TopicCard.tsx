@@ -65,7 +65,7 @@ export function TopicCard({ topic, onStart, disabled = false }: Props) {
           cursor: disabled ? "not-allowed" : "pointer",
         }}
       >
-        {disabled ? he.topics.comingSoon : he.topics.start}
+        {disabled ? he.common.comingSoon : he.common.start}
       </button>
     </article>
   );

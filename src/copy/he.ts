@@ -4,6 +4,14 @@ export const he = {
     tagline: "מפרקים את המתמטיקה לגורמים",
   },
 
+  common: {
+    back: "חזרה",
+    start: "התחל",
+    comingSoon: "בקרוב",
+    cancel: "ביטול",
+    close: "סגור",
+  },
+
   home: {
     quickPractice: "תרגול מהיר",
     practiceByTopic: "תרגול לפי נושא",
@@ -12,15 +20,12 @@ export const he = {
 
   topics: {
     title: "נושאים",
-    start: "התחל",
-    comingSoon: "בקרוב",
   },
 
   challenges: {
     daily: "חידה יומית",
     weekly: "אתגר שבועי",
     monthly: "משימה חודשית",
-    comingSoon: "בקרוב",
   },
 
   session: {
