@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { FormEvent } from "react";
 import type { AnswerResult } from "@domain/results/types";
 import type {
   ChoiceOption,
@@ -190,6 +191,8 @@ export function QuestionView({
   }, [mode, question, numericValue, singleId, multiIds]);
 
   const disabledInputs = mode === "review" || phase === "checked";
+  const isNumericAnsweringSolve =
+    mode === "solve" && question.type === "numeric" && phase === "answering";
 
   function buildRaw(): AnyRawAnswer {
     switch (question.type) {
@@ -227,6 +230,11 @@ export function QuestionView({
         lastEval: { isCorrect: ev.isCorrect, message: ev.message, raw },
       };
     });
+  }
+
+  function onNumericSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    onCheck();
   }
 
   function onNextClick() {
@@ -278,17 +286,52 @@ export function QuestionView({
 
       <div>
         {question.type === "numeric" ? (
-          <NumericAnswerInput
-            question={question}
-            value={numericValue}
-            onChange={(value) =>
-              setSolveState((prev) => ({
-                ...getStateForQuestion(prev, question.id),
-                numericValue: value,
-              }))
-            }
-            disabled={disabledInputs}
-          />
+          isNumericAnsweringSolve ? (
+            <form
+              onSubmit={onNumericSubmit}
+              style={{ display: "grid", gap: spacing.sm, minWidth: 0 }}
+            >
+              <NumericAnswerInput
+                question={question}
+                value={numericValue}
+                onChange={(value) =>
+                  setSolveState((prev) => ({
+                    ...getStateForQuestion(prev, question.id),
+                    numericValue: value,
+                  }))
+                }
+                disabled={disabledInputs}
+              />
+              <button
+                type="submit"
+                disabled={!canCheck}
+                style={{
+                  width: "100%",
+                  maxWidth: "100%",
+                  boxSizing: "border-box",
+                  minWidth: 0,
+                  padding: `${spacing.sm}px ${spacing.md}px`,
+                  borderRadius: radius.md,
+                  border: `1px solid ${colors.border}`,
+                  cursor: !canCheck ? "not-allowed" : "pointer",
+                }}
+              >
+                {he.session.check}
+              </button>
+            </form>
+          ) : (
+            <NumericAnswerInput
+              question={question}
+              value={numericValue}
+              onChange={(value) =>
+                setSolveState((prev) => ({
+                  ...getStateForQuestion(prev, question.id),
+                  numericValue: value,
+                }))
+              }
+              disabled={disabledInputs}
+            />
+          )
         ) : question.type === "singleChoice" ? (
           <SingleChoiceAnswerInput
             question={question}
@@ -364,7 +407,7 @@ export function QuestionView({
         </div>
       )}
 
-      {mode === "solve" ? (
+      {mode === "solve" && !isNumericAnsweringSolve ? (
         <div style={{ display: "flex", gap: spacing.sm, minWidth: 0 }}>
           {phase === "answering" ? (
             <button
