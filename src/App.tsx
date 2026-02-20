@@ -93,6 +93,7 @@ export default function App() {
             />
           ) : null}
 
+          {/* TODO: Replace this simple summary with SessionSummary component (accuracy %, avg time, review) */}
           {screen === "summary" ? (
             <section style={{ display: "grid", gap: spacing.md }}>
               <h2 style={{ margin: 0 }}>{topicTitle ?? he.topics.title}</h2>
@@ -106,8 +107,8 @@ export default function App() {
                   gap: spacing.sm,
                 }}
               >
-                <div>{`נענו: ${answeredCount}`}</div>
-                <div>{`נכונות: ${correctCount}`}</div>
+                <div>{`${he.summary.answered} ${answeredCount}`}</div>
+                <div>{`${he.summary.correct} ${correctCount}`}</div>
               </div>
 
               <button
@@ -121,7 +122,7 @@ export default function App() {
                   cursor: "pointer",
                 }}
               >
-                Back to Home
+                {he.summary.backToHome}
               </button>
             </section>
           ) : null}

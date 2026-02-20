@@ -43,6 +43,12 @@ export const he = {
     correctAnswer: "התשובה הנכונה:",
   },
 
+  summary: {
+    answered: "נענו:",
+    correct: "נכונות:",
+    backToHome: "חזרה לעמוד הבית",
+  },
+
   placeholders: {
     numericAnswer: "תשובה…",
   },
