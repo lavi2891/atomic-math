@@ -17,6 +17,10 @@ body {
   color: var(--numeric-placeholder-color, rgba(255, 255, 255, 0.6));
 }
 
+.phone > main {
+  overflow-x: hidden;
+}
+
 @media (max-width: 480px) {
   .page {
     padding: 0 !important;

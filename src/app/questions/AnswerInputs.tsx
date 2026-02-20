@@ -32,6 +32,8 @@ export function NumericAnswerInput(
     question.input?.allowDecimal === false ? "numeric" : "decimal";
   const style: CSSProperties = {
     width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
     fontSize: fontSize.md,
     padding: `${spacing.md - 2}px ${spacing.md}px`,
     borderRadius: radius.md,
@@ -140,7 +142,7 @@ export function MultiChoiceAnswerInput(
               justifyContent: "space-between",
             }}
           >
-            <span style={{ flex: 1 }}>
+            <span style={{ flex: 1, minWidth: 0 }}>
               <ContentRenderer content={opt.content} />
             </span>
 

@@ -254,8 +254,25 @@ export function QuestionView({
   const showCorrect = reviewData?.showCorrectAnswer ?? true;
 
   return (
-    <div style={{ display: "grid", gap: spacing.md }}>
-      <div style={{ fontSize: fontSize.md, lineHeight: lineHeight.md }}>
+    <div
+      style={{
+        display: "grid",
+        gap: spacing.md,
+        width: "100%",
+        maxWidth: "100%",
+        minWidth: 0,
+        overflowX: "hidden",
+      }}
+    >
+      <div
+        style={{
+          fontSize: fontSize.md,
+          lineHeight: lineHeight.md,
+          overflowWrap: "anywhere",
+          wordBreak: "break-word",
+          minWidth: 0,
+        }}
+      >
         <ContentRenderer content={question.prompt} />
       </div>
 
@@ -348,7 +365,7 @@ export function QuestionView({
       )}
 
       {mode === "solve" ? (
-        <div style={{ display: "flex", gap: spacing.sm }}>
+        <div style={{ display: "flex", gap: spacing.sm, minWidth: 0 }}>
           {phase === "answering" ? (
             <button
               type="button"
@@ -356,6 +373,10 @@ export function QuestionView({
               disabled={!canCheck}
               style={{
                 flex: 1,
+                minWidth: 0,
+                width: "100%",
+                maxWidth: "100%",
+                boxSizing: "border-box",
                 padding: `${spacing.sm}px ${spacing.md}px`,
                 borderRadius: radius.md,
                 border: `1px solid ${colors.border}`,
@@ -370,6 +391,10 @@ export function QuestionView({
               onClick={onNextClick}
               style={{
                 flex: 1,
+                minWidth: 0,
+                width: "100%",
+                maxWidth: "100%",
+                boxSizing: "border-box",
                 padding: `${spacing.sm}px ${spacing.md}px`,
                 borderRadius: radius.md,
                 border: `1px solid ${colors.border}`,
