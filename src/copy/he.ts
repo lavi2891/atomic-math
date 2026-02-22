@@ -53,6 +53,10 @@ export const he = {
     numericAnswer: "תשובה…",
   },
 
+  question: {
+    multiHint: "בחירה מרובה",
+  },
+
   validation: {
     invalidNumber: "נא להזין מספר תקין",
   },

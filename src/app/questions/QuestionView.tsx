@@ -380,17 +380,27 @@ export function QuestionView({
             disabled={disabledInputs}
           />
         ) : question.type === "multiChoice" ? (
-          <MultiChoiceAnswerInput
-            question={question}
-            selectedOptionIds={multiIds}
-            onChange={(value) =>
-              setSolveState((prev) => ({
-                ...getStateForQuestion(prev, question.id),
-                multiIds: value,
-              }))
-            }
-            disabled={disabledInputs}
-          />
+          <div style={{ display: "grid", gap: spacing.xs }}>
+            <div
+              style={{
+                fontSize: fontSize.sm,
+                color: colors.textMuted,
+              }}
+            >
+              {he.question.multiHint}
+            </div>
+            <MultiChoiceAnswerInput
+              question={question}
+              selectedOptionIds={multiIds}
+              onChange={(value) =>
+                setSolveState((prev) => ({
+                  ...getStateForQuestion(prev, question.id),
+                  multiIds: value,
+                }))
+              }
+              disabled={disabledInputs}
+            />
+          </div>
         ) : (
           unreachable(question, "Unknown question type")
         )}
