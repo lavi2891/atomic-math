@@ -49,6 +49,7 @@ type SolveState = {
   questionId: string;
   phase: Phase;
   numericValue: string;
+  numericValidationError: string | null;
   singleId: string | null;
   multiIds: string[];
   lastEval: LastEval | null;
@@ -59,6 +60,7 @@ function createInitialSolveState(questionId: string): SolveState {
     questionId,
     phase: "answering",
     numericValue: "",
+    numericValidationError: null,
     singleId: null,
     multiIds: [],
     lastEval: null,
@@ -173,14 +175,26 @@ export function QuestionView({
     createInitialSolveState(question.id),
   );
   const currentState = getStateForQuestion(solveState, question.id);
-  const { phase, numericValue, singleId, multiIds, lastEval } = currentState;
+  const {
+    phase,
+    numericValue,
+    numericValidationError,
+    singleId,
+    multiIds,
+    lastEval,
+  } = currentState;
+
+  const trimmedNumericValue = numericValue.trim();
+  const parsedNumericValue = Number(trimmedNumericValue);
+  const isValidNumericInput =
+    trimmedNumericValue.length > 0 && Number.isFinite(parsedNumericValue);
 
   const canCheck = useMemo(() => {
     if (mode !== "solve") return false;
 
     switch (question.type) {
       case "numeric":
-        return numericValue.trim().length > 0;
+        return isValidNumericInput;
       case "singleChoice":
         return singleId !== null;
       case "multiChoice":
@@ -188,7 +202,7 @@ export function QuestionView({
       default:
         return unreachable(question, "Unknown question type");
     }
-  }, [mode, question, numericValue, singleId, multiIds]);
+  }, [mode, question, isValidNumericInput, singleId, multiIds]);
 
   const disabledInputs = mode === "review" || phase === "checked";
   const isNumericAnsweringSolve =
@@ -213,6 +227,13 @@ export function QuestionView({
 
   function onCheck() {
     if (mode !== "solve") return;
+    if (question.type === "numeric" && !isValidNumericInput) {
+      setSolveState((prev) => ({
+        ...getStateForQuestion(prev, question.id),
+        numericValidationError: he.validation.invalidNumber,
+      }));
+      return;
+    }
     if (!canCheck) return;
 
     const checkedAt = Date.now();
@@ -234,6 +255,13 @@ export function QuestionView({
 
   function onNumericSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!isValidNumericInput) {
+      setSolveState((prev) => ({
+        ...getStateForQuestion(prev, question.id),
+        numericValidationError: he.validation.invalidNumber,
+      }));
+      return;
+    }
     onCheck();
   }
 
@@ -298,6 +326,7 @@ export function QuestionView({
                   setSolveState((prev) => ({
                     ...getStateForQuestion(prev, question.id),
                     numericValue: value,
+                    numericValidationError: null,
                   }))
                 }
                 disabled={disabledInputs}
@@ -318,6 +347,11 @@ export function QuestionView({
               >
                 {he.session.check}
               </button>
+              {numericValidationError ? (
+                <div style={{ color: "#ff8a80", fontSize: fontSize.sm }}>
+                  {numericValidationError}
+                </div>
+              ) : null}
             </form>
           ) : (
             <NumericAnswerInput
@@ -327,6 +361,7 @@ export function QuestionView({
                 setSolveState((prev) => ({
                   ...getStateForQuestion(prev, question.id),
                   numericValue: value,
+                  numericValidationError: null,
                 }))
               }
               disabled={disabledInputs}

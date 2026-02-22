@@ -52,4 +52,8 @@ export const he = {
   placeholders: {
     numericAnswer: "תשובה…",
   },
+
+  validation: {
+    invalidNumber: "נא להזין מספר תקין",
+  },
 } as const;
