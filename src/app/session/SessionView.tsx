@@ -27,6 +27,11 @@ export function SessionView({ questions, onSessionEnd }: Props) {
   }
 
   return (
-    <QuestionView key={question.id} question={question} onNext={handleNext} />
+    <QuestionView
+      key={question.id}
+      question={question}
+      rated
+      onNext={handleNext}
+    />
   );
 }

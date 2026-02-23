@@ -16,6 +16,7 @@ import {
 import { assert, unreachable } from "@shared/assert";
 import { he } from "@copy/he";
 import { colors, fontSize, lineHeight, radius, spacing } from "@ui/tokens";
+import { statsRepo } from "@app/statsRepoInstance";
 
 type Mode = "solve" | "review";
 
@@ -33,6 +34,7 @@ type ReviewData = {
 type Props = {
   question: Question;
   mode?: Mode;
+  rated?: boolean;
   onNext?: (result: AnswerResult) => void;
   review?: ReviewData;
 };
@@ -157,6 +159,7 @@ function getCorrectAnswerNode(question: Question) {
 export function QuestionView({
   question,
   mode = "solve",
+  rated = false,
   onNext,
   review,
 }: Props) {
@@ -242,6 +245,16 @@ export function QuestionView({
 
     const raw = buildRaw();
     const ev = evaluateAnswer(question, raw);
+    const timeMs =
+      solveTimeMsRef.current ?? Math.max(0, checkedAt - startTsRef.current);
+
+    statsRepo.recordAttempt({
+      questionId: question.id,
+      topicId: question.topicId,
+      correct: ev.isCorrect,
+      timeMs,
+      rated,
+    });
 
     setSolveState((prev) => {
       const next = getStateForQuestion(prev, question.id);
