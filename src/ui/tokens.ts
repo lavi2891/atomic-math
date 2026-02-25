@@ -39,4 +39,8 @@ export const colors = {
 
   borderStrong: "#575757",
   bgSelected: "#3D3D3D",
+  topicBlue: theme.colors.topicBlue,
+  topicPurple: theme.colors.topicPurple,
+  topicGreen: theme.colors.topicGreen,
+  topicOrange: theme.colors.topicOrange,
 };
