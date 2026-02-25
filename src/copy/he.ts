@@ -18,6 +18,7 @@
     challenges: "אתגרים",
     overallSkill: "כושר כללי",
     strengthen: "מה לחזק",
+    topicsSkill: "רמות לפי נושא",
   },
 
   topics: {
