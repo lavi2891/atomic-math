@@ -10,6 +10,11 @@ import type {
   StatsAggregate,
   StatsSchemaV1,
 } from "./types";
+import { clamp, clamp01 } from "@shared/math";
+
+const INITIAL_SKILL = 0.5;
+const SKILL_K = 0.12;
+const SKILL_MAX_STEP = 0.04;
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -66,6 +71,14 @@ export class LocalStatsRepo implements StatsRepo {
 
     updateAggregate(stats.questionAgg, input.questionId, input.correct, timeMs);
     updateAggregate(stats.topicAgg, input.topicId, input.correct, timeMs);
+    if (input.rated) {
+      const currentSkill = stats.skillByTopic[input.topicId] ?? INITIAL_SKILL;
+      const target = input.correct ? 1 : 0;
+      const rawDelta = SKILL_K * (target - currentSkill);
+      const delta = clamp(rawDelta, -SKILL_MAX_STEP, SKILL_MAX_STEP);
+      stats.skillByTopic[input.topicId] = clamp01(currentSkill + delta);
+    }
+
     this.write(stats);
   }
 
@@ -84,7 +97,7 @@ export class LocalStatsRepo implements StatsRepo {
   }
 
   getTopicSkill(topicId: string): number {
-    return this.read().skillByTopic[topicId] ?? 0.5;
+    return this.read().skillByTopic[topicId] ?? INITIAL_SKILL;
   }
 
   getAllTopicSkills(): Record<string, number> {
@@ -182,7 +195,7 @@ export class LocalStatsRepo implements StatsRepo {
     const map: Record<string, number> = {};
     for (const [key, skill] of Object.entries(value)) {
       if (typeof skill !== "number" || !Number.isFinite(skill)) continue;
-      map[key] = Math.min(1, Math.max(0, skill));
+      map[key] = clamp01(skill);
     }
 
     return map;
