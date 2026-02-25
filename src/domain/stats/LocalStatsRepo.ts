@@ -66,7 +66,6 @@ export class LocalStatsRepo implements StatsRepo {
 
     updateAggregate(stats.questionAgg, input.questionId, input.correct, timeMs);
     updateAggregate(stats.topicAgg, input.topicId, input.correct, timeMs);
-
     this.write(stats);
   }
 
@@ -82,6 +81,14 @@ export class LocalStatsRepo implements StatsRepo {
 
   getAll(): StatsSchemaV1 {
     return this.read();
+  }
+
+  getTopicSkill(topicId: string): number {
+    return this.read().skillByTopic[topicId] ?? 0.5;
+  }
+
+  getAllTopicSkills(): Record<string, number> {
+    return { ...this.read().skillByTopic };
   }
 
   reset(): void {
@@ -133,12 +140,14 @@ export class LocalStatsRepo implements StatsRepo {
 
     const questionAgg = this.toAggMap(value.questionAgg);
     const topicAgg = this.toAggMap(value.topicAgg);
+    const skillByTopic = this.toSkillMap(value.skillByTopic);
 
     return {
       version: STATS_SCHEMA_VERSION,
       events: events.slice(-STATS_EVENTS_LIMIT),
       questionAgg,
       topicAgg,
+      skillByTopic,
     };
   }
 
@@ -162,6 +171,18 @@ export class LocalStatsRepo implements StatsRepo {
       }
 
       map[key] = { attempts, correct, avgTimeMs };
+    }
+
+    return map;
+  }
+
+  private toSkillMap(value: unknown): Record<string, number> {
+    if (!isObject(value)) return {};
+
+    const map: Record<string, number> = {};
+    for (const [key, skill] of Object.entries(value)) {
+      if (typeof skill !== "number" || !Number.isFinite(skill)) continue;
+      map[key] = Math.min(1, Math.max(0, skill));
     }
 
     return map;

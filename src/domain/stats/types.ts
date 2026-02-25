@@ -22,6 +22,7 @@ export type StatsSchemaV1 = {
   events: StatsEvent[];
   questionAgg: Record<string, StatsAggregate>;
   topicAgg: Record<string, StatsAggregate>;
+  skillByTopic: Record<string, number>;
 };
 
 export type RecordAttemptInput = {
@@ -38,5 +39,6 @@ export function createEmptyStats(): StatsSchemaV1 {
     events: [],
     questionAgg: {},
     topicAgg: {},
+    skillByTopic: {},
   };
 }
