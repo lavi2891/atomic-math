@@ -1,7 +1,10 @@
+import { useRef, useState } from "react";
+import type { MouseEvent, WheelEvent } from "react";
 import { he } from "@copy/he";
 import { listTopics } from "@domain/topics/registry";
 import { colors, fontSize, radius, spacing } from "@ui/tokens";
 import { statsRepo } from "./statsRepoInstance";
+import { TopicSkillTile } from "./TopicSkillTile";
 
 type Props = {
   onQuickPractice: () => void;
@@ -9,25 +12,60 @@ type Props = {
 };
 
 export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
-  const topicSkills = statsRepo.getAllTopicSkills();
-  const skillEntries = Object.entries(topicSkills);
-  const overallSkill =
-    skillEntries.length > 0
-      ? skillEntries.reduce((sum, [, value]) => sum + value, 0) /
-        skillEntries.length
-      : null;
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const dragStartXRef = useRef(0);
+  const dragStartScrollLeftRef = useRef(0);
+  const isDraggingRef = useRef(false);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const topicTitleById = new Map<string, string>(
-    listTopics().map((topic) => [topic.id, topic.title]),
-  );
-  const weakestTopics = skillEntries
-    .sort((a, b) => a[1] - b[1])
-    .slice(0, 3)
-    .map(([topicId, skill]) => ({
-      topicId,
-      skill,
-      title: topicTitleById.get(topicId) ?? topicId,
-    }));
+  const topics = listTopics();
+  const skillByTopic = statsRepo.getAllTopicSkills();
+  const topicTiles = topics.map((topic) => {
+    const skill01 = skillByTopic[topic.id] ?? 0.5;
+    return {
+      topic,
+      skill01,
+      displayRating: Math.round(skill01 * 1000),
+    };
+  });
+
+  const overallSkill01 =
+    topicTiles.reduce((sum, item) => sum + item.skill01, 0) /
+    Math.max(1, topicTiles.length);
+  const overallDisplay = Math.round(overallSkill01 * 1000);
+
+  function handleWheel(event: WheelEvent<HTMLDivElement>) {
+    const container = scrollRef.current;
+    if (!container) return;
+    if (event.deltaY === 0) return;
+
+    event.preventDefault();
+    container.scrollLeft += event.deltaY;
+  }
+
+  function handleMouseDown(event: MouseEvent<HTMLDivElement>) {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    isDraggingRef.current = true;
+    setIsDragging(true);
+    dragStartXRef.current = event.clientX;
+    dragStartScrollLeftRef.current = container.scrollLeft;
+  }
+
+  function handleMouseMove(event: MouseEvent<HTMLDivElement>) {
+    const container = scrollRef.current;
+    if (!container || !isDraggingRef.current) return;
+
+    const deltaX = event.clientX - dragStartXRef.current;
+    container.scrollLeft = dragStartScrollLeftRef.current - deltaX;
+  }
+
+  function stopDragging() {
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    setIsDragging(false);
+  }
 
   return (
     <section style={{ display: "grid", gap: spacing.md }}>
@@ -37,59 +75,53 @@ export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
 
         <div
           style={{
-            display: "grid",
+            border: `1px solid ${colors.borderSubtle}`,
+            borderRadius: radius.md,
+            padding: spacing.sm,
+            background: colors.bgSubtle,
+            display: "flex",
+            alignItems: "baseline",
+            justifyContent: "space-between",
             gap: spacing.sm,
+            color: colors.text,
           }}
           aria-label="home-skill-summary"
         >
-          <div
-            style={{
-              border: `1px solid ${colors.borderSubtle}`,
-              borderRadius: radius.md,
-              padding: spacing.sm,
-              background: colors.bgSubtle,
-              display: "grid",
-              alignItems: "center",
-              gap: spacing.xs,
-              color: colors.text,
-            }}
-          >
-            <span style={{ color: colors.textMuted, fontSize: fontSize.sm }}>
-              {he.home.overallSkill}
-            </span>
-            <strong>
-              {overallSkill === null ? "—" : overallSkill.toFixed(2)}
-            </strong>
-          </div>
-
-          <div
-            style={{
-              border: `1px solid ${colors.borderSubtle}`,
-              borderRadius: radius.md,
-              padding: spacing.sm,
-              background: colors.bgSubtle,
-              display: "grid",
-              gap: spacing.xs,
-              color: colors.text,
-            }}
-          >
-            <span style={{ color: colors.textMuted, fontSize: fontSize.sm }}>
-              {he.home.strengthen}
-            </span>
-            {weakestTopics.length > 0 ? (
-              <div style={{ display: "grid", gap: spacing.xs }}>
-                {weakestTopics.map((topic) => (
-                  <small key={topic.topicId}>
-                    {topic.title}: {topic.skill.toFixed(2)}
-                  </small>
-                ))}
-              </div>
-            ) : (
-              <small style={{ color: colors.textMuted }}>—</small>
-            )}
-          </div>
+          <span style={{ color: colors.textMuted, fontSize: fontSize.sm }}>
+            {he.home.overallSkill}
+          </span>
+          <strong>{overallDisplay}</strong>
         </div>
       </header>
+
+      <section style={{ display: "grid", gap: spacing.sm }}>
+        <h2 style={{ margin: 0, color: colors.text }}>{he.home.topicsSkill}</h2>
+        <div
+          ref={scrollRef}
+          className={`homeTopicScroll hideScrollbar${isDragging ? " dragging" : ""}`}
+          onWheel={handleWheel}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={stopDragging}
+          onMouseLeave={stopDragging}
+          style={{
+            display: "flex",
+            gap: spacing.md,
+            scrollSnapType: "x mandatory",
+            paddingInline: spacing.md,
+            paddingBottom: spacing.sm,
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
+          {topicTiles.map((item) => (
+            <TopicSkillTile
+              key={item.topic.id}
+              topic={item.topic}
+              displayRating={item.displayRating}
+            />
+          ))}
+        </div>
+      </section>
 
       <section style={{ display: "grid", gap: spacing.sm }}>
         <button
@@ -132,7 +164,6 @@ export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
       <section style={{ display: "grid", gap: spacing.sm }}>
         <h2 style={{ margin: 0, color: colors.text }}>{he.home.challenges}</h2>
 
-        {/* TODO: Implement daily/weekly/monthly challenge modes */}
         {[he.challenges.daily, he.challenges.weekly, he.challenges.monthly].map(
           (challenge) => (
             <article

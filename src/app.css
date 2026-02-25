@@ -21,6 +21,32 @@ body {
   overflow-x: hidden;
 }
 
+.hideScrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.hideScrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.homeTopicScroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  cursor: grab;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.homeTopicScroll::-webkit-scrollbar {
+  display: none;
+}
+
+.homeTopicScroll.dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
 @media (max-width: 480px) {
   .page {
     padding: 0 !important;
