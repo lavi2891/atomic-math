@@ -10,16 +10,17 @@ export function LinearEquationsIcon({ size = 24, ...props }: Props) {
       xmlns="http://www.w3.org/2000/svg"
       width={size}
       height={size}
+      viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={2}
-      className="icon icon-tabler icons-tabler-outline icon-tabler-triangle"
+      className="icon icon-tabler icons-tabler-outline icon-tabler-equal"
       {...props}
     >
       <path stroke="none" d="M0 0h24v24H0z" />
-      <path d="M10.363 3.591 2.257 17.125a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636-2.87L13.637 3.59a1.914 1.914 0 0 0-3.274 0" />
+      <path d="M5 10h14M5 14h14" />
     </svg>
   );
 }
