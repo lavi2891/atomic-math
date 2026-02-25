@@ -1,5 +1,7 @@
 import { he } from "@copy/he";
+import { listTopics } from "@domain/topics/registry";
 import { colors, fontSize, radius, spacing } from "@ui/tokens";
+import { statsRepo } from "./statsRepoInstance";
 
 type Props = {
   onQuickPractice: () => void;
@@ -7,6 +9,26 @@ type Props = {
 };
 
 export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
+  const topicSkills = statsRepo.getAllTopicSkills();
+  const skillEntries = Object.entries(topicSkills);
+  const overallSkill =
+    skillEntries.length > 0
+      ? skillEntries.reduce((sum, [, value]) => sum + value, 0) /
+        skillEntries.length
+      : null;
+
+  const topicTitleById = new Map<string, string>(
+    listTopics().map((topic) => [topic.id, topic.title]),
+  );
+  const weakestTopics = skillEntries
+    .sort((a, b) => a[1] - b[1])
+    .slice(0, 3)
+    .map(([topicId, skill]) => ({
+      topicId,
+      skill,
+      title: topicTitleById.get(topicId) ?? topicId,
+    }));
+
   return (
     <section style={{ display: "grid", gap: spacing.md }}>
       <header style={{ display: "grid", gap: spacing.sm }}>
@@ -16,12 +38,10 @@ export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
             gap: spacing.sm,
           }}
-          aria-label="stats-placeholder"
+          aria-label="home-skill-summary"
         >
-          {/* TODO: Wire real user stats once persistence/auth exist */}
           <div
             style={{
               border: `1px solid ${colors.borderSubtle}`,
@@ -29,15 +49,17 @@ export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
               padding: spacing.sm,
               background: colors.bgSubtle,
               display: "grid",
-              justifyItems: "center",
+              alignItems: "center",
               gap: spacing.xs,
               color: colors.text,
             }}
           >
             <span style={{ color: colors.textMuted, fontSize: fontSize.sm }}>
-              {" "}
+              {he.home.overallSkill}
             </span>
-            <strong>0</strong>
+            <strong>
+              {overallSkill === null ? "—" : overallSkill.toFixed(2)}
+            </strong>
           </div>
 
           <div
@@ -47,15 +69,24 @@ export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
               padding: spacing.sm,
               background: colors.bgSubtle,
               display: "grid",
-              justifyItems: "center",
               gap: spacing.xs,
               color: colors.text,
             }}
           >
             <span style={{ color: colors.textMuted, fontSize: fontSize.sm }}>
-              {" "}
+              {he.home.strengthen}
             </span>
-            <strong>0</strong>
+            {weakestTopics.length > 0 ? (
+              <div style={{ display: "grid", gap: spacing.xs }}>
+                {weakestTopics.map((topic) => (
+                  <small key={topic.topicId}>
+                    {topic.title}: {topic.skill.toFixed(2)}
+                  </small>
+                ))}
+              </div>
+            ) : (
+              <small style={{ color: colors.textMuted }}>—</small>
+            )}
           </div>
         </div>
       </header>

@@ -1,63 +1,65 @@
-export const he = {
+﻿export const he = {
   app: {
     name: "Atomic Math",
-    tagline: "מפרקים את המתמטיקה לגורמים",
+    tagline: "×ž×¤×¨×§×™× ××ª ×”×ž×ª×ž×˜×™×§×” ×œ×’×•×¨×ž×™×",
   },
 
   common: {
-    back: "חזרה",
-    start: "התחל",
-    comingSoon: "בקרוב",
-    cancel: "ביטול",
-    close: "סגור",
+    back: "×—×–×¨×”",
+    start: "×”×ª×—×œ",
+    comingSoon: "×‘×§×¨×•×‘",
+    cancel: "×‘×™×˜×•×œ",
+    close: "×¡×’×•×¨",
   },
 
   home: {
-    quickPractice: "תרגול מהיר",
-    practiceByTopic: "תרגול לפי נושא",
-    challenges: "אתגרים",
+    quickPractice: "×ª×¨×’×•×œ ×ž×”×™×¨",
+    practiceByTopic: "×ª×¨×’×•×œ ×œ×¤×™ × ×•×©×",
+    challenges: "××ª×’×¨×™×",
+    overallSkill: "כושר כללי",
+    strengthen: "מה לחזק",
   },
 
   topics: {
-    title: "נושאים",
+    title: "× ×•×©××™×",
   },
 
   challenges: {
-    daily: "חידה יומית",
-    weekly: "אתגר שבועי",
-    monthly: "משימה חודשית",
+    daily: "×—×™×“×” ×™×•×ž×™×ª",
+    weekly: "××ª×’×¨ ×©×‘×•×¢×™",
+    monthly: "×ž×©×™×ž×” ×—×•×“×©×™×ª",
   },
 
   session: {
-    check: "בדוק",
-    next: "הבא",
+    check: "×‘×“×•×§",
+    next: "×”×‘×",
   },
 
   feedback: {
-    correct: "נכון ✅",
-    incorrect: "לא נכון ❌",
+    correct: "× ×›×•×Ÿ âœ…",
+    incorrect: "×œ× × ×›×•×Ÿ âŒ",
   },
 
   review: {
-    yourAnswer: "התשובה שלך:",
-    correctAnswer: "התשובה הנכונה:",
+    yourAnswer: "×”×ª×©×•×‘×” ×©×œ×š:",
+    correctAnswer: "×”×ª×©×•×‘×” ×”× ×›×•× ×”:",
   },
 
   summary: {
-    answered: "נענו:",
-    correct: "נכונות:",
-    backToHome: "חזרה לעמוד הבית",
+    answered: "× ×¢× ×•:",
+    correct: "× ×›×•× ×•×ª:",
+    backToHome: "×—×–×¨×” ×œ×¢×ž×•×“ ×”×‘×™×ª",
   },
 
   placeholders: {
-    numericAnswer: "תשובה…",
+    numericAnswer: "×ª×©×•×‘×”â€¦",
   },
 
   question: {
-    multiHint: "בחירה מרובה",
+    multiHint: "×‘×—×™×¨×” ×ž×¨×•×‘×”",
   },
 
   validation: {
-    invalidNumber: "נא להזין מספר תקין",
+    invalidNumber: "× × ×œ×”×–×™×Ÿ ×ž×¡×¤×¨ ×ª×§×™×Ÿ",
   },
 } as const;
