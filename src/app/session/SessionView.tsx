@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { AnswerResult } from "@domain/results/types";
 import type { Question } from "@domain/questions/types";
 import { clamp01 } from "@shared/math";
@@ -42,6 +42,7 @@ export function SessionView({
   const [currentQuestionId, setCurrentQuestionId] = useState<string | null>(
     questions[0]?.id ?? null,
   );
+  const didEndRef = useRef(false);
   const sessionId = `sess-${useId()}`;
 
   useEffect(() => {
@@ -49,17 +50,22 @@ export function SessionView({
     setAskedQuestionIds([]);
     setTargetDifficulty(clamp01(initialTargetDifficulty));
     setCurrentQuestionId(questions[0]?.id ?? null);
+    didEndRef.current = false;
   }, [initialTargetDifficulty, questions]);
 
   const question = currentQuestionId
     ? questions.find((item) => item.id === currentQuestionId) ?? null
     : null;
+  const isEnded = !question;
 
-  if (!question) {
-    // session finished
+  useEffect(() => {
+    if (!isEnded) return;
+    if (didEndRef.current) return;
+    didEndRef.current = true;
     onSessionEnd(results);
-    return null;
-  }
+  }, [isEnded, onSessionEnd, results]);
+
+  if (isEnded) return <div>מסיים…</div>;
 
   function handleNext(result: AnswerResult) {
     setResults((prev) => [...prev, { ...result, sessionId }]);
