@@ -45,6 +45,15 @@ type Props = {
   review?: ReviewData;
 };
 
+function cryptoSeed(): number {
+  if (typeof globalThis !== "undefined" && globalThis.crypto?.getRandomValues) {
+    const buf = new Uint32Array(1);
+    globalThis.crypto.getRandomValues(buf);
+    return buf[0] ?? 0;
+  }
+  return Math.floor(Math.random() * 0x1_0000_0000);
+}
+
 function findOptionsByIds(
   options: ChoiceOption[],
   ids: string[],
@@ -133,6 +142,17 @@ export function QuestionView({
 }: Props) {
   const numericInputRef = useRef<HTMLInputElement>(null);
   const lastHandledEnterTsRef = useRef<number | null>(null);
+  const shuffleByQuestionRef = useRef<{ questionId: string; seed: number }>({
+    questionId: question.id,
+    seed: cryptoSeed(),
+  });
+  if (shuffleByQuestionRef.current.questionId !== question.id) {
+    shuffleByQuestionRef.current = {
+      questionId: question.id,
+      seed: cryptoSeed(),
+    };
+  }
+  const shuffleSeed = shuffleByQuestionRef.current.seed;
 
   const solve = useQuestionSolve(question, mode, rated);
   const {
@@ -377,6 +397,7 @@ export function QuestionView({
             question={question}
             selectedOptionId={singleId}
             onChange={setSingleId}
+            shuffleSeed={shuffleSeed}
             disabled={disabledInputs}
           />
         ) : question.type === "multiChoice" ? (
@@ -393,6 +414,7 @@ export function QuestionView({
               question={question}
               selectedOptionIds={multiIds}
               onChange={setMultiIds}
+              shuffleSeed={shuffleSeed}
               disabled={disabledInputs}
             />
           </div>

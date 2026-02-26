@@ -3,9 +3,11 @@ import type {
   SingleChoiceQuestion,
   MultiChoiceQuestion,
 } from "@domain/questions/types";
+import { useMemo } from "react";
 import type { CSSProperties, RefObject } from "react";
 import { ContentRenderer } from "@ui/ContentRenderer";
 import { he } from "@copy/he";
+import { shuffleWithSeed } from "@shared/math";
 import {
   borders,
   colors,
@@ -127,13 +129,18 @@ export function SingleChoiceAnswerInput(
     question: SingleChoiceQuestion;
     selectedOptionId: string | null;
     onChange: (optionId: string) => void;
+    shuffleSeed: number;
   } & Disabled,
 ) {
-  const { question, selectedOptionId, onChange, disabled } = props;
+  const { question, selectedOptionId, onChange, disabled, shuffleSeed } = props;
+  const displayedOptions = useMemo(
+    () => shuffleWithSeed(question.options, shuffleSeed),
+    [question.options, shuffleSeed],
+  );
 
   return (
     <div style={{ display: "grid", gap: spacing.sm }}>
-      {question.options.map((opt) => {
+      {displayedOptions.map((opt) => {
         const checked = selectedOptionId === opt.id;
 
         return (
@@ -167,9 +174,14 @@ export function MultiChoiceAnswerInput(
     question: MultiChoiceQuestion;
     selectedOptionIds: string[];
     onChange: (optionIds: string[]) => void;
+    shuffleSeed: number;
   } & Disabled,
 ) {
-  const { question, selectedOptionIds, onChange, disabled } = props;
+  const { question, selectedOptionIds, onChange, disabled, shuffleSeed } = props;
+  const displayedOptions = useMemo(
+    () => shuffleWithSeed(question.options, shuffleSeed),
+    [question.options, shuffleSeed],
+  );
 
   function toggle(id: string) {
     const has = selectedOptionIds.includes(id);
@@ -182,7 +194,7 @@ export function MultiChoiceAnswerInput(
 
   return (
     <div style={{ display: "grid", gap: spacing.sm }}>
-      {question.options.map((opt) => {
+      {displayedOptions.map((opt) => {
         const checked = selectedOptionIds.includes(opt.id);
 
         return (
