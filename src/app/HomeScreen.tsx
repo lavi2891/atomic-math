@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import type { MouseEvent, WheelEvent } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { MouseEvent } from "react";
 import { he } from "@copy/he";
 import { listTopics } from "@domain/topics/registry";
 import { colors, fontSize, radius, spacing } from "@ui/tokens";
@@ -46,14 +46,20 @@ export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
   const overallDisplay =
     overallSkill01 === null ? null : Math.round(overallSkill01 * 1000);
 
-  function handleWheel(event: WheelEvent<HTMLDivElement>) {
+  useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
-    if (event.deltaY === 0) return;
+    const containerEl = container;
 
-    event.preventDefault();
-    container.scrollLeft += event.deltaY;
-  }
+    function handleWheel(event: globalThis.WheelEvent) {
+      if (event.deltaY === 0) return;
+      event.preventDefault();
+      containerEl.scrollLeft += event.deltaY;
+    }
+
+    containerEl.addEventListener("wheel", handleWheel, { passive: false });
+    return () => containerEl.removeEventListener("wheel", handleWheel);
+  }, []);
 
   function handleMouseDown(event: MouseEvent<HTMLDivElement>) {
     const container = scrollRef.current;
@@ -111,7 +117,6 @@ export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
         <div
           ref={scrollRef}
           className={`homeTopicScroll hideScrollbar${isDragging ? " dragging" : ""}`}
-          onWheel={handleWheel}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={stopDragging}
