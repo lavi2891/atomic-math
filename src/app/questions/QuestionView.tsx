@@ -1,6 +1,11 @@
-import type { FormEvent } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import type { FormEvent, KeyboardEvent } from "react";
 import type { AnswerResult } from "@domain/results/types";
-import type { ChoiceOption, Question, RawAnswer } from "@domain/questions/types";
+import type {
+  ChoiceOption,
+  Question,
+  RawAnswer,
+} from "@domain/questions/types";
 import { ContentRenderer } from "@ui/ContentRenderer";
 import {
   MultiChoiceAnswerInput,
@@ -37,7 +42,10 @@ type Props = {
   review?: ReviewData;
 };
 
-function findOptionsByIds(options: ChoiceOption[], ids: string[]): ChoiceOption[] {
+function findOptionsByIds(
+  options: ChoiceOption[],
+  ids: string[],
+): ChoiceOption[] {
   return ids.flatMap((id) => {
     const opt = options.find((o) => o.id === id);
     return opt ? [opt] : [];
@@ -82,12 +90,17 @@ function getCorrectAnswerNode(question: Question) {
       return <span dir="ltr">{question.answer}</span>;
 
     case "singleChoice": {
-      const opt = question.options.find((o) => o.id === question.correctOptionId);
+      const opt = question.options.find(
+        (o) => o.id === question.correctOptionId,
+      );
       return opt ? <ContentRenderer content={opt.content} /> : <span>-</span>;
     }
 
     case "multiChoice": {
-      const opts = findOptionsByIds(question.options, question.correctOptionIds);
+      const opts = findOptionsByIds(
+        question.options,
+        question.correctOptionIds,
+      );
 
       if (opts.length === 0) return <span>-</span>;
 
@@ -115,6 +128,9 @@ export function QuestionView({
   onAttempt,
   review,
 }: Props) {
+  const numericInputRef = useRef<HTMLInputElement>(null);
+  const lastHandledEnterTsRef = useRef<number | null>(null);
+
   const solve = useQuestionSolve(question, mode, rated);
   const {
     state: {
@@ -134,25 +150,83 @@ export function QuestionView({
     }
   }
 
-  function onNumericSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    onCheck();
-  }
-
-  function onNextClick() {
+  const onNextClick = useCallback(() => {
     if (mode !== "solve") return;
     assert(onNext, "onNext is required in solve mode");
 
     const result = nextResult();
     assert(result, "Next requires evaluation");
     onNext(result);
+  }, [mode, nextResult, onNext]);
+
+  function onNumericSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (mode === "solve" && phase === "checked") {
+      onNextClick();
+      return;
+    }
+
+    onCheck();
   }
+
+  function onWrapperKeyDownCapture(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Enter") return;
+    if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey)
+      return;
+    if (mode !== "solve" || phase !== "checked") return;
+    if (lastHandledEnterTsRef.current === event.timeStamp) return;
+
+    lastHandledEnterTsRef.current = event.timeStamp;
+    event.preventDefault();
+    event.stopPropagation();
+    onNextClick();
+  }
+
+  useEffect(() => {
+    if (mode !== "solve") return;
+    if (question.type !== "numeric") return;
+    if (phase !== "answering") return;
+
+    const rafId = requestAnimationFrame(() => {
+      const input = numericInputRef.current;
+      if (!input) return;
+
+      input.focus({ preventScroll: true });
+      if (input.value.length > 0) input.select();
+    });
+
+    return () => cancelAnimationFrame(rafId);
+  }, [mode, phase, question.id, question.type]);
+
+  useEffect(() => {
+    if (mode !== "solve" || phase !== "checked") return;
+
+    function onWindowKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Enter") return;
+      if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey)
+        return;
+      if (lastHandledEnterTsRef.current === event.timeStamp) return;
+
+      lastHandledEnterTsRef.current = event.timeStamp;
+      event.preventDefault();
+      event.stopPropagation();
+      onNextClick();
+    }
+
+    window.addEventListener("keydown", onWindowKeyDown, { capture: true });
+    return () =>
+      window.removeEventListener("keydown", onWindowKeyDown, {
+        capture: true,
+      });
+  }, [mode, onNextClick, phase]);
 
   const reviewData = mode === "review" ? review : null;
   const showCorrect = reviewData?.showCorrectAnswer ?? true;
 
   return (
     <div
+      onKeyDownCapture={onWrapperKeyDownCapture}
       style={{
         display: "grid",
         gap: spacing.md,
@@ -186,6 +260,8 @@ export function QuestionView({
                 value={numericValue}
                 onChange={setNumericValue}
                 disabled={disabledInputs}
+                inputRef={numericInputRef}
+                autoFocus
               />
               <button
                 type="submit"
@@ -215,6 +291,8 @@ export function QuestionView({
               value={numericValue}
               onChange={setNumericValue}
               disabled={disabledInputs}
+              inputRef={numericInputRef}
+              autoFocus
             />
           )
         ) : question.type === "singleChoice" ? (
@@ -280,7 +358,8 @@ export function QuestionView({
           </strong>
 
           <div>
-            {he.review.yourAnswer} {getUserAnswerNode(question, reviewData.rawAnswer)}
+            {he.review.yourAnswer}{" "}
+            {getUserAnswerNode(question, reviewData.rawAnswer)}
           </div>
 
           {showCorrect ? (

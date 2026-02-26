@@ -3,7 +3,7 @@ import type {
   SingleChoiceQuestion,
   MultiChoiceQuestion,
 } from "@domain/questions/types";
-import type { CSSProperties } from "react";
+import type { CSSProperties, RefObject } from "react";
 import { ContentRenderer } from "@ui/ContentRenderer";
 import { he } from "@copy/he";
 import {
@@ -24,12 +24,16 @@ export function NumericAnswerInput(
     question: NumericQuestion;
     value: string;
     onChange: (v: string) => void;
+    autoFocus?: boolean;
+    inputRef?: RefObject<HTMLInputElement | null>;
   } & Disabled,
 ) {
-  const { question, value, onChange, disabled } = props;
+  const { question, value, onChange, disabled, autoFocus, inputRef } = props;
 
   const inputMode =
     question.input?.allowDecimal === false ? "numeric" : "decimal";
+  const pattern =
+    question.input?.allowDecimal === false ? "-?[0-9]*" : "-?[0-9]*[.,]?[0-9]*";
   const style: CSSProperties = {
     width: "100%",
     maxWidth: "100%",
@@ -45,11 +49,15 @@ export function NumericAnswerInput(
 
   return (
     <input
+      ref={inputRef}
       className="numeric-answer-input"
+      type="text"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
+      autoFocus={autoFocus}
       inputMode={inputMode}
+      pattern={pattern}
       dir="ltr"
       placeholder={he.placeholders.numericAnswer}
       style={style}
