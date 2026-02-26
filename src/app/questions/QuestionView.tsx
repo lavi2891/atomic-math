@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { useMemo } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
 import type { AnswerResult } from "@domain/results/types";
 import type {
@@ -13,6 +14,8 @@ import {
   SingleChoiceAnswerInput,
 } from "./AnswerInputs";
 import { assert, unreachable } from "@shared/assert";
+import { parseMathInput } from "@shared/mathInput";
+import type { ParseErrCode } from "@shared/mathInput";
 import { he } from "@copy/he";
 import { colors, fontSize, lineHeight, radius, spacing } from "@ui/tokens";
 import {
@@ -136,15 +139,66 @@ export function QuestionView({
     state: {
       phase,
       inputs: { numericValue, singleId, multiIds },
-      errors: { numericValidationError },
       lastEval,
     },
     actions: { setNumericValue, setSingleId, setMultiIds, check, nextResult },
     derived: { canCheck, isNumericAnsweringSolve, disabledInputs },
   } = solve;
 
+  const numericParsed = useMemo(
+    () =>
+      question.type === "numeric"
+        ? parseMathInput("RATIONAL", numericValue)
+        : null,
+    [question.type, numericValue],
+  );
+
+  function getNumericErrorText(code: ParseErrCode): string | null {
+    switch (code) {
+      case "EMPTY_INPUT":
+        return null;
+      case "INVALID_CHAR":
+        return "יש תווים לא חוקיים";
+      case "MISMATCHED_PAREN":
+        return "סוגריים לא מאוזנים";
+      case "DIVIDE_BY_ZERO":
+        return "אסור לחלק באפס";
+      case "IDENTIFIERS_NOT_ALLOWED":
+        return "אסור להשתמש באותיות כאן";
+      case "INVALID_RATIONAL":
+        return "יש להזין מספר או שבר פשוט";
+      default:
+        return "כתיב לא תקין";
+    }
+  }
+
+  const hasNumericInput = numericValue.length > 0;
+  const numericParsedValue =
+    numericParsed && numericParsed.ok && numericParsed.kind === "RATIONAL"
+      ? numericParsed.value
+      : null;
+  const previewRaw =
+    !hasNumericInput || !numericParsed || !numericParsed.ok
+      ? null
+      : (numericParsed.latexPreview ?? null);
+  const numericPreviewLatex = previewRaw;
+  const numericIsInvalid =
+    question.type === "numeric" &&
+    hasNumericInput &&
+    numericParsed !== null &&
+    !numericParsed.ok;
+  const numericErrorText =
+    numericIsInvalid && numericParsed && !numericParsed.ok
+      ? getNumericErrorText(numericParsed.error.code)
+      : null;
+  const numericCanCheck =
+    question.type === "numeric"
+      ? canCheck && numericParsedValue !== null
+      : canCheck;
+
   function onCheck() {
-    const attemptEvent = check();
+    const attemptEvent =
+      question.type === "numeric" ? check(numericParsedValue) : check();
     if (attemptEvent) {
       onAttempt?.(attemptEvent);
     }
@@ -223,6 +277,11 @@ export function QuestionView({
 
   const reviewData = mode === "review" ? review : null;
   const showCorrect = reviewData?.showCorrectAnswer ?? true;
+  const numericUxProps = {
+    previewLatex: numericPreviewLatex,
+    errorText: numericErrorText,
+    isInvalid: numericIsInvalid,
+  } as const;
 
   return (
     <div
@@ -262,10 +321,11 @@ export function QuestionView({
                 disabled={disabledInputs}
                 inputRef={numericInputRef}
                 autoFocus
+                {...numericUxProps}
               />
               <button
                 type="submit"
-                disabled={!canCheck}
+                disabled={!numericCanCheck}
                 style={{
                   width: "100%",
                   maxWidth: "100%",
@@ -274,16 +334,11 @@ export function QuestionView({
                   padding: `${spacing.sm}px ${spacing.md}px`,
                   borderRadius: radius.md,
                   border: `1px solid ${colors.border}`,
-                  cursor: !canCheck ? "not-allowed" : "pointer",
+                  cursor: !numericCanCheck ? "not-allowed" : "pointer",
                 }}
               >
                 {he.session.check}
               </button>
-              {numericValidationError ? (
-                <div style={{ color: "#ff8a80", fontSize: fontSize.sm }}>
-                  {numericValidationError}
-                </div>
-              ) : null}
             </form>
           ) : (
             <NumericAnswerInput
@@ -293,6 +348,7 @@ export function QuestionView({
               disabled={disabledInputs}
               inputRef={numericInputRef}
               autoFocus
+              {...numericUxProps}
             />
           )
         ) : question.type === "singleChoice" ? (
@@ -376,7 +432,9 @@ export function QuestionView({
             <button
               type="button"
               onClick={onCheck}
-              disabled={!canCheck}
+              disabled={
+                question.type === "numeric" ? !numericCanCheck : !canCheck
+              }
               style={{
                 flex: 1,
                 minWidth: 0,
@@ -386,7 +444,12 @@ export function QuestionView({
                 padding: `${spacing.sm}px ${spacing.md}px`,
                 borderRadius: radius.md,
                 border: `1px solid ${colors.border}`,
-                cursor: !canCheck ? "not-allowed" : "pointer",
+                cursor:
+                  question.type === "numeric" && !numericCanCheck
+                    ? "not-allowed"
+                    : !canCheck
+                      ? "not-allowed"
+                      : "pointer",
               }}
             >
               {he.session.check}

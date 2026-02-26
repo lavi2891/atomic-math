@@ -4,7 +4,6 @@ import type { RawAnswer, Question } from "@domain/questions/types";
 import type { RecordAttemptInput } from "@domain/stats/types";
 import { evaluateAnswer } from "@domain/questions/evaluators";
 import { assert, unreachable } from "@shared/assert";
-import { he } from "@copy/he";
 
 type Mode = "solve" | "review";
 type Phase = "answering" | "checked";
@@ -27,7 +26,6 @@ type SolveState = {
   questionId: string;
   phase: Phase;
   numericValue: string;
-  numericValidationError: string | null;
   singleId: string | null;
   multiIds: string[];
   lastEval: LastEval | null;
@@ -41,9 +39,6 @@ export type QuestionSolveState = {
     singleId: string | null;
     multiIds: string[];
   };
-  errors: {
-    numericValidationError: string | null;
-  };
   lastEval: LastEval | null;
 };
 
@@ -55,7 +50,7 @@ export type UseQuestionSolveResult = {
     setNumericValue: (value: string) => void;
     setSingleId: (value: string) => void;
     setMultiIds: (value: string[]) => void;
-    check: () => QuestionAttemptEvent | null;
+    check: (numericParsedValue?: number | null) => QuestionAttemptEvent | null;
     nextResult: () => AnswerResult | null;
   };
   derived: {
@@ -65,12 +60,15 @@ export type UseQuestionSolveResult = {
   };
 };
 
+function approxEqual(a: number, b: number, tol: number) {
+  return Math.abs(a - b) <= tol;
+}
+
 function createInitialSolveState(questionId: string): SolveState {
   return {
     questionId,
     phase: "answering",
     numericValue: "",
-    numericValidationError: null,
     singleId: null,
     multiIds: [],
     lastEval: null,
@@ -78,7 +76,10 @@ function createInitialSolveState(questionId: string): SolveState {
   };
 }
 
-function getStateForQuestion(state: SolveState, questionId: string): SolveState {
+function getStateForQuestion(
+  state: SolveState,
+  questionId: string,
+): SolveState {
   return state.questionId === questionId
     ? state
     : createInitialSolveState(questionId);
@@ -106,26 +107,14 @@ export function useQuestionSolve(
   );
 
   const currentState = getStateForQuestion(solveState, question.id);
-  const {
-    phase,
-    numericValue,
-    numericValidationError,
-    singleId,
-    multiIds,
-    lastEval,
-  } = currentState;
-
-  const trimmedNumericValue = numericValue.trim();
-  const parsedNumericValue = Number(trimmedNumericValue);
-  const isValidNumericInput =
-    trimmedNumericValue.length > 0 && Number.isFinite(parsedNumericValue);
+  const { phase, numericValue, singleId, multiIds, lastEval } = currentState;
 
   const canCheck = useMemo(() => {
     if (mode !== "solve") return false;
 
     switch (question.type) {
       case "numeric":
-        return isValidNumericInput;
+        return numericValue.trim().length > 0;
       case "singleChoice":
         return singleId !== null;
       case "multiChoice":
@@ -133,7 +122,7 @@ export function useQuestionSolve(
       default:
         return unreachable(question, "Unknown question type");
     }
-  }, [mode, question, isValidNumericInput, singleId, multiIds]);
+  }, [mode, question, numericValue, singleId, multiIds]);
 
   const disabledInputs = mode === "review" || phase === "checked";
   const isNumericAnsweringSolve =
@@ -160,7 +149,6 @@ export function useQuestionSolve(
     setSolveState((prev) => ({
       ...getStateForQuestion(prev, question.id),
       numericValue: value,
-      numericValidationError: null,
     }));
   }
 
@@ -178,25 +166,50 @@ export function useQuestionSolve(
     }));
   }
 
-  function check(): QuestionAttemptEvent | null {
+  function check(
+    numericParsedValue?: number | null,
+  ): QuestionAttemptEvent | null {
     if (mode !== "solve") return null;
+    if (!canCheck) return null;
 
-    if (question.type === "numeric" && !isValidNumericInput) {
-      setSolveState((prev) => ({
-        ...getStateForQuestion(prev, question.id),
-        numericValidationError: he.validation.invalidNumber,
-      }));
+    if (
+      question.type === "numeric" &&
+      (numericParsedValue === null ||
+        numericParsedValue === undefined ||
+        !Number.isFinite(numericParsedValue))
+    ) {
       return null;
     }
-
-    if (!canCheck) return null;
 
     const checkedAt = Date.now();
     checkedAtRef.current = checkedAt;
     responseTimeMsRef.current = Math.max(0, checkedAt - startTsRef.current);
 
-    const raw = buildRaw();
-    const evaluation = evaluateAnswer(question, raw);
+    let raw: AnyRawAnswer;
+    let isCorrect: boolean;
+    let message: string | undefined;
+
+    if (question.type === "numeric") {
+      assert(
+        numericParsedValue !== null && numericParsedValue !== undefined,
+        "numeric check requires valid parsed input",
+      );
+      const tol = question.tolerance ?? 0;
+      isCorrect =
+        tol === 0
+          ? numericParsedValue === question.answer
+          : approxEqual(numericParsedValue, question.answer, tol);
+      raw = {
+        questionType: "numeric",
+        data: { value: numericValue },
+      };
+    } else {
+      raw = buildRaw();
+      const evaluation = evaluateAnswer(question, raw);
+      isCorrect = evaluation.isCorrect;
+      message = evaluation.message;
+    }
+
     const responseTimeMs =
       responseTimeMsRef.current ?? Math.max(0, checkedAt - startTsRef.current);
     const attemptIndex = currentState.nextAttemptIndex;
@@ -207,8 +220,8 @@ export function useQuestionSolve(
         ...next,
         phase: "checked",
         lastEval: {
-          isCorrect: evaluation.isCorrect,
-          message: evaluation.message,
+          isCorrect,
+          message,
           raw,
           attemptIndex,
           responseTimeMs,
@@ -221,7 +234,7 @@ export function useQuestionSolve(
     return {
       questionId: question.id,
       topicId: question.topicId,
-      correct: evaluation.isCorrect,
+      correct: isCorrect,
       timeMs: responseTimeMs,
       rated,
     };
@@ -249,9 +262,6 @@ export function useQuestionSolve(
         numericValue,
         singleId,
         multiIds,
-      },
-      errors: {
-        numericValidationError,
       },
       lastEval,
     },

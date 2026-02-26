@@ -26,14 +26,21 @@ export function NumericAnswerInput(
     onChange: (v: string) => void;
     autoFocus?: boolean;
     inputRef?: RefObject<HTMLInputElement | null>;
+    previewLatex?: string | null;
+    errorText?: string | null;
+    isInvalid?: boolean;
   } & Disabled,
 ) {
-  const { question, value, onChange, disabled, autoFocus, inputRef } = props;
-
-  const inputMode =
-    question.input?.allowDecimal === false ? "numeric" : "decimal";
-  const pattern =
-    question.input?.allowDecimal === false ? "-?[0-9]*" : "-?[0-9]*[.,]?[0-9]*";
+  const {
+    value,
+    onChange,
+    disabled,
+    autoFocus,
+    inputRef,
+    previewLatex,
+    errorText,
+    isInvalid,
+  } = props;
   const style: CSSProperties = {
     width: "100%",
     maxWidth: "100%",
@@ -41,27 +48,56 @@ export function NumericAnswerInput(
     fontSize: fontSize.md,
     padding: `${spacing.md - 2}px ${spacing.md}px`,
     borderRadius: radius.md,
-    border: `${borders.normalPx}px solid ${colors.border}`,
+    border: `${borders.normalPx}px solid ${isInvalid ? "#ff8a80" : colors.border}`,
     background: colors.inputBg,
     color: colors.inputText,
     ["--numeric-placeholder-color" as string]: colors.placeholderText,
   };
 
   return (
-    <input
-      ref={inputRef}
-      className="numeric-answer-input"
-      type="text"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      disabled={disabled}
-      autoFocus={autoFocus}
-      inputMode={inputMode}
-      pattern={pattern}
-      dir="ltr"
-      placeholder={he.placeholders.numericAnswer}
-      style={style}
-    />
+    <div style={{ display: "grid", gap: spacing.xs }}>
+      <input
+        ref={inputRef}
+        className="numeric-answer-input"
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        autoFocus={autoFocus}
+        dir="ltr"
+        placeholder={he.placeholders.numericAnswer}
+        style={style}
+      />
+      {previewLatex ? (
+        <div
+          className="math-input-preview"
+          dir="ltr"
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            fontSize: 22,
+            color: colors.textMuted,
+            paddingTop: spacing.xs,
+          }}
+        >
+          <ContentRenderer
+            content={[{ kind: "math", latex: previewLatex }]}
+            dir="ltr"
+          />
+        </div>
+      ) : null}
+      {errorText && value.trim().length > 0 ? (
+        <div
+          dir="rtl"
+          style={{
+            fontSize: fontSize.sm,
+            color: "#ff8a80",
+          }}
+        >
+          {errorText}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

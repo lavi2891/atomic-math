@@ -1,8 +1,16 @@
 import { validateAllowedChars } from "./allowedChars";
 import { containsIdentifier, evaluateNumericExpression } from "./evaluate";
 import { normalizeMathInput } from "./normalize";
-import { parseEquationInput, parseExpressionInput, parseInequalityInput } from "./parse";
-import { toLatexEquation, toLatexExpression, toLatexInequality } from "./toLatex";
+import {
+  parseEquationInput,
+  parseExpressionInput,
+  parseInequalityInput,
+} from "./parse";
+import {
+  toLatexEquation,
+  toLatexExpression,
+  toLatexInequality,
+} from "./toLatex";
 import type {
   ExprNode,
   MathInputKind,
@@ -10,7 +18,11 @@ import type {
   ParseMathInputResult,
 } from "./types";
 
-function fail(kind: MathInputKind, normalized: string, error: ParseErr): ParseMathInputResult {
+function fail(
+  kind: MathInputKind,
+  normalized: string,
+  error: ParseErr,
+): ParseMathInputResult {
   return { ok: false, kind, normalized, error };
 }
 
@@ -18,10 +30,22 @@ function asSignedNumber(node: ExprNode): number | null {
   if (node.type === "number") {
     return node.value;
   }
-  if (node.type === "unary" && (node.op === "+" || node.op === "-") && node.arg.type === "number") {
+  if (
+    node.type === "unary" &&
+    (node.op === "+" || node.op === "-") &&
+    node.arg.type === "number"
+  ) {
     return node.op === "-" ? -node.arg.value : node.arg.value;
   }
   return null;
+}
+
+function asSignedInteger(node: ExprNode): number | null {
+  const value = asSignedNumber(node);
+  if (value === null || !Number.isInteger(value)) {
+    return null;
+  }
+  return value;
 }
 
 function analyzeNatural(normalized: string): ParseMathInputResult {
@@ -76,7 +100,72 @@ function analyzeInteger(normalized: string): ParseMathInputResult {
 }
 
 function analyzeRational(normalized: string): ParseMathInputResult {
-  return analyzeNumeric(normalized, "RATIONAL");
+  if (normalized.includes("(") || normalized.includes(")")) {
+    return fail("RATIONAL", normalized, {
+      code: "INVALID_RATIONAL",
+      message: "Rational input cannot contain parentheses",
+    });
+  }
+
+  const parsed = parseExpressionInput(normalized);
+  if ("error" in parsed) {
+    return fail("RATIONAL", normalized, parsed.error);
+  }
+  if (containsIdentifier(parsed.ast)) {
+    return fail("RATIONAL", normalized, {
+      code: "IDENTIFIERS_NOT_ALLOWED",
+      message: "Rational input cannot contain identifiers",
+    });
+  }
+
+  const { ast } = parsed;
+  let value: number | null = null;
+
+  if (ast.type === "binary" && ast.op === "/") {
+    const numerator = asSignedInteger(ast.left);
+    if (numerator === null) {
+      return fail("RATIONAL", normalized, {
+        code: "INVALID_RATIONAL",
+        message: "Fraction numerator must be an integer",
+      });
+    }
+    if (ast.right.type !== "number" || !Number.isInteger(ast.right.value)) {
+      return fail("RATIONAL", normalized, {
+        code: "INVALID_RATIONAL",
+        message: "Fraction denominator must be a positive integer",
+      });
+    }
+    if (ast.right.value === 0) {
+      return fail("RATIONAL", normalized, {
+        code: "DIVIDE_BY_ZERO",
+        message: "Cannot divide by zero",
+      });
+    }
+    if (ast.right.value < 0) {
+      return fail("RATIONAL", normalized, {
+        code: "INVALID_RATIONAL",
+        message: "Fraction denominator must be positive",
+      });
+    }
+    value = numerator / ast.right.value;
+  } else {
+    value = asSignedNumber(ast);
+    if (value === null) {
+      return fail("RATIONAL", normalized, {
+        code: "INVALID_RATIONAL",
+        message: "Rational input must be a scalar number or simple fraction",
+      });
+    }
+  }
+
+  return {
+    ok: true,
+    kind: "RATIONAL",
+    normalized,
+    ast,
+    latexPreview: toLatexExpression(ast),
+    value,
+  };
 }
 
 function analyzeNumeric(
@@ -167,7 +256,10 @@ function analyzeInequality(normalized: string): ParseMathInputResult {
   };
 }
 
-export function analyzeMathInput(kind: MathInputKind, rawInput: string): ParseMathInputResult {
+export function analyzeMathInput(
+  kind: MathInputKind,
+  rawInput: string,
+): ParseMathInputResult {
   const normalized = normalizeMathInput(rawInput);
 
   const rawValidation = validateAllowedChars(normalized);
@@ -216,14 +308,28 @@ export const MATH_INPUT_EXAMPLES: readonly MathInputExample[] = [
   { kind: "NUMERIC", input: "2+sqrt(2)", expectedOk: true },
   { kind: "NUMERIC", input: "(1+2)/3", expectedOk: true },
   { kind: "NUMERIC", input: "2^3^2", expectedOk: true },
-  { kind: "NUMERIC", input: "2x+1", expectedOk: false, note: "identifiers are not allowed in NUMERIC" },
-  { kind: "RATIONAL", input: "-3/4", expectedOk: true, note: "legacy alias of NUMERIC behavior" },
+  {
+    kind: "NUMERIC",
+    input: "2x+1",
+    expectedOk: false,
+    note: "identifiers are not allowed in NUMERIC",
+  },
+  { kind: "RATIONAL", input: "-3/4", expectedOk: true },
+  { kind: "RATIONAL", input: "1.5", expectedOk: true },
+  { kind: "RATIONAL", input: "1,5", expectedOk: true },
+  { kind: "RATIONAL", input: "(1+2)/3", expectedOk: false },
+  { kind: "RATIONAL", input: "2+sqrt(2)", expectedOk: false },
   { kind: "EXPRESSION", input: "2*(x+1)", expectedOk: true },
   { kind: "EXPRESSION", input: "2x+1", expectedOk: true },
   { kind: "EXPRESSION", input: "sqrt(9)", expectedOk: true },
   { kind: "EXPRESSION", input: "(2+1)/3", expectedOk: true },
   { kind: "EXPRESSION", input: "2^3^2", expectedOk: true },
-  { kind: "EQUATION", input: "2x+1=5", expectedOk: true, note: "implicit multiplication supported" },
+  {
+    kind: "EQUATION",
+    input: "2x+1=5",
+    expectedOk: true,
+    note: "implicit multiplication supported",
+  },
   { kind: "INEQUALITY", input: "x>=3", expectedOk: true },
   { kind: "INEQUALITY", input: "2*x+1<5", expectedOk: true },
   { kind: "EXPRESSION", input: "", expectedOk: false },
