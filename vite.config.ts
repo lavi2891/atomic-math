@@ -4,6 +4,7 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react()],
+  base: "/atomic-math/",
   resolve: {
     alias: {
       "@domain": path.resolve(__dirname, "src/domain"),
