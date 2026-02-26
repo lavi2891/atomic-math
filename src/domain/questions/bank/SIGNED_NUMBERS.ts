@@ -1,10 +1,11 @@
-import type { Question } from "@domain/questions/types";
+﻿import type { Question } from "@domain/questions/types";
 
 export const SIGNED_NUMBERS_QUESTIONS: Question[] = [
   {
     id: "A1-1",
     topicId: "SIGNED_NUMBERS",
     type: "numeric",
+    difficulty: 0.3,
     prompt: [
       { kind: "text", value: "מה הערך של " },
       { kind: "math", latex: "-3 + 5" },
@@ -18,6 +19,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] = [
     id: "A1-2",
     topicId: "SIGNED_NUMBERS",
     type: "numeric",
+    difficulty: 0.4,
     prompt: [
       { kind: "text", value: "חשב: " },
       { kind: "math", latex: "4 - 7" },
@@ -31,6 +33,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] = [
     topicId: "SIGNED_NUMBERS",
     type: "singleChoice",
     prompt: [{ kind: "text", value: "איזה מספר הוא הקטן ביותר?" }],
+    difficulty: 0.5,
     options: [
       {
         id: "a",
@@ -53,6 +56,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] = [
     id: "A1-4",
     topicId: "SIGNED_NUMBERS",
     type: "singleChoice",
+    difficulty: 0.6,
     prompt: [
       { kind: "text", value: "מה התוצאה של " },
       { kind: "math", latex: "-4 \\times 2" },
@@ -71,6 +75,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] = [
     id: "A1-5",
     topicId: "SIGNED_NUMBERS",
     type: "multiChoice",
+    difficulty: 0.7,
     prompt: [{ kind: "text", value: "סמן את כל המספרים השליליים:" }],
     options: [
       { id: "a", content: [{ kind: "math", latex: "-1" }] },

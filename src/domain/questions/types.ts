@@ -13,6 +13,7 @@ export interface BaseQuestion {
   id: string;
   topicId: string;
   type: QuestionType;
+  difficulty?: number;
   prompt: OptionContent[]; // what the student sees
   version?: number;
   tags?: string[];

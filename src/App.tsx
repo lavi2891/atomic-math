@@ -6,20 +6,22 @@ import { SessionView } from "@app/session/SessionView";
 import { SIGNED_NUMBERS_QUESTIONS } from "@domain/questions/bank/SIGNED_NUMBERS";
 import type { Question } from "@domain/questions/types";
 import type { AnswerResult } from "@domain/results/types";
+import { buildSession } from "@domain/session/buildSession";
 import type { TopicId } from "@domain/topics/types";
 import { getTopicById } from "@domain/topics/registry";
 import { he } from "@copy/he";
 import { styles } from "@ui/styles";
 import { colors, radius, spacing } from "@ui/tokens";
+import { statsRepo } from "@app/statsRepoInstance";
 import { theme } from "./theme/theme";
 
 type Screen = "home" | "topics" | "session" | "summary";
+const DEFAULT_SESSION_LENGTH = 5;
 
-function selectQuestions(topicId: TopicId): Question[] {
-  // TODO: replace hardcoded question selection with domain buildSession()
+function selectQuestionPool(topicId: TopicId): Question[] {
   switch (topicId) {
     case "SIGNED_NUMBERS":
-      return SIGNED_NUMBERS_QUESTIONS.slice(0, 5);
+      return SIGNED_NUMBERS_QUESTIONS;
     default:
       return [];
   }
@@ -35,6 +37,7 @@ export default function App() {
   const [activeQuestions, setActiveQuestions] = useState<
     Question[] | undefined
   >();
+  const [initialTargetDifficulty, setInitialTargetDifficulty] = useState(0.5);
   const [lastResults, setLastResults] = useState<AnswerResult[] | undefined>();
 
   if (showPlayground) {
@@ -42,9 +45,18 @@ export default function App() {
   }
 
   function startSession(topicId: TopicId) {
-    const questions = selectQuestions(topicId);
+    const skill01 = statsRepo.getTopicSkill(topicId);
+    const session = buildSession({
+      topicId,
+      questions: selectQuestionPool(topicId),
+      length: DEFAULT_SESSION_LENGTH,
+      skill01,
+      rated: true,
+    });
+
     setActiveTopicId(topicId);
-    setActiveQuestions(questions);
+    setActiveQuestions(session.questions);
+    setInitialTargetDifficulty(session.initialTargetDifficulty);
     setLastResults(undefined);
     setScreen("session");
   }
@@ -86,6 +98,7 @@ export default function App() {
           {screen === "session" ? (
             <SessionView
               questions={activeQuestions ?? []}
+              initialTargetDifficulty={initialTargetDifficulty}
               onSessionEnd={(results) => {
                 setLastResults(results);
                 setScreen("summary");
