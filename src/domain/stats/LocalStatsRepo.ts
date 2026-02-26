@@ -14,7 +14,7 @@ import { clamp, clamp01 } from "@shared/math";
 
 const INITIAL_SKILL = 0.5;
 const SKILL_K = 0.05;
-const SKILL_MAX_STEP = 0.004;
+const SKILL_MAX_STEP = 0.02;
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
