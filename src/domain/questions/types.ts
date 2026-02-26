@@ -15,6 +15,8 @@ export interface BaseQuestion {
   type: QuestionType;
   difficulty?: number;
   prompt: OptionContent[]; // what the student sees
+  subtopic?: string;
+  misconceptions?: string[];
   version?: number;
   tags?: string[];
   seeds?: QuestionSeeds;
