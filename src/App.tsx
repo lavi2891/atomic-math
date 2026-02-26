@@ -3,7 +3,6 @@ import { PlaygroundScreen } from "@app/PlaygroundScreen";
 import { HomeScreen } from "@app/HomeScreen";
 import { TopicsScreen } from "@app/TopicsScreen";
 import { SessionView } from "@app/session/SessionView";
-import { SIGNED_NUMBERS_QUESTIONS } from "@domain/questions/bank/SIGNED_NUMBERS";
 import type { Question } from "@domain/questions/types";
 import type { AnswerResult } from "@domain/results/types";
 import { buildSession } from "@domain/session/buildSession";
@@ -13,19 +12,12 @@ import { he } from "@copy/he";
 import { styles } from "@ui/styles";
 import { colors, radius, spacing } from "@ui/tokens";
 import { statsRepo } from "@app/statsRepoInstance";
+import { selectQuestionPool } from "@app/questionPools";
+import { getSummaryCounts } from "@app/summary/summaryUtils";
 import { theme } from "./theme/theme";
 
 type Screen = "home" | "topics" | "session" | "summary";
 const DEFAULT_SESSION_LENGTH = 5;
-
-function selectQuestionPool(topicId: TopicId): Question[] {
-  switch (topicId) {
-    case "SIGNED_NUMBERS":
-      return SIGNED_NUMBERS_QUESTIONS;
-    default:
-      return [];
-  }
-}
 
 export default function App() {
   const showPlayground = useMemo(
@@ -70,9 +62,7 @@ export default function App() {
   const topicTitle = activeTopicId
     ? (getTopicById(activeTopicId)?.title ?? activeTopicId)
     : undefined;
-  const answeredCount = lastResults?.length ?? 0;
-  const correctCount =
-    lastResults?.filter((result) => result.isCorrect).length ?? 0;
+  const { answeredCount, correctCount } = getSummaryCounts(lastResults);
 
   return (
     <div className="page" style={styles.page} dir="rtl">
