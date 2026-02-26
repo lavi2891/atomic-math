@@ -145,7 +145,7 @@ export function QuestionView({
     derived: { canCheck, isNumericAnsweringSolve, disabledInputs },
   } = solve;
 
-  const numericParsed = useMemo(
+  const parsedNumeric = useMemo(
     () =>
       question.type === "numeric"
         ? parseMathInput("RATIONAL", numericValue)
@@ -153,52 +153,65 @@ export function QuestionView({
     [question.type, numericValue],
   );
 
-  function getNumericErrorText(code: ParseErrCode): string | null {
+  function mapErrorToHebrew(code: ParseErrCode | string): string {
     switch (code) {
-      case "EMPTY_INPUT":
-        return null;
       case "INVALID_CHAR":
+      case "INVALID_CHARS":
+      case "INVALID_TOKEN":
         return "יש תווים לא חוקיים";
       case "MISMATCHED_PAREN":
+      case "UNBALANCED_PARENS":
         return "סוגריים לא מאוזנים";
       case "DIVIDE_BY_ZERO":
+      case "DIV_BY_ZERO":
         return "אסור לחלק באפס";
+      case "NOT_ALLOWED_FOR_KIND":
       case "IDENTIFIERS_NOT_ALLOWED":
         return "אסור להשתמש באותיות כאן";
-      case "INVALID_RATIONAL":
-        return "יש להזין מספר או שבר פשוט";
+      case "SYNTAX":
       default:
         return "כתיב לא תקין";
     }
   }
 
-  const hasNumericInput = numericValue.length > 0;
-  const numericParsedValue =
-    numericParsed && numericParsed.ok && numericParsed.kind === "RATIONAL"
-      ? numericParsed.value
+  const hasNumericInput = numericValue.trim().length > 0;
+  const numericPreviewLatex =
+    question.type === "numeric" &&
+    hasNumericInput &&
+    parsedNumeric &&
+    parsedNumeric.ok
+      ? (parsedNumeric.latexPreview ?? null)
       : null;
-  const previewRaw =
-    !hasNumericInput || !numericParsed || !numericParsed.ok
-      ? null
-      : (numericParsed.latexPreview ?? null);
-  const numericPreviewLatex = previewRaw;
   const numericIsInvalid =
     question.type === "numeric" &&
     hasNumericInput &&
-    numericParsed !== null &&
-    !numericParsed.ok;
-  const numericErrorText =
-    numericIsInvalid && numericParsed && !numericParsed.ok
-      ? getNumericErrorText(numericParsed.error.code)
+    parsedNumeric !== null &&
+    !parsedNumeric.ok;
+  const numericHelperText =
+    numericIsInvalid && parsedNumeric && !parsedNumeric.ok
+      ? mapErrorToHebrew(parsedNumeric.error.code)
       : null;
+  const numericEmphasizeFraction =
+    question.type === "numeric" &&
+    hasNumericInput &&
+    /[/\\]/.test(numericValue);
   const numericCanCheck =
     question.type === "numeric"
-      ? canCheck && numericParsedValue !== null
+      ? canCheck && hasNumericInput && !numericIsInvalid
       : canCheck;
 
   function onCheck() {
-    const attemptEvent =
-      question.type === "numeric" ? check(numericParsedValue) : check();
+    if (question.type === "numeric") {
+      if (!parsedNumeric || !parsedNumeric.ok || parsedNumeric.kind !== "RATIONAL")
+        return;
+      const attemptEvent = check(parsedNumeric.value);
+      if (attemptEvent) {
+        onAttempt?.(attemptEvent);
+      }
+      return;
+    }
+
+    const attemptEvent = check();
     if (attemptEvent) {
       onAttempt?.(attemptEvent);
     }
@@ -218,6 +231,13 @@ export function QuestionView({
 
     if (mode === "solve" && phase === "checked") {
       onNextClick();
+      return;
+    }
+
+    if (
+      question.type === "numeric" &&
+      (!hasNumericInput || !parsedNumeric || !parsedNumeric.ok)
+    ) {
       return;
     }
 
@@ -279,8 +299,9 @@ export function QuestionView({
   const showCorrect = reviewData?.showCorrectAnswer ?? true;
   const numericUxProps = {
     previewLatex: numericPreviewLatex,
-    errorText: numericErrorText,
+    helperText: numericHelperText,
     isInvalid: numericIsInvalid,
+    emphasizeFraction: numericEmphasizeFraction,
   } as const;
 
   return (

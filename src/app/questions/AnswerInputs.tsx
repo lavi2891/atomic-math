@@ -9,7 +9,6 @@ import { he } from "@copy/he";
 import {
   borders,
   colors,
-  fontSize,
   radius,
   spacing,
   icons,
@@ -27,74 +26,96 @@ export function NumericAnswerInput(
     autoFocus?: boolean;
     inputRef?: RefObject<HTMLInputElement | null>;
     previewLatex?: string | null;
-    errorText?: string | null;
+    helperText?: string | null;
     isInvalid?: boolean;
+    emphasizeFraction?: boolean;
   } & Disabled,
 ) {
   const {
+    question,
     value,
     onChange,
     disabled,
     autoFocus,
     inputRef,
     previewLatex,
-    errorText,
+    helperText,
     isInvalid,
+    emphasizeFraction,
   } = props;
-  const style: CSSProperties = {
+  const allowDecimal = question.input?.allowDecimal !== false;
+  const inputRadius = Math.max(8, radius.md - 4);
+  const inputStyle: CSSProperties = {
     width: "100%",
     maxWidth: "100%",
     boxSizing: "border-box",
-    fontSize: fontSize.md,
-    padding: `${spacing.md - 2}px ${spacing.md}px`,
-    borderRadius: radius.md,
+    fontSize: 16,
+    height: 40,
+    padding: "10px 12px",
+    borderRadius: inputRadius,
     border: `${borders.normalPx}px solid ${isInvalid ? "#ff8a80" : colors.border}`,
     background: colors.inputBg,
     color: colors.inputText,
     ["--numeric-placeholder-color" as string]: colors.placeholderText,
   };
+  const previewFontSize = emphasizeFraction ? 24 : 20;
 
   return (
-    <div style={{ display: "grid", gap: spacing.xs }}>
+    <div
+      className="math-input-card"
+      style={{
+        display: "grid",
+        gap: spacing.sm,
+        background: colors.surface,
+        border: `${borders.normalPx}px solid ${colors.border}`,
+        borderRadius: radius.md,
+        padding: spacing.md,
+      }}
+    >
+      <div
+        className="math-input-preview"
+        dir="ltr"
+        style={{
+          minHeight: "clamp(40px, 5.5vw, 44px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+          opacity: 0.9,
+          fontSize: previewFontSize,
+        }}
+      >
+        {previewLatex ? (
+          <ContentRenderer
+            content={[{ kind: "math", latex: previewLatex }]}
+            dir="ltr"
+          />
+        ) : (
+          <div aria-hidden style={{ minHeight: 1, width: "100%" }} />
+        )}
+      </div>
       <input
         ref={inputRef}
         className="numeric-answer-input"
         type="text"
+        inputMode={allowDecimal ? "decimal" : "numeric"}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
         autoFocus={autoFocus}
         dir="ltr"
         placeholder={he.placeholders.numericAnswer}
-        style={style}
+        style={inputStyle}
       />
-      {previewLatex ? (
-        <div
-          className="math-input-preview"
-          dir="ltr"
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            fontSize: 22,
-            color: colors.textMuted,
-            paddingTop: spacing.xs,
-          }}
-        >
-          <ContentRenderer
-            content={[{ kind: "math", latex: previewLatex }]}
-            dir="ltr"
-          />
-        </div>
-      ) : null}
-      {errorText && value.trim().length > 0 ? (
+      {isInvalid && value.trim().length > 0 && helperText ? (
         <div
           dir="rtl"
           style={{
-            fontSize: fontSize.sm,
+            fontSize: 12,
             color: "#ff8a80",
           }}
         >
-          {errorText}
+          {helperText}
         </div>
       ) : null}
     </div>
