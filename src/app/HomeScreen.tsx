@@ -11,6 +11,8 @@ type Props = {
   onPracticeByTopic: () => void;
 };
 
+const MIN_ATTEMPTS = 10;
+
 export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const dragStartXRef = useRef(0);
@@ -19,7 +21,9 @@ export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
   const [isDragging, setIsDragging] = useState(false);
 
   const topics = listTopics();
-  const skillByTopic = statsRepo.getAllTopicSkills();
+  const stats = statsRepo.getAll();
+  const skillByTopic = stats.skillByTopic;
+  const topicAgg = stats.topicAgg;
   const topicTiles = topics.map((topic) => {
     const skill01 = skillByTopic[topic.id] ?? 0.5;
     return {
@@ -29,10 +33,18 @@ export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
     };
   });
 
+  const eligibleTopics = topics.filter(
+    (topic) => (topicAgg[topic.id]?.attempts ?? 0) >= MIN_ATTEMPTS,
+  );
   const overallSkill01 =
-    topicTiles.reduce((sum, item) => sum + item.skill01, 0) /
-    Math.max(1, topicTiles.length);
-  const overallDisplay = Math.round(overallSkill01 * 1000);
+    eligibleTopics.length > 0
+      ? eligibleTopics.reduce(
+          (sum, topic) => sum + (skillByTopic[topic.id] ?? 0.5),
+          0,
+        ) / eligibleTopics.length
+      : null;
+  const overallDisplay =
+    overallSkill01 === null ? null : Math.round(overallSkill01 * 1000);
 
   function handleWheel(event: WheelEvent<HTMLDivElement>) {
     const container = scrollRef.current;
@@ -90,7 +102,7 @@ export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
           <span style={{ color: colors.textMuted, fontSize: fontSize.sm }}>
             {he.home.overallSkill}
           </span>
-          <strong>{overallDisplay}</strong>
+          <strong>{overallDisplay ?? "—"}</strong>
         </div>
       </header>
 
