@@ -13,8 +13,8 @@ import type {
 import { clamp, clamp01 } from "@shared/math";
 
 const INITIAL_SKILL = 0.5;
-const SKILL_K = 0.12;
-const SKILL_MAX_STEP = 0.04;
+const SKILL_K = 0.05;
+const SKILL_MAX_STEP = 0.004;
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -73,8 +73,11 @@ export class LocalStatsRepo implements StatsRepo {
     updateAggregate(stats.topicAgg, input.topicId, input.correct, timeMs);
     if (input.rated) {
       const currentSkill = stats.skillByTopic[input.topicId] ?? INITIAL_SKILL;
+      const attemptsForTopic = stats.topicAgg[input.topicId]?.attempts ?? 0;
+      // Keep skill progression smoother as practice data accumulates.
+      const effectiveK = SKILL_K / Math.sqrt(1 + attemptsForTopic / 10);
       const target = input.correct ? 1 : 0;
-      const rawDelta = SKILL_K * (target - currentSkill);
+      const rawDelta = effectiveK * (target - currentSkill);
       const delta = clamp(rawDelta, -SKILL_MAX_STEP, SKILL_MAX_STEP);
       stats.skillByTopic[input.topicId] = clamp01(currentSkill + delta);
     }
