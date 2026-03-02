@@ -12,7 +12,7 @@ const demo: Question[] = [
       { kind: "text", value: "חשב: " },
       { kind: "math", latex: "-3 + 7" },
     ],
-    answer: 4,
+    correctAnswers: ["4"],
   },
   {
     id: "q2",

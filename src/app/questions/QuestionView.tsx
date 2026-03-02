@@ -99,7 +99,7 @@ function getUserAnswerNode(question: Question, raw: AnyRawAnswer) {
 function getCorrectAnswerNode(question: Question) {
   switch (question.type) {
     case "numeric":
-      return <span dir="ltr">{question.answer}</span>;
+      return <span dir="ltr">{question.correctAnswers.join(" / ")}</span>;
 
     case "singleChoice": {
       const opt = question.options.find(

@@ -60,10 +60,6 @@ export type UseQuestionSolveResult = {
   };
 };
 
-function approxEqual(a: number, b: number, tol: number) {
-  return Math.abs(a - b) <= tol;
-}
-
 function createInitialSolveState(questionId: string): SolveState {
   return {
     questionId,
@@ -194,15 +190,13 @@ export function useQuestionSolve(
         numericParsedValue !== null && numericParsedValue !== undefined,
         "numeric check requires valid parsed input",
       );
-      const tol = question.tolerance ?? 0;
-      isCorrect =
-        tol === 0
-          ? numericParsedValue === question.answer
-          : approxEqual(numericParsedValue, question.answer, tol);
       raw = {
         questionType: "numeric",
         data: { value: numericValue },
       };
+      const evaluation = evaluateAnswer(question, raw);
+      isCorrect = evaluation.isCorrect;
+      message = evaluation.message;
     } else {
       raw = buildRaw();
       const evaluation = evaluateAnswer(question, raw);

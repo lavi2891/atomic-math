@@ -25,7 +25,7 @@ export interface BaseQuestion {
 
 export interface NumericQuestion extends BaseQuestion {
   type: "numeric";
-  answer: number;
+  correctAnswers: [string, ...string[]];
   tolerance?: number;
   input?: { allowMinus?: boolean; allowDecimal?: boolean }; // future-proof UX hints
 }
