@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import type { Question } from "@domain/questions/types";
 import type { AnswerResult } from "@domain/results/types";
+import { pickNextQuestion } from "@domain/session/questionPicker";
 import { clamp01 } from "@shared/math";
-import { pickClosestByDifficulty } from "./sessionAlgorithms";
 
 type EngineState = {
   results: AnswerResult[];
@@ -70,13 +70,24 @@ export function useSessionEngine(
         prev.targetDifficulty + (result.isCorrect ? 0.05 : -0.05),
       );
       const nextAskedQuestionIds = [...prev.askedQuestionIds, result.questionId];
+      const questionById = new Map(questions.map((question) => [question.id, question]));
+      const historySubtopics = nextAskedQuestionIds.map(
+        (questionId) => questionById.get(questionId)?.subtopic,
+      );
       const remainingQuestions = questions.filter(
         (item) => !nextAskedQuestionIds.includes(item.id),
       );
-      const nextQuestion = pickClosestByDifficulty(
-        remainingQuestions,
-        nextTargetDifficulty,
-      );
+      const nextQuestion =
+        remainingQuestions.length === 0
+          ? null
+          : pickNextQuestion({
+              questions: remainingQuestions,
+              targetDifficulty: nextTargetDifficulty,
+              history: {
+                questionIds: nextAskedQuestionIds,
+                subtopics: historySubtopics,
+              },
+            });
 
       return {
         results: nextResults,
