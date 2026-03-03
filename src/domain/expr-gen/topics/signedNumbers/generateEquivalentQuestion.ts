@@ -3,7 +3,6 @@ import { generateEvaluatedExprAttempt } from "../../core/generateNumericQuestion
 import { evalAst } from "../../core/evalAst.ts";
 import { parseLatex } from "../../core/parseLatex.ts";
 import type { Rational } from "../../core/rational.ts";
-import { toAnswerString } from "../../core/rational.ts";
 import { createRandom, fnv1a32 } from "../../core/rng.ts";
 import { signatureForEquivalent } from "../../core/signatures.ts";
 import type { ExprSpec, GenerateExprNumericQuestionInput } from "../../core/types.ts";
@@ -72,6 +71,10 @@ function applyFractionPowerFormattingMistake(latex: string): string | undefined 
     "\\frac{$1^{$3}}{$2}",
   );
   return transformed !== latex ? transformed : undefined;
+}
+
+function buildCorrectEquivalentExpression(targetLatex: string): string {
+  return `\\left(${targetLatex}\\right)+0`;
 }
 
 function buildOptions(answerLatex: string, distractors: string[], seed: number): {
@@ -174,7 +177,7 @@ export function generateSignedNumbersEquivalentQuestion(
       continue;
     }
 
-    const answerLatex = toAnswerString(target.result);
+    const answerLatex = buildCorrectEquivalentExpression(target.latexRendered);
     const answerEval = evaluateLatex(answerLatex);
     if (!answerEval || !equalsRational(answerEval, target.result)) {
       continue;
@@ -205,8 +208,9 @@ export function generateSignedNumbersEquivalentQuestion(
       type: "singleChoice",
       subtopic: input.spec.subtopic,
       prompt: [
-        { kind: "text", value: "איזה מהביטויים הבאים שווה בערכו לביטוי?" },
+        { kind: "text", value: "איזה מהביטויים שווה ל־" },
         { kind: "math", latex: target.latexRendered, display: true },
+        { kind: "text", value: "?" },
       ],
       options,
       correctOptionId,
