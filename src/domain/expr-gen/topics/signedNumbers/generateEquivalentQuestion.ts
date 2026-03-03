@@ -1,4 +1,4 @@
-import type { SingleChoiceQuestion } from "../../../questions/types.ts";
+import type { OptionContent, SingleChoiceQuestion } from "../../../questions/types.ts";
 import { generateEvaluatedExprAttempt } from "../../core/generateNumericQuestion.ts";
 import { evalAst } from "../../core/evalAst.ts";
 import { parseLatex } from "../../core/parseLatex.ts";
@@ -46,10 +46,10 @@ function applySubtractNegativeMistake(latex: string): string | undefined {
 }
 
 function applyDistributeMinusMistake(latex: string): string | undefined {
-  const direct = latex.replace(/^\-\(([^()]+)-([^()]+)\)$/, "-$1-$2");
+  const direct = latex.replace(/^-\(([^()]+)-([^()]+)\)$/, "-$1-$2");
   if (direct !== latex) return direct;
   const withLeftRight = latex.replace(
-    /^\-\\left\(([^()]+)-([^()]+)\\right\)$/,
+    /^-\\left\(([^()]+)-([^()]+)\\right\)$/,
     "-$1-$2",
   );
   return withLeftRight !== latex ? withLeftRight : undefined;
@@ -81,11 +81,16 @@ function buildOptions(answerLatex: string, distractors: string[], seed: number):
   const optionIds = ["A", "B", "C", "D"] as const;
   const correctIndex = rng.nextInt(0, optionIds.length - 1);
   const incorrectPool = [...distractors];
+  const mathContent = (latex: string): OptionContent => ({
+    kind: "math",
+    latex,
+    display: true,
+  });
   const options = optionIds.map((id, index) => {
     if (index === correctIndex) {
       return {
         id,
-        content: [{ kind: "math", latex: answerLatex, display: true }],
+        content: [mathContent(answerLatex)],
       };
     }
     const latex = incorrectPool.shift();
@@ -94,11 +99,11 @@ function buildOptions(answerLatex: string, distractors: string[], seed: number):
     }
     return {
       id,
-      content: [{ kind: "math", latex, display: true }],
+      content: [mathContent(latex)],
     };
   });
 
-  return { options, correctOptionId: optionIds[correctIndex] };
+  return { options, correctOptionId: optionIds[correctIndex]! };
 }
 
 function pickSpec(sourceExprSpecs: ExprSpec[], seed: number): ExprSpec {
