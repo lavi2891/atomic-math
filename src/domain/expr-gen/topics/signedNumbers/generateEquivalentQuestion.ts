@@ -77,6 +77,40 @@ function buildCorrectEquivalentExpression(targetLatex: string): string {
   return `\\left(${targetLatex}\\right)+0`;
 }
 
+function buildFallbackRuleDistractors(target: Rational, seed: number): string[] {
+  const rng = createRandom(seed ^ 0x7f11a2d3);
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const candidates = [
+    () => {
+      const a = rng.nextInt(2, 18);
+      const b = rng.nextInt(2, 18);
+      return `${a}-${b}`;
+    },
+    () => {
+      const a = rng.nextInt(2, 18);
+      const b = rng.nextInt(2, 18);
+      return `-${a}-${b}`;
+    },
+    () => {
+      const a = rng.nextInt(2, 12);
+      return `(-${a})^{2}`;
+    },
+  ] as const;
+
+  let guard = 0;
+  while (out.length < 3 && guard < 40) {
+    guard += 1;
+    const candidate = candidates[out.length % candidates.length]!();
+    if (seen.has(candidate)) continue;
+    const evaluated = evaluateLatex(candidate);
+    if (!evaluated || equalsRational(evaluated, target)) continue;
+    seen.add(candidate);
+    out.push(candidate);
+  }
+  return out;
+}
+
 function buildOptions(answerLatex: string, distractors: string[], seed: number): {
   options: SingleChoiceQuestion["options"];
   correctOptionId: string;
@@ -174,7 +208,19 @@ export function generateSignedNumbersEquivalentQuestion(
       if (validDistractors.length === 3) break;
     }
     if (validDistractors.length < 3) {
-      continue;
+      const fallbackDistractors = buildFallbackRuleDistractors(
+        target.result,
+        attemptSeed,
+      );
+      for (const fallback of fallbackDistractors) {
+        if (seenLatex.has(fallback)) continue;
+        seenLatex.add(fallback);
+        validDistractors.push(fallback);
+        if (validDistractors.length === 3) break;
+      }
+      if (validDistractors.length < 3) {
+        continue;
+      }
     }
 
     const answerLatex = buildCorrectEquivalentExpression(target.latexRendered);
@@ -216,7 +262,10 @@ export function generateSignedNumbersEquivalentQuestion(
       correctOptionId,
       difficulty: target.difficulty.normalized,
       tags: dedupeTags([...target.tags, ...(input.spec.tags ?? []), "family:equivalent"]),
-      misconceptions: input.spec.misconceptions ?? [],
+      misconceptions: dedupeTags([
+        ...(exprSpec.misconceptions ?? []),
+        ...(input.spec.misconceptions ?? []),
+      ]),
       seeds: {
         difficulty: target.difficulty.normalized,
       },

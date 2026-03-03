@@ -55,13 +55,7 @@ const EQUIVALENT_SPEC: EquivalentSpec = {
   topicId: TOPIC_ID,
   family: "equivalentValue",
   subtopic: "equivalent_value",
-  sourceExprSpecs: SIGNED_NUMBERS_SPECS.filter(
-    (spec) =>
-      spec.latex.includes("-(-") ||
-      spec.latex.includes("-(a-b)") ||
-      spec.latex.includes("-a^") ||
-      spec.latex.includes("\\left(f\\right)^"),
-  ),
+  sourceExprSpecs: SIGNED_NUMBERS_SPECS,
   tags: ["signed", "family:equivalent"],
   misconceptions: [
     "SUBTRACTION_SIGN_ERROR",
