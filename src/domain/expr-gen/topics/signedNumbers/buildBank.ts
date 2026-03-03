@@ -23,6 +23,7 @@ type Family = "numeric" | "compare" | "sign" | "equivalent";
 const TOPIC_ID = "SIGNED_NUMBERS";
 const MAX_ATTEMPTS_PER_SLOT = 220;
 const MAX_ATTEMPTS_PER_FAMILY = 16000;
+const SIGN_ZERO_RATE = 0.05;
 const FAMILY_RATIOS: Record<Family, number> = {
   numeric: 0.6,
   compare: 0.2,
@@ -54,7 +55,13 @@ const EQUIVALENT_SPEC: EquivalentSpec = {
   topicId: TOPIC_ID,
   family: "equivalentValue",
   subtopic: "equivalent_value",
-  sourceExprSpecs: SIGNED_NUMBERS_SPECS,
+  sourceExprSpecs: SIGNED_NUMBERS_SPECS.filter(
+    (spec) =>
+      spec.latex.includes("-(-") ||
+      spec.latex.includes("-(a-b)") ||
+      spec.latex.includes("-a^") ||
+      spec.latex.includes("\\left(f\\right)^"),
+  ),
   tags: ["signed", "family:equivalent"],
   misconceptions: [
     "SUBTRACTION_SIGN_ERROR",
@@ -92,13 +99,14 @@ function computeFamilyTargets(totalPerBucket: number): Record<Family, number> {
 }
 
 function buildQuestionId(
+  templateId: string,
   family: Family,
   bucket: number,
   producedForFamily: number,
   seedNumber: number,
 ): string {
   const hashSuffix = seedNumber.toString(16).padStart(8, "0").slice(0, 8);
-  return `SN_${family}_d${bucket}_i${producedForFamily}_${hashSuffix}`;
+  return `${templateId}__${family}__d${bucket}__i${producedForFamily}__${hashSuffix}`;
 }
 
 function pickNumericSpec(seedNumber: number) {
@@ -107,25 +115,17 @@ function pickNumericSpec(seedNumber: number) {
   return SIGNED_NUMBERS_SPECS[specIndex]!;
 }
 
-function generateFamilyQuestion(params: {
+function generateNonNumericFamilyQuestion(params: {
   family: Family;
   id: string;
   seedNumber: number;
   difficultyTarget: number;
+  targetZero: boolean;
   compareSeenSignatures: Set<string>;
   signSeenSignatures: Set<string>;
   equivalentSeenSignatures: Set<string>;
 }): Question {
   switch (params.family) {
-    case "numeric": {
-      const exprSpec = pickNumericSpec(params.seedNumber);
-      return generateExprNumericQuestion({
-        id: params.id,
-        exprSpec,
-        seedNumber: params.seedNumber,
-        difficultyTarget: params.difficultyTarget,
-      });
-    }
     case "compare":
       return generateSignedNumbersCompareQuestion({
         id: params.id,
@@ -140,6 +140,7 @@ function generateFamilyQuestion(params: {
         seedNumber: params.seedNumber,
         difficultyTarget: params.difficultyTarget,
         spec: SIGN_SPEC,
+        targetZero: params.targetZero,
         seenSignatures: params.signSeenSignatures,
       });
     case "equivalent":
@@ -151,7 +152,7 @@ function generateFamilyQuestion(params: {
         seenSignatures: params.equivalentSeenSignatures,
       });
     default:
-      throw new Error("Unsupported signed numbers family");
+      throw new Error(`Unsupported non-numeric family: ${params.family}`);
   }
 }
 
@@ -199,20 +200,53 @@ export function buildSignedNumbersBank(
             ? seedKey
             : `${String(input.seedBase)}|${seedKey}`;
         const seedNumber = fnv1a32(hashInput);
-        const id = buildQuestionId(family, bucket, producedForFamily, seedNumber);
+        const targetZero = createRandom(
+          fnv1a32(`${hashInput}|sign-zero-target`),
+        ).chance(SIGN_ZERO_RATE);
         const difficultyTarget = bucket / 10;
 
         let question: Question;
         try {
-          question = generateFamilyQuestion({
-            family,
-            id,
-            seedNumber,
-            difficultyTarget,
-            compareSeenSignatures,
-            signSeenSignatures,
-            equivalentSeenSignatures,
-          });
+          if (family === "numeric") {
+            const exprSpec = pickNumericSpec(seedNumber);
+            const id = buildQuestionId(
+              exprSpec.templateId,
+              family,
+              bucket,
+              producedForFamily,
+              seedNumber,
+            );
+            question = generateExprNumericQuestion({
+              id,
+              exprSpec,
+              seedNumber,
+              difficultyTarget,
+            });
+          } else {
+            const templateId =
+              family === "compare"
+                ? "SN_COMPARE"
+                : family === "sign"
+                  ? "SN_SIGN"
+                  : "SN_EQUIV";
+            const id = buildQuestionId(
+              templateId,
+              family,
+              bucket,
+              producedForFamily,
+              seedNumber,
+            );
+            question = generateNonNumericFamilyQuestion({
+              family,
+              id,
+              seedNumber,
+              difficultyTarget,
+              targetZero,
+              compareSeenSignatures,
+              signSeenSignatures,
+              equivalentSeenSignatures,
+            });
+          }
         } catch {
           failedAttempts += 1;
           candidateIndex += 1;
@@ -242,7 +276,7 @@ export function buildSignedNumbersBank(
   const minDifficulty = difficulties.length > 0 ? Math.min(...difficulties) : 0;
   const maxDifficulty = difficulties.length > 0 ? Math.max(...difficulties) : 0;
   console.warn(
-    `SIGNED_NUMBERS mix summary: numeric=${familyCounts.numeric}, compare=${familyCounts.compare}, sign=${familyCounts.sign}, equivalent=${familyCounts.equivalent}, minDifficulty=${minDifficulty.toFixed(3)}, maxDifficulty=${maxDifficulty.toFixed(3)}`,
+    `SIGNED_NUMBERS mix summary: total=${questions.length}, numeric=${familyCounts.numeric}, compare=${familyCounts.compare}, sign=${familyCounts.sign}, equivalent=${familyCounts.equivalent}, minDifficulty=${minDifficulty.toFixed(3)}, maxDifficulty=${maxDifficulty.toFixed(3)}`,
   );
 
   return questions;
