@@ -15,6 +15,7 @@ interface GenerateSignQuestionInput {
   seedNumber: number;
   difficultyTarget?: number;
   spec: SignSpec;
+  targetZero?: boolean;
   seenSignatures?: Set<string>;
 }
 
@@ -115,14 +116,17 @@ function tryGenerateForTarget(
       type: "singleChoice",
       subtopic: input.spec.subtopic,
       prompt: [
-        { kind: "text", value: "מה סימן התוצאה?" },
+        { kind: "text", value: "איזה סימן יהיה לתוצאה? " },
         { kind: "math", latex: evaluated.latexRendered, display: true },
       ],
       options: buildOptions(),
       correctOptionId,
       difficulty: questionDifficulty,
       tags: dedupeTags([...evaluated.tags, ...(input.spec.tags ?? []), "family:sign"]),
-      misconceptions: input.spec.misconceptions ?? [],
+      misconceptions: dedupeTags([
+        ...(exprSpec.misconceptions ?? []),
+        ...(input.spec.misconceptions ?? []),
+      ]),
       seeds: {
         difficulty: questionDifficulty,
       },
@@ -149,7 +153,7 @@ export function generateSignedNumbersSignQuestion(
   }
 
   const targetRng = createRandom(input.seedNumber ^ 0x91f6ab5d);
-  const targetZero = targetRng.chance(input.spec.zeroRate);
+  const targetZero = input.targetZero ?? targetRng.chance(input.spec.zeroRate);
   const targetAttempt = tryGenerateForTarget(input, targetZero);
   if (targetAttempt) {
     return targetAttempt;
