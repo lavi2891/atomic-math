@@ -34,8 +34,9 @@ function dedupeTags(tags: string[]): string[] {
 
 function buildPrompt(aLatex: string, bLatex: string): OptionContent[] {
   return [
-    { kind: "text", value: "השוו בין A ל־B:" },
+    { kind: "text", value: "איזה גדול יותר? " },
     { kind: "math", latex: `A=${aLatex}`, display: true },
+    { kind: "text", value: " או " },
     { kind: "math", latex: `B=${bLatex}`, display: true },
   ];
 }
@@ -74,8 +75,7 @@ export function generateSignedNumbersCompareQuestion(
 
   let bestQuestion: SingleChoiceQuestion | undefined;
   let bestDistance = Number.POSITIVE_INFINITY;
-  let acceptedCount = 0;
-  let equalCount = 0;
+  const equalGateRng = createRandom(input.seedNumber ^ 0x57c2d1a1);
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
     const seedA = fnv1a32(`${input.seedNumber}|compare|A|${attempt}`);
@@ -110,9 +110,7 @@ export function generateSignedNumbersCompareQuestion(
     }
 
     const outcome = compareRationals(evaluatedA.result, evaluatedB.result);
-    const nextAcceptedCount = acceptedCount + 1;
-    const nextEqualCount = equalCount + (outcome === "EQUAL" ? 1 : 0);
-    if (outcome === "EQUAL" && nextEqualCount / nextAcceptedCount > input.spec.maxEqualRate) {
+    if (outcome === "EQUAL" && !equalGateRng.chance(input.spec.maxEqualRate)) {
       continue;
     }
 
@@ -150,15 +148,17 @@ export function generateSignedNumbersCompareQuestion(
       correctOptionId,
       difficulty: questionDifficulty,
       tags,
-      misconceptions: input.spec.misconceptions ?? [],
+      misconceptions: dedupeTags([
+        ...(exprSpecA.misconceptions ?? []),
+        ...(exprSpecB.misconceptions ?? []),
+        ...(input.spec.misconceptions ?? []),
+      ]),
       seeds: {
         difficulty: questionDifficulty,
       },
     };
 
     if (input.seenSignatures) input.seenSignatures.add(signature);
-    acceptedCount = nextAcceptedCount;
-    equalCount = nextEqualCount;
 
     if (input.difficultyTarget === undefined || distanceToTarget <= 0.1) {
       return question;
