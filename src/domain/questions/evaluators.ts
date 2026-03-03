@@ -137,6 +137,14 @@ function runNumericEvaluatorRuntimeChecks() {
   );
 
   assert(
+    evaluateAnswer(
+      { ...numericQuestion, correctAnswers: ["1/4"] },
+      { questionType: "numeric", data: { value: "1/4" } },
+    ).isCorrect,
+    "numeric check failed: 1/4 should match 1/4",
+  );
+
+  assert(
     !evaluateAnswer(numericQuestion, {
       questionType: "numeric",
       data: { value: "abc" },
