@@ -28,7 +28,7 @@ export class NoopStatsRepo implements StatsRepo {
 
   getTopicSkill(_topicId: string): number {
     void _topicId;
-    return 0.5;
+    return 0;
   }
 
   getAllTopicSkills(): Record<string, number> {

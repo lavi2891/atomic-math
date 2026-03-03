@@ -49,7 +49,7 @@ function createSessionId(): string {
 
 export function useSessionEngine(
   questions: Question[],
-  initialTargetDifficulty = 0.5,
+  initialTargetDifficulty = 0,
 ): SessionEngine {
   const [sessionId] = useState<string>(createSessionId);
   const [engineState, setEngineState] = useState<EngineState>(() =>
@@ -59,7 +59,8 @@ export function useSessionEngine(
   const currentQuestion = useMemo(() => {
     if (!engineState.currentQuestionId) return null;
     return (
-      questions.find((item) => item.id === engineState.currentQuestionId) ?? null
+      questions.find((item) => item.id === engineState.currentQuestionId) ??
+      null
     );
   }, [engineState.currentQuestionId, questions]);
 
@@ -69,8 +70,13 @@ export function useSessionEngine(
       const nextTargetDifficulty = clamp01(
         prev.targetDifficulty + (result.isCorrect ? 0.05 : -0.05),
       );
-      const nextAskedQuestionIds = [...prev.askedQuestionIds, result.questionId];
-      const questionById = new Map(questions.map((question) => [question.id, question]));
+      const nextAskedQuestionIds = [
+        ...prev.askedQuestionIds,
+        result.questionId,
+      ];
+      const questionById = new Map(
+        questions.map((question) => [question.id, question]),
+      );
       const historySubtopics = nextAskedQuestionIds.map(
         (questionId) => questionById.get(questionId)?.subtopic,
       );

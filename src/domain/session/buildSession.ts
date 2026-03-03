@@ -56,7 +56,7 @@ export function buildSessionQuestions(
 
 export function buildSession(input: BuildSessionInput): BuildSessionOutput {
   void input.rated;
-  const target = clamp01(input.skill01 ?? 0.5);
+  const target = clamp01(input.skill01 ?? 0);
 
   const candidateQuestions = input.questions.filter(
     (question) => question.topicId === input.topicId,

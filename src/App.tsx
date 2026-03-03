@@ -29,7 +29,7 @@ export default function App() {
   const [activeQuestions, setActiveQuestions] = useState<
     Question[] | undefined
   >();
-  const [initialTargetDifficulty, setInitialTargetDifficulty] = useState(0.5);
+  const [initialTargetDifficulty, setInitialTargetDifficulty] = useState(0);
   const [lastResults, setLastResults] = useState<AnswerResult[] | undefined>();
 
   if (showPlayground) {

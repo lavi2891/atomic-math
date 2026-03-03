@@ -25,7 +25,7 @@ export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
   const skillByTopic = stats.skillByTopic;
   const topicAgg = stats.topicAgg;
   const topicTiles = topics.map((topic) => {
-    const skill01 = skillByTopic[topic.id] ?? 0.5;
+    const skill01 = skillByTopic[topic.id] ?? 0;
     return {
       topic,
       skill01,
@@ -39,7 +39,7 @@ export function HomeScreen({ onQuickPractice, onPracticeByTopic }: Props) {
   const overallSkill01 =
     eligibleTopics.length > 0
       ? eligibleTopics.reduce(
-          (sum, topic) => sum + (skillByTopic[topic.id] ?? 0.5),
+          (sum, topic) => sum + (skillByTopic[topic.id] ?? 0),
           0,
         ) / eligibleTopics.length
       : null;

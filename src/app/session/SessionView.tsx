@@ -13,7 +13,7 @@ type Props = {
 
 export function SessionView({
   questions,
-  initialTargetDifficulty = 0.5,
+  initialTargetDifficulty = 0,
   onSessionEnd,
 }: Props) {
   const engine = useSessionEngine(questions, initialTargetDifficulty);

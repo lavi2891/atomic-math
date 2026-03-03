@@ -12,7 +12,7 @@ import type {
 } from "./types";
 import { clamp, clamp01 } from "@shared/math";
 
-const INITIAL_SKILL = 0.5;
+const INITIAL_SKILL = 0;
 const SKILL_K = 0.05;
 const SKILL_MAX_STEP = 0.02;
 
