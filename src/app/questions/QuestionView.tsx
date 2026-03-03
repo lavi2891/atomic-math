@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
 import type { AnswerResult } from "@domain/results/types";
 import type {
@@ -52,6 +51,14 @@ function cryptoSeed(): number {
     return buf[0] ?? 0;
   }
   return Math.floor(Math.random() * 0x1_0000_0000);
+}
+
+function hashString32(input: string): number {
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash * 31 + input.charCodeAt(i)) | 0;
+  }
+  return hash >>> 0;
 }
 
 function findOptionsByIds(
@@ -142,17 +149,10 @@ export function QuestionView({
 }: Props) {
   const numericInputRef = useRef<HTMLInputElement>(null);
   const lastHandledEnterTsRef = useRef<number | null>(null);
-  const shuffleByQuestionRef = useRef<{ questionId: string; seed: number }>({
-    questionId: question.id,
-    seed: cryptoSeed(),
-  });
-  if (shuffleByQuestionRef.current.questionId !== question.id) {
-    shuffleByQuestionRef.current = {
-      questionId: question.id,
-      seed: cryptoSeed(),
-    };
-  }
-  const shuffleSeed = shuffleByQuestionRef.current.seed;
+  const shuffleSeed = useMemo(
+    () => cryptoSeed() ^ hashString32(question.id),
+    [question.id],
+  );
 
   const solve = useQuestionSolve(question, mode, rated);
   const {
