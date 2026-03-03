@@ -174,3 +174,23 @@ export function generateSignedNumbersCompareQuestion(
   }
   throw new Error(`Failed to generate compare question ${input.id} after ${MAX_ATTEMPTS} attempts`);
 }
+
+function runCompareRuntimeChecks(): void {
+  const a = { num: 5n, den: 2n };
+  const b = { num: 2n, den: 1n };
+  const c = { num: -7n, den: 3n };
+  const d = { num: -7n, den: 3n };
+  if (compareRationals(a, b) !== "A_LARGER") {
+    throw new Error("Compare check failed: expected A to be larger");
+  }
+  if (compareRationals(c, b) !== "B_LARGER") {
+    throw new Error("Compare check failed: expected B to be larger");
+  }
+  if (compareRationals(c, d) !== "EQUAL") {
+    throw new Error("Compare check failed: expected equality");
+  }
+}
+
+if ((import.meta as { env?: { DEV?: boolean } }).env?.DEV) {
+  runCompareRuntimeChecks();
+}

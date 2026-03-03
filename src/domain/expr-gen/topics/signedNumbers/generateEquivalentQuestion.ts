@@ -237,3 +237,37 @@ export function generateSignedNumbersEquivalentQuestion(
   }
   throw new Error(`Failed to generate equivalent question ${input.id} after ${MAX_ATTEMPTS} attempts`);
 }
+
+function runEquivalentRuntimeChecks(): void {
+  const target = "-(3-1)";
+  const correct = buildCorrectEquivalentExpression(target);
+  const targetEval = evaluateLatex(target);
+  const correctEval = evaluateLatex(correct);
+  if (!targetEval || !correctEval || !equalsRational(targetEval, correctEval)) {
+    throw new Error("Equivalent check failed: correct expression must equal target");
+  }
+
+  const d1 = applySubtractNegativeMistake("5-(-2)");
+  const d2 = applyDistributeMinusMistake("-(3-1)");
+  const d3 = applyPowerParenthesesMistake("-4^{2}");
+  if (!d1 || !d2 || !d3) {
+    throw new Error("Equivalent check failed: expected distractor transforms");
+  }
+
+  const target1 = evaluateLatex("5-(-2)");
+  const target2 = evaluateLatex("-(3-1)");
+  const target3 = evaluateLatex("-4^{2}");
+  const eval1 = evaluateLatex(d1);
+  const eval2 = evaluateLatex(d2);
+  const eval3 = evaluateLatex(d3);
+  if (!target1 || !target2 || !target3 || !eval1 || !eval2 || !eval3) {
+    throw new Error("Equivalent check failed: distractor evaluation missing");
+  }
+  if (equalsRational(target1, eval1) || equalsRational(target2, eval2) || equalsRational(target3, eval3)) {
+    throw new Error("Equivalent check failed: distractors must be incorrect");
+  }
+}
+
+if ((import.meta as { env?: { DEV?: boolean } }).env?.DEV) {
+  runEquivalentRuntimeChecks();
+}

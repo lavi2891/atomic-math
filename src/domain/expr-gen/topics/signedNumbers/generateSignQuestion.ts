@@ -164,3 +164,19 @@ export function generateSignedNumbersSignQuestion(
   }
   throw new Error(`Failed to generate sign question ${input.id} after ${MAX_ATTEMPTS} attempts`);
 }
+
+function runSignRuntimeChecks(): void {
+  if (signOf({ num: 9n, den: 4n }) !== "POSITIVE") {
+    throw new Error("Sign check failed: expected positive");
+  }
+  if (signOf({ num: -1n, den: 2n }) !== "NEGATIVE") {
+    throw new Error("Sign check failed: expected negative");
+  }
+  if (signOf({ num: 0n, den: 7n }) !== "ZERO") {
+    throw new Error("Sign check failed: expected zero");
+  }
+}
+
+if ((import.meta as { env?: { DEV?: boolean } }).env?.DEV) {
+  runSignRuntimeChecks();
+}
