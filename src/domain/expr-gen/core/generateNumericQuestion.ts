@@ -88,8 +88,8 @@ function runAttempt(
 ): AttemptResult {
   const rng = createRandom((input.seedNumber + attemptNumber) >>> 0);
   const values = sampleVars(input.exprSpec.vars, rng, input.difficultyTarget);
-  const { numericAst, latexRendered } = substitute(parsedAst, values);
-  const result = evalAst(numericAst);
+  const { latexRendered } = substitute(parsedAst, values);
+  const result = evalAst(parseLatex(latexRendered));
 
   if (!constraintsSatisfied(input.exprSpec, values, result)) {
     throw new Error("Constraints not satisfied");
@@ -261,6 +261,17 @@ function runExprGenRuntimeChecks(): void {
     }
     if (rendered !== "-(3-(-5))") {
       throw new Error(`ExprGen check failed: expected '-(3-(-5))', got '${rendered}'`);
+    }
+  }
+  {
+    const parsed = parseLatex("a^2");
+    const rendered = substitute(parsed, { a: sampleInt(-4) }).latexRendered;
+    if (rendered !== "-4^{2}") {
+      throw new Error(`ExprGen check failed: expected '-4^{2}', got '${rendered}'`);
+    }
+    const value = toAnswerString(evalAst(parseLatex(rendered)));
+    if (value !== "-16") {
+      throw new Error(`ExprGen check failed: expected '-4^{2}' to evaluate to -16, got '${value}'`);
     }
   }
 

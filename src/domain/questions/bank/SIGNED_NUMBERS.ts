@@ -13895,7 +13895,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] =
           },
         ],
       ],
-      correctAnswers: ["4"],
+      correctAnswers: ["-4"],
       difficulty: 0.012345679012345682,
       tags: [
         "topic:signed_numbers",
@@ -13939,7 +13939,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] =
           },
         ],
       ],
-      correctAnswers: ["9"],
+      correctAnswers: ["-9"],
       difficulty: 0.012345679012345682,
       tags: [
         "topic:signed_numbers",
@@ -13983,7 +13983,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] =
           },
         ],
       ],
-      correctAnswers: ["25"],
+      correctAnswers: ["-25"],
       difficulty: 0.012345679012345682,
       tags: [
         "topic:signed_numbers",
@@ -14113,7 +14113,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] =
           },
         ],
       ],
-      correctAnswers: ["16"],
+      correctAnswers: ["-16"],
       difficulty: 0.012345679012345682,
       tags: [
         "topic:signed_numbers",
@@ -14157,7 +14157,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] =
           },
         ],
       ],
-      correctAnswers: ["49"],
+      correctAnswers: ["-49"],
       difficulty: 0.03703703703703705,
       tags: [
         "topic:signed_numbers",
@@ -14331,7 +14331,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] =
           },
         ],
       ],
-      correctAnswers: ["1"],
+      correctAnswers: ["-1"],
       difficulty: 0.19753086419753088,
       tags: [
         "topic:signed_numbers",
@@ -14550,7 +14550,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] =
           },
         ],
       ],
-      correctAnswers: ["36"],
+      correctAnswers: ["-36"],
       difficulty: 0.024691358024691364,
       tags: [
         "topic:signed_numbers",
@@ -14723,7 +14723,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] =
           },
         ],
       ],
-      correctAnswers: ["64"],
+      correctAnswers: ["-64"],
       difficulty: 0.04938271604938272,
       tags: [
         "topic:signed_numbers",
@@ -14938,7 +14938,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] =
           },
         ],
       ],
-      correctAnswers: ["4"],
+      correctAnswers: ["-4"],
       difficulty: 0.012345679012345682,
       tags: [
         "topic:signed_numbers",
@@ -15024,7 +15024,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] =
           },
         ],
       ],
-      correctAnswers: ["36"],
+      correctAnswers: ["-36"],
       difficulty: 0.024691358024691364,
       tags: [
         "topic:signed_numbers",
@@ -15153,7 +15153,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] =
           },
         ],
       ],
-      correctAnswers: ["1"],
+      correctAnswers: ["-1"],
       difficulty: 0.19753086419753088,
       tags: [
         "topic:signed_numbers",
@@ -15196,7 +15196,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] =
           },
         ],
       ],
-      correctAnswers: ["25"],
+      correctAnswers: ["-25"],
       difficulty: 0.012345679012345682,
       tags: [
         "topic:signed_numbers",
@@ -15239,7 +15239,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] =
           },
         ],
       ],
-      correctAnswers: ["16"],
+      correctAnswers: ["-16"],
       difficulty: 0.012345679012345682,
       tags: [
         "topic:signed_numbers",
@@ -15282,7 +15282,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] =
           },
         ],
       ],
-      correctAnswers: ["25"],
+      correctAnswers: ["-25"],
       difficulty: 0.012345679012345682,
       tags: [
         "topic:signed_numbers",
@@ -15325,7 +15325,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] =
           },
         ],
       ],
-      correctAnswers: ["25"],
+      correctAnswers: ["-25"],
       difficulty: 0.012345679012345682,
       tags: [
         "topic:signed_numbers",
@@ -15411,7 +15411,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] =
           },
         ],
       ],
-      correctAnswers: ["9"],
+      correctAnswers: ["-9"],
       difficulty: 0.012345679012345682,
       tags: [
         "topic:signed_numbers",
@@ -15454,7 +15454,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] =
           },
         ],
       ],
-      correctAnswers: ["4"],
+      correctAnswers: ["-4"],
       difficulty: 0.012345679012345682,
       tags: [
         "topic:signed_numbers",
@@ -15497,7 +15497,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] =
           },
         ],
       ],
-      correctAnswers: ["36"],
+      correctAnswers: ["-36"],
       difficulty: 0.024691358024691364,
       tags: [
         "topic:signed_numbers",
@@ -15540,7 +15540,7 @@ export const SIGNED_NUMBERS_QUESTIONS: Question[] =
           },
         ],
       ],
-      correctAnswers: ["49"],
+      correctAnswers: ["-49"],
       difficulty: 0.03703703703703705,
       tags: [
         "topic:signed_numbers",
