@@ -8,7 +8,14 @@ import { fromInteger, toAnswerString, toNumber, type Rational } from "./rational
 import { createRandom } from "./rng.ts";
 import { sampleVars, sampledValueEquals, sampledValueToNumber } from "./sampleVars.ts";
 import { substitute } from "./substitute.ts";
-import type { ConstraintSpec, ExprSpec, GenerateExprNumericQuestionInput, SampledValues } from "./types.ts";
+import type {
+  ConstraintSpec,
+  ExprAnalysis,
+  ExprAst,
+  ExprSpec,
+  GenerateExprNumericQuestionInput,
+  SampledValues,
+} from "./types.ts";
 
 const MAX_ATTEMPTS = 30;
 const EPSILON = 1e-9;
@@ -16,6 +23,16 @@ const EPSILON = 1e-9;
 interface AttemptResult {
   question: NumericQuestion;
   distanceToTarget: number;
+}
+
+export interface EvaluatedExprAttempt {
+  numericAst: ExprAst;
+  latexRendered: string;
+  result: Rational;
+  analysis: ExprAnalysis;
+  tags: string[];
+  values: SampledValues;
+  difficulty: number;
 }
 
 function rationalEqualsNumber(value: Rational, expected: number): boolean {
@@ -81,15 +98,26 @@ function dedupeTags(tags: string[]): string[] {
   return [...new Set(tags)];
 }
 
-function runAttempt(
+function isAtomNumericAst(ast: ExprAst): boolean {
+  return ast.kind === "number" || ast.kind === "rational";
+}
+
+function isSingleNumericToken(latex: string): boolean {
+  return /^-?(?:\d+|\d+\.\d+|\.\d+|\\frac\{\d+\}\{\d+\})$/.test(latex);
+}
+
+export function generateEvaluatedExprAttempt(
   input: GenerateExprNumericQuestionInput,
   parsedAst: ReturnType<typeof parseLatex>,
   attemptNumber: number,
-): AttemptResult {
+): EvaluatedExprAttempt {
   const rng = createRandom((input.seedNumber + attemptNumber) >>> 0);
   const values = sampleVars(input.exprSpec.vars, rng, input.difficultyTarget);
-  const { latexRendered } = substitute(parsedAst, values);
-  const result = evalAst(parseLatex(latexRendered));
+  const { numericAst, latexRendered } = substitute(parsedAst, values);
+  if (isAtomNumericAst(numericAst) || isSingleNumericToken(latexRendered)) {
+    throw new Error("Rendered expression is an atom");
+  }
+  const result = evalAst(numericAst);
 
   if (!constraintsSatisfied(input.exprSpec, values, result)) {
     throw new Error("Constraints not satisfied");
@@ -102,12 +130,30 @@ function runAttempt(
     latexRendered,
     result,
   );
-  const difficulty = scoreDifficulty(analysis);
-  const resultIsInteger = result.den === 1n;
-  const answerString = toAnswerString(result);
-  const prompt = buildPrompt(input.exprSpec, latexRendered);
-  const hints = buildHints(input.exprSpec, latexRendered);
+  const difficulty = scoreDifficulty(analysis).normalized;
+  const tags = dedupeTags([...analysis.tags, ...(input.exprSpec.tags ?? [])]);
 
+  return {
+    numericAst,
+    latexRendered,
+    result,
+    analysis,
+    tags,
+    values,
+    difficulty,
+  };
+}
+
+function runAttempt(
+  input: GenerateExprNumericQuestionInput,
+  parsedAst: ReturnType<typeof parseLatex>,
+  attemptNumber: number,
+): AttemptResult {
+  const evaluated = generateEvaluatedExprAttempt(input, parsedAst, attemptNumber);
+  const resultIsInteger = evaluated.result.den === 1n;
+  const answerString = toAnswerString(evaluated.result);
+  const prompt = buildPrompt(input.exprSpec, evaluated.latexRendered);
+  const hints = buildHints(input.exprSpec, evaluated.latexRendered);
   const question: NumericQuestion = {
     id: input.id,
     topicId: input.exprSpec.topicId,
@@ -116,22 +162,23 @@ function runAttempt(
     prompt,
     hints,
     correctAnswers: [answerString],
-    difficulty: difficulty.normalized,
-    tags: dedupeTags([...analysis.tags, ...(input.exprSpec.tags ?? [])]),
+    difficulty: evaluated.difficulty,
+    tags: evaluated.tags,
     misconceptions: input.exprSpec.misconceptions ?? [],
     seeds: {
-      difficulty: difficulty.normalized,
+      difficulty: evaluated.difficulty,
     },
     input: {
       allowMinus: true,
-      allowDecimal: !resultIsInteger || analysis.hasFraction || analysis.hasDecimal,
+      allowDecimal:
+        !resultIsInteger || evaluated.analysis.hasFraction || evaluated.analysis.hasDecimal,
     },
   };
 
   const distanceToTarget =
     input.difficultyTarget === undefined
       ? 0
-      : Math.abs(difficulty.normalized - input.difficultyTarget);
+      : Math.abs(evaluated.difficulty - input.difficultyTarget);
 
   return { question, distanceToTarget };
 }
