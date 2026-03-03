@@ -98,7 +98,7 @@ function tryGenerateForTarget(
       continue;
     }
 
-    const questionDifficulty = evaluated.difficulty;
+    const questionDifficulty = evaluated.difficulty.normalized;
     const distanceToTarget =
       input.difficultyTarget === undefined
         ? 0

@@ -127,7 +127,8 @@ export function generateSignedNumbersCompareQuestion(
       ...(input.spec.tags ?? []),
       "family:compare",
     ]);
-    const questionDifficulty = (evaluatedA.difficulty + evaluatedB.difficulty) / 2;
+    const questionDifficulty =
+      (evaluatedA.difficulty.normalized + evaluatedB.difficulty.normalized) / 2;
     const distanceToTarget =
       input.difficultyTarget === undefined
         ? 0

@@ -1,7 +1,7 @@
 import type { NumericQuestion, OptionContent } from "../../questions/types.ts";
 
 import { analyze } from "./analyze.ts";
-import { scoreDifficulty } from "./difficulty.ts";
+import { scoreDifficulty, type DifficultyScore } from "./difficulty.ts";
 import { evalAst } from "./evalAst.ts";
 import { parseLatex } from "./parseLatex.ts";
 import { fromInteger, toAnswerString, toNumber, type Rational } from "./rational.ts";
@@ -32,7 +32,15 @@ export interface EvaluatedExprAttempt {
   analysis: ExprAnalysis;
   tags: string[];
   values: SampledValues;
-  difficulty: number;
+  difficulty: DifficultyScore;
+}
+
+export interface GenerateExprAttemptInput {
+  exprSpec: ExprSpec;
+  seedNumber: number;
+  difficultyTarget?: number;
+  attemptOffset?: number;
+  parsedAst?: ReturnType<typeof parseLatex>;
 }
 
 function rationalEqualsNumber(value: Rational, expected: number): boolean {
@@ -99,19 +107,17 @@ function dedupeTags(tags: string[]): string[] {
 }
 
 function isAtomNumericAst(ast: ExprAst): boolean {
-  return ast.kind === "number" || ast.kind === "rational";
+  return ast.kind === "number" || ast.kind === "rational" || ast.kind === "var";
 }
 
 function isSingleNumericToken(latex: string): boolean {
   return /^-?(?:\d+|\d+\.\d+|\.\d+|\\frac\{\d+\}\{\d+\})$/.test(latex);
 }
 
-export function generateEvaluatedExprAttempt(
-  input: GenerateExprNumericQuestionInput,
-  parsedAst: ReturnType<typeof parseLatex>,
-  attemptNumber: number,
-): EvaluatedExprAttempt {
-  const rng = createRandom((input.seedNumber + attemptNumber) >>> 0);
+export function generateExprAttempt(input: GenerateExprAttemptInput): EvaluatedExprAttempt {
+  const parsedAst = input.parsedAst ?? parseLatex(input.exprSpec.latex);
+  const attemptOffset = input.attemptOffset ?? 0;
+  const rng = createRandom((input.seedNumber + attemptOffset) >>> 0);
   const values = sampleVars(input.exprSpec.vars, rng, input.difficultyTarget);
   const { numericAst, latexRendered } = substitute(parsedAst, values);
   if (isAtomNumericAst(numericAst) || isSingleNumericToken(latexRendered)) {
@@ -130,7 +136,7 @@ export function generateEvaluatedExprAttempt(
     latexRendered,
     result,
   );
-  const difficulty = scoreDifficulty(analysis).normalized;
+  const difficulty = scoreDifficulty(analysis);
   const tags = dedupeTags([...analysis.tags, ...(input.exprSpec.tags ?? [])]);
 
   return {
@@ -142,6 +148,20 @@ export function generateEvaluatedExprAttempt(
     values,
     difficulty,
   };
+}
+
+export function generateEvaluatedExprAttempt(
+  input: GenerateExprNumericQuestionInput,
+  parsedAst: ReturnType<typeof parseLatex>,
+  attemptNumber: number,
+): EvaluatedExprAttempt {
+  return generateExprAttempt({
+    exprSpec: input.exprSpec,
+    seedNumber: input.seedNumber,
+    difficultyTarget: input.difficultyTarget,
+    attemptOffset: attemptNumber,
+    parsedAst,
+  });
 }
 
 function runAttempt(
@@ -162,11 +182,11 @@ function runAttempt(
     prompt,
     hints,
     correctAnswers: [answerString],
-    difficulty: evaluated.difficulty,
+    difficulty: evaluated.difficulty.normalized,
     tags: evaluated.tags,
     misconceptions: input.exprSpec.misconceptions ?? [],
     seeds: {
-      difficulty: evaluated.difficulty,
+      difficulty: evaluated.difficulty.normalized,
     },
     input: {
       allowMinus: true,
@@ -178,7 +198,7 @@ function runAttempt(
   const distanceToTarget =
     input.difficultyTarget === undefined
       ? 0
-      : Math.abs(evaluated.difficulty - input.difficultyTarget);
+      : Math.abs(evaluated.difficulty.normalized - input.difficultyTarget);
 
   return { question, distanceToTarget };
 }

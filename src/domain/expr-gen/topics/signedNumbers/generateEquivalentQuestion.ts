@@ -192,7 +192,7 @@ export function generateSignedNumbersEquivalentQuestion(
     const distanceToTarget =
       input.difficultyTarget === undefined
         ? 0
-        : Math.abs(target.difficulty - input.difficultyTarget);
+        : Math.abs(target.difficulty.normalized - input.difficultyTarget);
     const question: SingleChoiceQuestion = {
       id: input.id,
       topicId: input.spec.topicId,
@@ -204,11 +204,11 @@ export function generateSignedNumbersEquivalentQuestion(
       ],
       options,
       correctOptionId,
-      difficulty: target.difficulty,
+      difficulty: target.difficulty.normalized,
       tags: dedupeTags([...target.tags, ...(input.spec.tags ?? []), "family:equivalent"]),
       misconceptions: input.spec.misconceptions ?? [],
       seeds: {
-        difficulty: target.difficulty,
+        difficulty: target.difficulty.normalized,
       },
     };
 
