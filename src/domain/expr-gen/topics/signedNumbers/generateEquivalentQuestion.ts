@@ -5,6 +5,7 @@ import { parseLatex } from "../../core/parseLatex.ts";
 import type { Rational } from "../../core/rational.ts";
 import { toAnswerString } from "../../core/rational.ts";
 import { createRandom, fnv1a32 } from "../../core/rng.ts";
+import { signatureForEquivalent } from "../../core/signatures.ts";
 import type { ExprSpec, GenerateExprNumericQuestionInput } from "../../core/types.ts";
 
 import type { EquivalentSpec } from "./equivalentSpec.ts";
@@ -184,7 +185,12 @@ export function generateSignedNumbersEquivalentQuestion(
 
     const optionSeed = fnv1a32(`${attemptSeed}|options`);
     const { options, correctOptionId } = buildOptions(answerLatex, validDistractors, optionSeed);
-    const signature = `${target.latexRendered}||${correctOptionId}`;
+    const signature = signatureForEquivalent(
+      input.spec.topicId,
+      target.latexRendered,
+      options,
+      correctOptionId,
+    );
     if (input.seenSignatures?.has(signature)) {
       continue;
     }

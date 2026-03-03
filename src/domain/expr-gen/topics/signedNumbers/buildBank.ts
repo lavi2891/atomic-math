@@ -2,6 +2,7 @@ import type { Question } from "../../../questions/types.ts";
 
 import { generateExprNumericQuestion } from "../../core/generateNumericQuestion.ts";
 import { createRandom, fnv1a32 } from "../../core/rng.ts";
+import { signatureForQuestion } from "../../core/signatures.ts";
 
 import type { CompareSpec } from "./compareSpec.ts";
 import type { EquivalentSpec } from "./equivalentSpec.ts";
@@ -72,39 +73,6 @@ function buildSeedKey(
   candidateIndex: number,
 ): string {
   return `${TOPIC_ID}|${family}|d=${bucket}|i=${candidateIndex}`;
-}
-
-function getNumericSignature(question: Question): string {
-  const mathLatex =
-    question.prompt.find((item) => item.kind === "math")?.latex ?? "";
-  if (question.type === "numeric") {
-    const answer = question.correctAnswers[0] ?? "";
-    return `numeric|${mathLatex}|${answer}`;
-  }
-  if (question.type === "singleChoice") {
-    const options = question.options
-      .map((option) => {
-        const content = option.content
-          .map((item) =>
-            item.kind === "math" ? `math:${item.latex}` : `text:${item.value}`,
-          )
-          .join("|");
-        return `${option.id}:${content}`;
-      })
-      .join("||");
-    return `singleChoice|${mathLatex}|${question.correctOptionId}|${options}`;
-  }
-  const options = question.options
-    .map((option) => {
-      const content = option.content
-        .map((item) =>
-          item.kind === "math" ? `math:${item.latex}` : `text:${item.value}`,
-        )
-        .join("|");
-      return `${option.id}:${content}`;
-    })
-    .join("||");
-  return `multiChoice|${mathLatex}|${question.correctOptionIds.join(",")}|${options}`;
 }
 
 function computeFamilyTargets(totalPerBucket: number): Record<Family, number> {
@@ -251,7 +219,7 @@ export function buildSignedNumbersBank(
           continue;
         }
 
-        const signature = getNumericSignature(question);
+        const signature = signatureForQuestion(question);
         if (seenGlobalSignatures.has(signature) || seenIds.has(question.id)) {
           failedAttempts += 1;
           candidateIndex += 1;

@@ -3,6 +3,7 @@ import { generateEvaluatedExprAttempt } from "../../core/generateNumericQuestion
 import { parseLatex } from "../../core/parseLatex.ts";
 import type { Rational } from "../../core/rational.ts";
 import { createRandom, fnv1a32 } from "../../core/rng.ts";
+import { signatureForCompare } from "../../core/signatures.ts";
 import type { ExprSpec, GenerateExprNumericQuestionInput } from "../../core/types.ts";
 
 import type { CompareSpec } from "./compareSpec.ts";
@@ -116,7 +117,12 @@ export function generateSignedNumbersCompareQuestion(
     }
 
     const correctOptionId = optionIdForOutcome(outcome);
-    const signature = `${evaluatedA.latexRendered}||${evaluatedB.latexRendered}||${correctOptionId}`;
+    const signature = signatureForCompare(
+      input.spec.topicId,
+      evaluatedA.latexRendered,
+      evaluatedB.latexRendered,
+      correctOptionId,
+    );
     if (input.seenSignatures?.has(signature)) {
       continue;
     }
