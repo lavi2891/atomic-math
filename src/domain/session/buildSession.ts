@@ -1,10 +1,12 @@
+import type { QuestionDefinition } from "@domain/questions/definitions";
 import type { Question } from "@domain/questions/types";
 import { clamp01 } from "@shared/math";
 import { pickNextQuestion, type PickConfig } from "./questionPicker";
+import { resolveQuestionDefinitions } from "@domain/questions/generator/resolveQuestionDefinition";
 
 type BuildSessionInput = {
   topicId: string;
-  questions: Question[];
+  questions: QuestionDefinition[];
   length: number;
   skill01?: number;
   rated: boolean;
@@ -58,7 +60,7 @@ export function buildSession(input: BuildSessionInput): BuildSessionOutput {
   void input.rated;
   const target = clamp01(input.skill01 ?? 0);
 
-  const candidateQuestions = input.questions.filter(
+  const candidateQuestions = resolveQuestionDefinitions(input.questions).filter(
     (question) => question.topicId === input.topicId,
   );
 
