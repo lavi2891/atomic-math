@@ -13,16 +13,21 @@
   },
 
   home: {
+    selectGrade: "בחירת שכבה",
+    selectGradeDescription: "בחרו שכבה כדי לראות את הנושאים המתאימים",
+    overallSkill: "רמת שליטה כללית",
+    topicsSkill: "רמת שליטה לפי נושא",
     quickPractice: "תרגול מהיר",
     practiceByTopic: "תרגול לפי נושא",
     challenges: "אתגרים",
-    overallSkill: "כושר כללי",
-    strengthen: "מה לחזק",
-    topicsSkill: "רמות לפי נושא",
   },
 
   topics: {
     title: "נושאים",
+    grade7: "כיתה ז׳",
+    grade8: "כיתה ח׳",
+    grade9: "כיתה ט׳",
+    grade10: "כיתה י׳",
   },
 
   challenges: {

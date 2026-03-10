@@ -6,7 +6,8 @@ import { SessionView } from "@app/session/SessionView";
 import type { Question } from "@domain/questions/types";
 import type { AnswerResult } from "@domain/results/types";
 import { buildSession } from "@domain/session/buildSession";
-import type { TopicId } from "@domain/topics/types";
+import { listTopicsByGrade } from "@domain/topics/registry";
+import type { GradeId, TopicId } from "@domain/topics/types";
 import { getTopicById } from "@domain/topics/registry";
 import { he } from "@copy/he";
 import { styles } from "@ui/styles";
@@ -18,6 +19,7 @@ import { theme } from "./theme/theme";
 
 type Screen = "home" | "topics" | "session" | "summary";
 const DEFAULT_SESSION_LENGTH = 5;
+const ENABLED_TOPIC_IDS: TopicId[] = ["SIGNED_NUMBERS"];
 
 export default function App() {
   const showPlayground = useMemo(
@@ -25,6 +27,7 @@ export default function App() {
     [],
   );
   const [screen, setScreen] = useState<Screen>("home");
+  const [selectedGrade, setSelectedGrade] = useState<GradeId | undefined>();
   const [activeTopicId, setActiveTopicId] = useState<TopicId | undefined>();
   const [activeQuestions, setActiveQuestions] = useState<
     Question[] | undefined
@@ -34,6 +37,15 @@ export default function App() {
 
   if (showPlayground) {
     return <PlaygroundScreen />;
+  }
+
+  function startQuickPractice() {
+    if (!selectedGrade) return;
+    const firstEnabledTopic = listTopicsByGrade(selectedGrade).find((topic) =>
+      ENABLED_TOPIC_IDS.includes(topic.id),
+    );
+    if (!firstEnabledTopic) return;
+    startSession(firstEnabledTopic.id);
   }
 
   function startSession(topicId: TopicId) {
@@ -70,18 +82,28 @@ export default function App() {
         <main style={styles.content}>
           {screen === "home" ? (
             <HomeScreen
-              onPracticeByTopic={() => setScreen("topics")}
-              onQuickPractice={() => {
-                // TODO: replace with recommendation logic and daily practice later
-                startSession("SIGNED_NUMBERS");
+              selectedGrade={selectedGrade}
+              onQuickPractice={startQuickPractice}
+              onPracticeByTopic={() => {
+                if (!selectedGrade) return;
+                setScreen("topics");
+              }}
+              onChangeGrade={() => {
+                setSelectedGrade(undefined);
+                setScreen("home");
+              }}
+              onSelectGrade={(gradeId) => {
+                setSelectedGrade(gradeId);
+                setScreen("home");
               }}
             />
           ) : null}
 
-          {screen === "topics" ? (
+          {screen === "topics" && selectedGrade ? (
             <TopicsScreen
               onBack={() => setScreen("home")}
               onStartTopic={startSession}
+              selectedGrade={selectedGrade}
             />
           ) : null}
 
