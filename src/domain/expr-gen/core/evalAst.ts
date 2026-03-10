@@ -6,6 +6,7 @@ import {
   mul,
   negate,
   pow,
+  reduce,
   sub,
   toNumber,
   type Rational,
@@ -51,6 +52,13 @@ function evalNode(ast: ExprAst): Rational {
   }
   if (ast.kind === "var") {
     throw new Error("evalAst received unresolved variable node");
+  }
+  if (ast.kind === "abs") {
+    const value = evalNode(ast.expr);
+    return reduce({
+      num: value.num < 0n ? -value.num : value.num,
+      den: value.den,
+    });
   }
   if (ast.kind === "unaryMinus") {
     return negate(evalNode(ast.expr));

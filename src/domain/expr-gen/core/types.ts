@@ -45,6 +45,7 @@ export type ExprAst =
   | { kind: "number"; value: number; raw: string }
   | { kind: "rational"; value: Rational }
   | { kind: "var"; name: string }
+  | { kind: "abs"; expr: ExprAst }
   | { kind: "unaryMinus"; expr: ExprAst }
   | { kind: "binary"; op: "+" | "-" | "*" | "/" | "^"; left: ExprAst; right: ExprAst };
 

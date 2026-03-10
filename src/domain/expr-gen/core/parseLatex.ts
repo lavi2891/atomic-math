@@ -6,6 +6,7 @@ type Token =
   | { kind: "op"; value: "+" | "-" | "*" | "/" | "^" }
   | { kind: "lparen"; value: "(" | "{" }
   | { kind: "rparen"; value: ")" | "}" }
+  | { kind: "pipe" }
   | { kind: "command"; value: "frac" };
 
 function isDigit(char: string): boolean {
@@ -66,6 +67,11 @@ function tokenize(latex: string): Token[] {
 
     if (ch === "(" || ch === "{") {
       tokens.push({ kind: "lparen", value: ch });
+      i += 1;
+      continue;
+    }
+    if (ch === "|") {
+      tokens.push({ kind: "pipe" });
       i += 1;
       continue;
     }
@@ -215,6 +221,14 @@ class Parser {
       const expr = this.parseAddSub();
       this.expectClosing(token.value);
       return { ast: expr, bareFraction: false };
+    }
+    if (token.kind === "pipe") {
+      const expr = this.parseAddSub();
+      const closing = this.consume();
+      if (closing.kind !== "pipe") {
+        throw new Error("Expected closing absolute-value bar");
+      }
+      return { ast: { kind: "abs", expr }, bareFraction: false };
     }
     if (token.kind === "command" && token.value === "frac") {
       const numerator = this.parseGroupedExpression();

@@ -82,6 +82,13 @@ function renderNode(node: ExprAst, values: SampledValues): RenderedNode {
     if (!value) throw new Error(`Missing value for variable "${node.name}"`);
     return renderSampledValueLatex(value);
   }
+  if (node.kind === "abs") {
+    const child = renderNode(node.expr, values);
+    return {
+      latex: `\\left|${child.latex}\\right|`,
+      prec: PREC_ATOM,
+    };
+  }
   if (node.kind === "unaryMinus") {
     if (node.expr.kind === "unaryMinus") {
       return renderNode(node.expr.expr, values);
@@ -149,6 +156,12 @@ function substituteNumeric(ast: ExprAst, values: SampledValues): ExprAst {
     return {
       kind: "rational",
       value: value.rational,
+    };
+  }
+  if (ast.kind === "abs") {
+    return {
+      kind: "abs",
+      expr: substituteNumeric(ast.expr, values),
     };
   }
   if (ast.kind === "unaryMinus") {

@@ -9,6 +9,10 @@ function walkAst(ast: ExprAst, vars: Set<string>, ops: Set<"+" | "-" | "*" | "/"
     return;
   }
   if (ast.kind === "number" || ast.kind === "rational") return;
+  if (ast.kind === "abs") {
+    walkAst(ast.expr, vars, ops);
+    return;
+  }
   if (ast.kind === "unaryMinus") {
     walkAst(ast.expr, vars, ops);
     return;
@@ -75,6 +79,9 @@ export function analyze(
       }
       return currentMax;
     }
+    if (node.kind === "abs") {
+      return findMaxExponent(node.expr);
+    }
     if (node.kind === "unaryMinus") {
       return findMaxExponent(node.expr);
     }
@@ -88,7 +95,7 @@ export function analyze(
     latexRendered.includes("-\\left(") ||
     exprSpec.latex.includes("-(") ||
     exprSpec.latex.includes("-\\left(") ||
-    /-[\(\{]|-\\left\(/.test(exprSpec.latex);
+    /-[({]|-\\left\(/.test(exprSpec.latex);
 
   const operationOrder = ["+", "-", "*", "/", "^"] as const;
   const orderedOps: Array<"+" | "-" | "*" | "/" | "^"> = operationOrder.filter((op) => ops.has(op));
