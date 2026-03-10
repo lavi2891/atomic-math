@@ -30,6 +30,14 @@ export interface NumericQuestion extends BaseQuestion {
   input?: { allowMinus?: boolean; allowDecimal?: boolean }; // future-proof UX hints
 }
 
+export interface GeneratedQuestionInstance extends NumericQuestion {
+  baseId: string;
+  templateId: string;
+  renderedExpression: string;
+  sampledParams: Record<string, string>;
+  metadata?: Record<string, string | number | boolean | null | undefined>;
+}
+
 export interface ChoiceOption {
   id: string;
   content: OptionContent[];
