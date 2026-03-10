@@ -1,8 +1,9 @@
 import type { QuestionDefinition } from "@domain/questions/definitions";
-import type { Question } from "@domain/questions/types";
+import { isGeneratedQuestionInstance, type Question } from "@domain/questions/types";
 import { clamp01 } from "@shared/math";
 import { pickNextQuestion, type PickConfig } from "./questionPicker";
 import { resolveQuestionDefinitions } from "@domain/questions/generator/resolveQuestionDefinition";
+import { createRecentHistory } from "@domain/questions/generator/antiRepetition";
 
 type BuildSessionInput = {
   topicId: string;
@@ -34,6 +35,9 @@ export function buildSessionQuestions(
   const history = {
     questionIds: [] as string[],
     subtopics: [] as Array<string | undefined>,
+    renderedExpressions: [] as string[],
+    structureKeys: [] as string[],
+    variantGroups: [] as string[],
   };
 
   while (selected.length < desiredCount && remaining.length > 0) {
@@ -46,6 +50,15 @@ export function buildSessionQuestions(
     selected.push(next);
     history.questionIds.push(next.id);
     history.subtopics.push(next.subtopic);
+    if (isGeneratedQuestionInstance(next)) {
+      history.renderedExpressions.push(next.renderedExpression);
+      if (next.structureKey) {
+        history.structureKeys.push(next.structureKey);
+      }
+      if (next.variantGroup) {
+        history.variantGroups.push(next.variantGroup);
+      }
+    }
 
     const index = remaining.findIndex((question) => question.id === next.id);
     if (index >= 0) {
@@ -60,9 +73,9 @@ export function buildSession(input: BuildSessionInput): BuildSessionOutput {
   void input.rated;
   const target = clamp01(input.skill01 ?? 0);
 
-  const candidateQuestions = resolveQuestionDefinitions(input.questions).filter(
-    (question) => question.topicId === input.topicId,
-  );
+  const candidateQuestions = resolveQuestionDefinitions(input.questions, {
+    recentHistory: createRecentHistory(),
+  }).filter((question) => question.topicId === input.topicId);
 
   return {
     questions: buildSessionQuestions({

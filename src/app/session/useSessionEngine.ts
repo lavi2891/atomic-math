@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { Question } from "@domain/questions/types";
+import { isGeneratedQuestionInstance, type Question } from "@domain/questions/types";
 import type { AnswerResult } from "@domain/results/types";
 import { pickNextQuestion } from "@domain/session/questionPicker";
 import { clamp01 } from "@shared/math";
@@ -80,6 +80,30 @@ export function useSessionEngine(
       const historySubtopics = nextAskedQuestionIds.map(
         (questionId) => questionById.get(questionId)?.subtopic,
       );
+      const historyRenderedExpressions = nextAskedQuestionIds
+        .map((questionId) => {
+          const question = questionById.get(questionId);
+          return question && isGeneratedQuestionInstance(question)
+            ? question.renderedExpression
+            : undefined;
+        })
+        .filter((value): value is string => !!value);
+      const historyStructureKeys = nextAskedQuestionIds
+        .map((questionId) => {
+          const question = questionById.get(questionId);
+          return question && isGeneratedQuestionInstance(question)
+            ? question.structureKey
+            : undefined;
+        })
+        .filter((value): value is string => !!value);
+      const historyVariantGroups = nextAskedQuestionIds
+        .map((questionId) => {
+          const question = questionById.get(questionId);
+          return question && isGeneratedQuestionInstance(question)
+            ? question.variantGroup
+            : undefined;
+        })
+        .filter((value): value is string => !!value);
       const remainingQuestions = questions.filter(
         (item) => !nextAskedQuestionIds.includes(item.id),
       );
@@ -92,6 +116,9 @@ export function useSessionEngine(
               history: {
                 questionIds: nextAskedQuestionIds,
                 subtopics: historySubtopics,
+                renderedExpressions: historyRenderedExpressions,
+                structureKeys: historyStructureKeys,
+                variantGroups: historyVariantGroups,
               },
             });
 
