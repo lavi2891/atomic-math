@@ -1,4 +1,11 @@
+import { clamp01 } from "../../../shared/math.ts";
 import type { GeneratedQuestionInstance, NumericQuestion } from "../types.ts";
+import {
+  DEFAULT_ANTI_REPETITION_CONFIG,
+  shouldRejectByRecentHistory,
+  type AntiRepetitionConfig,
+  type GeneratedQuestionRecentHistory,
+} from "./antiRepetition.ts";
 import type { GeneratedQuestionDefinition, SampledParams } from "./types.ts";
 import { evaluateConstraint } from "./constraints.ts";
 import { evaluateExpression, toComputedAnswer } from "./evaluateExpression.ts";
@@ -13,6 +20,8 @@ type BuildGeneratedQuestionOptions = {
   rng?: () => number;
   seed?: number;
   maxAttempts?: number;
+  recentHistory?: GeneratedQuestionRecentHistory;
+  antiRepetitionConfig?: Partial<AntiRepetitionConfig>;
 };
 
 const DEFAULT_MAX_ATTEMPTS = 50;
@@ -72,64 +81,102 @@ function constraintsSatisfied(
   );
 }
 
+function computeDifficulty(
+  definition: GeneratedQuestionDefinition,
+  sampledParams: SampledParams,
+): number | undefined {
+  if (definition.difficultyModel) {
+    return clamp01(definition.difficultyModel(sampledParams));
+  }
+  if (typeof definition.metadata?.difficulty === "number") {
+    return clamp01(definition.metadata.difficulty);
+  }
+  return undefined;
+}
+
 export function buildGeneratedQuestion(
   definition: GeneratedQuestionDefinition,
   options: BuildGeneratedQuestionOptions = {},
 ): GeneratedQuestionInstance {
   const rng = options.rng ?? (options.seed === undefined ? Math.random : createSeededRng(options.seed));
   const maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
+  const antiRepetitionConfig = {
+    ...DEFAULT_ANTI_REPETITION_CONFIG,
+    ...options.antiRepetitionConfig,
+  };
 
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const sampledParams = sampleParams(definition, rng);
-    if (!constraintsSatisfied(definition, sampledParams)) {
-      continue;
-    }
+  for (let pass = 0; pass < 2; pass += 1) {
+    const enforceRecentHistory = pass === 0 && !!options.recentHistory;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const sampledParams = sampleParams(definition, rng);
+      if (!constraintsSatisfied(definition, sampledParams)) {
+        continue;
+      }
 
-    try {
-      const renderedExpression = renderExpressionTemplate(
-        definition.exprTemplate,
-        sampledParams,
-      );
-      const result = evaluateExpression(renderedExpression);
-      const prompt = renderPromptTemplate(definition.promptTemplate, sampledParams);
-      const hints = renderHintsTemplate(definition.hintsTemplate, sampledParams);
-      const preferDecimal = Object.values(sampledParams).some(
-        (param) => param.type === "decimal",
-      );
-      const correctAnswer = toComputedAnswer(result, { preferDecimal });
-      const concrete: NumericQuestion = {
-        id: `${definition.id}__${hashString32(serializeParams(sampledParams))}`,
-        topicId: definition.topicId,
-        type: "numeric",
-        prompt,
-        hints,
-        correctAnswers: [correctAnswer],
-        difficulty: definition.metadata?.difficulty,
-        subtopic: definition.metadata?.subtopic,
-        misconceptions: definition.misconceptions,
-        version: definition.version,
-        tags: [...new Set([...(definition.tags ?? []), "source:generator"])],
-        input: {
-          allowMinus: definition.input?.allowMinus ?? true,
-          allowDecimal: shouldAllowDecimal(definition, renderedExpression),
-        },
-      };
+      try {
+        const renderedExpression = renderExpressionTemplate(
+          definition.exprTemplate,
+          sampledParams,
+        );
+        const result = evaluateExpression(renderedExpression);
+        const prompt = renderPromptTemplate(definition.promptTemplate, sampledParams);
+        const hints = renderHintsTemplate(definition.hintsTemplate, sampledParams);
+        const preferDecimal = Object.values(sampledParams).some(
+          (param) => param.type === "decimal",
+        );
+        const correctAnswer = toComputedAnswer(result, { preferDecimal });
+        const computedDifficulty = computeDifficulty(definition, sampledParams);
+        const concrete: NumericQuestion = {
+          id: `${definition.id}__${hashString32(serializeParams(sampledParams))}`,
+          topicId: definition.topicId,
+          type: "numeric",
+          prompt,
+          hints,
+          correctAnswers: [correctAnswer],
+          difficulty: computedDifficulty ?? definition.metadata?.difficulty,
+          subtopic: definition.metadata?.subtopic,
+          misconceptions: definition.misconceptions,
+          version: definition.version,
+          tags: [...new Set([...(definition.tags ?? []), "source:generator"])],
+          input: {
+            allowMinus: definition.input?.allowMinus ?? true,
+            allowDecimal: shouldAllowDecimal(definition, renderedExpression),
+          },
+        };
 
-      return {
-        ...concrete,
-        baseId: definition.id,
-        templateId: definition.id,
-        renderedExpression,
-        sampledParams: Object.fromEntries(
-          Object.entries(sampledParams).map(([name, value]) => [name, value.expr]),
-        ),
-        metadata: {
-          ...definition.metadata,
-          source: definition.metadata?.source ?? "generator",
-        },
-      };
-    } catch {
-      continue;
+        const generatedQuestion: GeneratedQuestionInstance = {
+          ...concrete,
+          baseId: definition.id,
+          templateId: definition.id,
+          renderedExpression,
+          sampledParams: Object.fromEntries(
+            Object.entries(sampledParams).map(([name, value]) => [name, value.expr]),
+          ),
+          computedDifficulty,
+          structureKey: definition.structureKey,
+          variantGroup: definition.variantGroup,
+          metadata: {
+            ...definition.metadata,
+            source: definition.metadata?.source ?? "generator",
+          },
+        };
+
+        if (
+          enforceRecentHistory &&
+          options.recentHistory &&
+          shouldRejectByRecentHistory(
+            generatedQuestion,
+            options.recentHistory,
+            antiRepetitionConfig,
+          )
+        ) {
+          continue;
+        }
+
+        return generatedQuestion;
+      } catch {
+        continue;
+      }
     }
   }
 
