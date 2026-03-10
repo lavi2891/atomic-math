@@ -1,4 +1,9 @@
 import assert from "node:assert/strict";
+import {
+  createRecentHistory,
+  recordGeneratedQuestionHistory,
+  shouldRejectByRecentHistory,
+} from "../src/domain/questions/generator/antiRepetition.ts";
 import { buildGeneratedQuestion } from "../src/domain/questions/generator/buildGeneratedQuestion.ts";
 import { evaluateConstraint } from "../src/domain/questions/generator/constraints.ts";
 import {
@@ -118,6 +123,8 @@ run("generated question build flow", () => {
     id: "GEN_TEST_001",
     topicId: "SIGNED_NUMBERS",
     kind: "generated",
+    structureKey: "a-(-b)",
+    variantGroup: "double_negative_subtraction",
     promptTemplate: [
       { kind: "text", value: "חשבו:" },
       { kind: "math", latex: "-{a}-(-{b})", display: true },
@@ -133,6 +140,8 @@ run("generated question build flow", () => {
       subtopic: "subtraction",
       source: "generator",
     },
+    difficultyModel: ({ a, b }) =>
+      Math.min(1, Math.abs(Number(a.value.num)) / 10 + Math.abs(Number(b.value.num)) / 10),
   };
 
   const question = buildGeneratedQuestion(definition, {
@@ -145,6 +154,10 @@ run("generated question build flow", () => {
   assert.equal(question.renderedExpression, "-1-(-2)");
   assert.deepEqual(question.sampledParams, { a: "1", b: "2" });
   assert.equal(question.correctAnswers[0], "1");
+  assert.equal(question.structureKey, "a-(-b)");
+  assert.equal(question.variantGroup, "double_negative_subtraction");
+  assert.equal(question.difficulty, question.computedDifficulty);
+  assert.ok(Math.abs((question.computedDifficulty ?? 0) - 0.3) < 1e-9);
   assert.equal(question.prompt[1]?.kind, "math");
   if (question.prompt[1]?.kind === "math") {
     assert.equal(question.prompt[1].latex, "-1-(-2)");
@@ -156,6 +169,8 @@ run("generated question seed is deterministic", () => {
     id: "GEN_TEST_SEED_001",
     topicId: "SIGNED_NUMBERS",
     kind: "generated",
+    structureKey: "a-(-b)",
+    variantGroup: "double_negative_subtraction",
     promptTemplate: [{ kind: "math", latex: "-{a}-(-{b})", display: true }],
     exprTemplate: "-{a}-(-{b})",
     params: {
@@ -163,6 +178,8 @@ run("generated question seed is deterministic", () => {
       b: { type: "natural", min: 1, max: 20 },
     },
     constraints: ["a !== b"],
+    difficultyModel: ({ a, b }) =>
+      Math.min(1, (Math.abs(Number(a.value.num)) + Math.abs(Number(b.value.num))) / 30),
   };
 
   const first = buildGeneratedQuestion(definition, { seed: 42 });
@@ -171,16 +188,45 @@ run("generated question seed is deterministic", () => {
 
   assert.equal(first.id, second.id);
   assert.equal(first.renderedExpression, second.renderedExpression);
+  assert.equal(first.computedDifficulty, second.computedDifficulty);
   assert.notEqual(first.id, different.id);
+});
+
+run("recent-history anti-repetition rejects repeated expressions", () => {
+  const history = createRecentHistory();
+  const definition = SIGNED_NUMBERS_GENERATED_QUESTIONS[0];
+  if (!definition) {
+    throw new Error("Expected at least one signed numbers definition");
+  }
+
+  const first = buildGeneratedQuestion(definition, { seed: 1 });
+  recordGeneratedQuestionHistory(history, first);
+  assert.equal(shouldRejectByRecentHistory(first, history), true);
+
+  const second = buildGeneratedQuestion(definition, {
+    seed: 1,
+    recentHistory: history,
+    maxAttempts: 20,
+  });
+  assert.notEqual(second.renderedExpression, first.renderedExpression);
 });
 
 run("signed numbers generator definitions stay curated and buildable", () => {
   const seenIds = new Set<string>();
   const seenTemplates = new Set<string>();
+  const seenStructureKeys = new Set<string>();
 
   for (const definition of SIGNED_NUMBERS_GENERATED_QUESTIONS) {
     assert.equal(seenIds.has(definition.id), false, `duplicate definition id: ${definition.id}`);
     seenIds.add(definition.id);
+    assert.ok(definition.structureKey, `missing structureKey: ${definition.id}`);
+    assert.ok(definition.variantGroup, `missing variantGroup: ${definition.id}`);
+    assert.equal(
+      seenStructureKeys.has(definition.structureKey),
+      false,
+      `duplicate structureKey: ${definition.structureKey}`,
+    );
+    seenStructureKeys.add(definition.structureKey);
 
     const normalizedTemplate = definition.exprTemplate
       .replaceAll(/\{[a-zA-Z_]\w*\}/g, "{_}")
@@ -198,6 +244,13 @@ run("signed numbers generator definitions stay curated and buildable", () => {
       assert.equal(question.topicId, "SIGNED_NUMBERS");
       assert.ok(question.renderedExpression.length > 0);
       assert.ok(question.correctAnswers[0]);
+      assert.ok(question.structureKey);
+      assert.ok(question.variantGroup);
+      assert.equal(
+        question.computedDifficulty === undefined ||
+          (question.computedDifficulty >= 0 && question.computedDifficulty <= 1),
+        true,
+      );
       assert.deepEqual(
         question.correctAnswers,
         [toComputedAnswer(evaluateExpression(question.renderedExpression))],
