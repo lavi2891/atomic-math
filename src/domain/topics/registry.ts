@@ -65,6 +65,13 @@ export const TOPICS: Topic[] = [
     colorToken: "topicGreen",
   },
   {
+    id: "PERCENTAGES",
+    title: "אחוזים",
+    order: 9.5,
+    icon: "linearEquations",
+    colorToken: "topicGreen",
+  },
+  {
     id: "INEQUALITIES",
     title: "אי שוויונים",
     order: 10,
@@ -184,6 +191,7 @@ export const TOPICS_BY_GRADE: Record<GradeId, TopicId[]> = {
     "EQUATIONS",
     "LINEAR_FUNCTION",
     "GRAPH_READING",
+    "PERCENTAGES",
     "INEQUALITIES",
     "TRIANGLE_CONGRUENCE",
     "TRIANGLE_MEDIAN",
