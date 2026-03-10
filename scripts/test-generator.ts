@@ -10,6 +10,7 @@ import {
   renderDisplayTemplate,
   renderExpressionTemplate,
 } from "../src/domain/questions/generator/renderTemplate.ts";
+import { SIGNED_NUMBERS_GENERATED_QUESTIONS } from "../src/domain/questions/bank/SIGNED_NUMBERS.generated.ts";
 import { resolveQuestionDefinition } from "../src/domain/questions/generator/resolveQuestionDefinition.ts";
 import { sampleParam } from "../src/domain/questions/generator/sampleParam.ts";
 import { SIGNED_NUMBERS_SAMPLE_QUESTIONS } from "../src/domain/questions/samples/SIGNED_NUMBERS.samples.ts";
@@ -173,15 +174,48 @@ run("generated question seed is deterministic", () => {
   assert.notEqual(first.id, different.id);
 });
 
+run("signed numbers generator definitions stay curated and buildable", () => {
+  const seenIds = new Set<string>();
+  const seenTemplates = new Set<string>();
+
+  for (const definition of SIGNED_NUMBERS_GENERATED_QUESTIONS) {
+    assert.equal(seenIds.has(definition.id), false, `duplicate definition id: ${definition.id}`);
+    seenIds.add(definition.id);
+
+    const normalizedTemplate = definition.exprTemplate
+      .replaceAll(/\{[a-zA-Z_]\w*\}/g, "{_}")
+      .replaceAll(/\s+/g, "");
+    assert.equal(
+      seenTemplates.has(normalizedTemplate),
+      false,
+      `duplicate exprTemplate shape: ${definition.exprTemplate}`,
+    );
+    seenTemplates.add(normalizedTemplate);
+
+    for (const seed of [11, 29, 47]) {
+      const question = buildGeneratedQuestion(definition, { seed, maxAttempts: 100 });
+      assert.equal(question.baseId, definition.id);
+      assert.equal(question.topicId, "SIGNED_NUMBERS");
+      assert.ok(question.renderedExpression.length > 0);
+      assert.ok(question.correctAnswers[0]);
+      assert.deepEqual(
+        question.correctAnswers,
+        [toComputedAnswer(evaluateExpression(question.renderedExpression))],
+      );
+    }
+  }
+});
+
 run("signed numbers sample fixtures stay stable", () => {
   assert.equal(SIGNED_NUMBERS_SAMPLE_QUESTIONS.length, 20);
-  assert.equal(
-    SIGNED_NUMBERS_SAMPLE_QUESTIONS.filter((question) => question.baseId === "SN_GEN_SUB_NEG_NEG_001").length,
-    10,
-  );
-  assert.equal(
-    SIGNED_NUMBERS_SAMPLE_QUESTIONS.filter((question) => question.baseId === "SN_GEN_ABS_DIFF_001").length,
-    10,
+  assert.deepEqual(
+    [...new Set(SIGNED_NUMBERS_SAMPLE_QUESTIONS.map((question) => question.baseId))].sort(),
+    [
+      "SN_GEN_ADD_NEG_POS_001",
+      "SN_GEN_NEGATE_PARENS_SUB_001",
+      "SN_GEN_POWER_NEG_BASE_PARENS_002",
+      "SN_GEN_SUB_DOUBLE_NEG_002",
+    ],
   );
 });
 
