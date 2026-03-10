@@ -11,10 +11,19 @@ import { sampleParam } from "./sampleParam.ts";
 
 type BuildGeneratedQuestionOptions = {
   rng?: () => number;
+  seed?: number;
   maxAttempts?: number;
 };
 
 const DEFAULT_MAX_ATTEMPTS = 50;
+
+function createSeededRng(seed: number): () => number {
+  let state = Math.trunc(seed) >>> 0;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 0x1_0000_0000;
+  };
+}
 
 function sampleParams(
   definition: GeneratedQuestionDefinition,
@@ -67,7 +76,7 @@ export function buildGeneratedQuestion(
   definition: GeneratedQuestionDefinition,
   options: BuildGeneratedQuestionOptions = {},
 ): GeneratedQuestionInstance {
-  const rng = options.rng ?? Math.random;
+  const rng = options.rng ?? (options.seed === undefined ? Math.random : createSeededRng(options.seed));
   const maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
