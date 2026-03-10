@@ -60,6 +60,8 @@ export type SampledParamValue = {
 
 export type SampledParams = Record<string, SampledParamValue>;
 
+export type DifficultyModel = (sampledParams: SampledParams) => number;
+
 export interface GeneratedQuestionDefinition {
   id: string;
   topicId: string;
@@ -73,6 +75,9 @@ export interface GeneratedQuestionDefinition {
   tags?: string[];
   version?: number;
   metadata?: GeneratedQuestionMetadata;
+  structureKey?: string;
+  variantGroup?: string;
+  difficultyModel?: DifficultyModel;
   input?: {
     allowMinus?: boolean;
     allowDecimal?: boolean;

@@ -35,6 +35,9 @@ export interface GeneratedQuestionInstance extends NumericQuestion {
   templateId: string;
   renderedExpression: string;
   sampledParams: Record<string, string>;
+  computedDifficulty?: number;
+  structureKey?: string;
+  variantGroup?: string;
   metadata?: Record<string, string | number | boolean | null | undefined>;
 }
 
@@ -59,6 +62,12 @@ export type Question =
   | NumericQuestion
   | SingleChoiceQuestion
   | MultiChoiceQuestion;
+
+export function isGeneratedQuestionInstance(
+  question: Question,
+): question is GeneratedQuestionInstance {
+  return "renderedExpression" in question;
+}
 
 export type RawAnswerByType = {
   numeric: { value: string };
