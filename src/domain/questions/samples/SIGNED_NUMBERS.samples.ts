@@ -1,6 +1,6 @@
-import { SIGNED_NUMBERS_GENERATED_QUESTIONS } from "../bank/SIGNED_NUMBERS.generated";
-import { buildGeneratedQuestion } from "../generator/buildGeneratedQuestion";
-import type { GeneratedQuestionInstance } from "../types";
+import { SIGNED_NUMBERS_GENERATED_QUESTIONS } from "../bank/SIGNED_NUMBERS.generated.ts";
+import { buildGeneratedQuestion } from "../generator/buildGeneratedQuestion.ts";
+import type { GeneratedQuestionInstance } from "../types.ts";
 
 const [subNegNegDefinition, absDiffDefinition] = SIGNED_NUMBERS_GENERATED_QUESTIONS;
 

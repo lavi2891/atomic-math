@@ -12,6 +12,7 @@ import {
 } from "../src/domain/questions/generator/renderTemplate.ts";
 import { resolveQuestionDefinition } from "../src/domain/questions/generator/resolveQuestionDefinition.ts";
 import { sampleParam } from "../src/domain/questions/generator/sampleParam.ts";
+import { SIGNED_NUMBERS_SAMPLE_QUESTIONS } from "../src/domain/questions/samples/SIGNED_NUMBERS.samples.ts";
 import type { GeneratedQuestionDefinition, SampledParams } from "../src/domain/questions/generator/types.ts";
 import type { Question } from "../src/domain/questions/types.ts";
 
@@ -147,6 +148,41 @@ run("generated question build flow", () => {
   if (question.prompt[1]?.kind === "math") {
     assert.equal(question.prompt[1].latex, "-1-(-2)");
   }
+});
+
+run("generated question seed is deterministic", () => {
+  const definition: GeneratedQuestionDefinition = {
+    id: "GEN_TEST_SEED_001",
+    topicId: "SIGNED_NUMBERS",
+    kind: "generated",
+    promptTemplate: [{ kind: "math", latex: "-{a}-(-{b})", display: true }],
+    exprTemplate: "-{a}-(-{b})",
+    params: {
+      a: { type: "natural", min: 1, max: 20 },
+      b: { type: "natural", min: 1, max: 20 },
+    },
+    constraints: ["a !== b"],
+  };
+
+  const first = buildGeneratedQuestion(definition, { seed: 42 });
+  const second = buildGeneratedQuestion(definition, { seed: 42 });
+  const different = buildGeneratedQuestion(definition, { seed: 43 });
+
+  assert.equal(first.id, second.id);
+  assert.equal(first.renderedExpression, second.renderedExpression);
+  assert.notEqual(first.id, different.id);
+});
+
+run("signed numbers sample fixtures stay stable", () => {
+  assert.equal(SIGNED_NUMBERS_SAMPLE_QUESTIONS.length, 20);
+  assert.equal(
+    SIGNED_NUMBERS_SAMPLE_QUESTIONS.filter((question) => question.baseId === "SN_GEN_SUB_NEG_NEG_001").length,
+    10,
+  );
+  assert.equal(
+    SIGNED_NUMBERS_SAMPLE_QUESTIONS.filter((question) => question.baseId === "SN_GEN_ABS_DIFF_001").length,
+    10,
+  );
 });
 
 run("static question compatibility", () => {
