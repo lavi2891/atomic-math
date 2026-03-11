@@ -12,6 +12,7 @@ import {
   NumericAnswerInput,
   SingleChoiceAnswerInput,
 } from "./AnswerInputs";
+import { DevQuestionDebug } from "./DevQuestionDebug";
 import { assert, unreachable } from "@shared/assert";
 import { parseMathInput } from "@shared/mathInput";
 import { parseExactNumericInput } from "@shared/mathInput/exactNumeric";
@@ -540,6 +541,8 @@ export function QuestionView({
           )}
         </div>
       ) : null}
+
+      <DevQuestionDebug question={question} />
     </div>
   );
 }

@@ -10,13 +10,14 @@ type Props = {
 };
 
 export function DevQuestionDebug({ question }: Props) {
+  const isDev = import.meta.env.DEV;
   const [isVisible, setIsVisible] = useState(true);
 
-  if (!import.meta.env.DEV) {
-    return null;
-  }
-
   useEffect(() => {
+    if (!isDev) {
+      return;
+    }
+
     function onKeyDown(event: KeyboardEvent) {
       if (!event.ctrlKey || event.key.toLowerCase() !== "d") {
         return;
@@ -27,7 +28,11 @@ export function DevQuestionDebug({ question }: Props) {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [isDev]);
+
+  if (!isDev) {
+    return null;
+  }
 
   if (!isVisible) {
     return null;
@@ -100,7 +105,7 @@ export function DevQuestionDebug({ question }: Props) {
         fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace",
         background: colors.bgSubtle,
         border: `1px solid ${colors.borderSubtle}`,
-        borderRadius: radius.sm,
+        borderRadius: radius.md,
         padding: spacing.xs,
         justifySelf: "start",
         display: "grid",
