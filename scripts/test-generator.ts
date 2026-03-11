@@ -16,9 +16,11 @@ import {
   renderExpressionTemplate,
 } from "../src/domain/questions/generator/renderTemplate.ts";
 import { SIGNED_NUMBERS_GENERATED_QUESTIONS } from "../src/domain/questions/bank/SIGNED_NUMBERS.generated.ts";
+import { evaluateAnswer } from "../src/domain/questions/evaluators.ts";
 import { resolveQuestionDefinition } from "../src/domain/questions/generator/resolveQuestionDefinition.ts";
 import { sampleParam } from "../src/domain/questions/generator/sampleParam.ts";
 import { SIGNED_NUMBERS_SAMPLE_QUESTIONS } from "../src/domain/questions/samples/SIGNED_NUMBERS.samples.ts";
+import { parseExactNumericInput } from "../src/shared/mathInput/exactNumeric.ts";
 import type { GeneratedQuestionDefinition, SampledParams } from "../src/domain/questions/generator/types.ts";
 import type { Question } from "../src/domain/questions/types.ts";
 
@@ -118,6 +120,80 @@ run("expression evaluation", () => {
   assert.equal(toComputedAnswer(evaluateExpression("0.2+0.3"), { preferDecimal: true }), "0.5");
 });
 
+run("exact numeric parsing supports integer decimal and fraction only", () => {
+  assert.deepEqual(parseExactNumericInput("-3"), {
+    ok: true,
+    normalized: "-3",
+    format: "integer",
+    canonical: "-3",
+    value: { num: -3n, den: 1n },
+  });
+  assert.deepEqual(parseExactNumericInput("2,5"), {
+    ok: true,
+    normalized: "2.5",
+    format: "decimal",
+    canonical: "5/2",
+    value: { num: 5n, den: 2n },
+  });
+  assert.deepEqual(parseExactNumericInput("-7/4"), {
+    ok: true,
+    normalized: "-7/4",
+    format: "fraction",
+    canonical: "-7/4",
+    value: { num: -7n, den: 4n },
+  });
+  assert.deepEqual(parseExactNumericInput("2 1/2"), {
+    ok: false,
+    normalized: "2 1/2",
+  });
+});
+
+run("numeric evaluator respects accepted input formats", () => {
+  const rationalQuestion: Question = {
+    id: "NUMERIC_RATIONAL_001",
+    topicId: "SIGNED_NUMBERS",
+    type: "numeric",
+    prompt: [{ kind: "text", value: "חשבו:" }],
+    correctAnswers: ["5/2"],
+    acceptedInputFormats: ["fraction", "decimal"],
+  };
+  assert.equal(
+    evaluateAnswer(rationalQuestion, {
+      questionType: "numeric",
+      data: { value: "2.5" },
+    }).isCorrect,
+    true,
+  );
+  assert.equal(
+    evaluateAnswer(rationalQuestion, {
+      questionType: "numeric",
+      data: { value: "5/2" },
+    }).isCorrect,
+    true,
+  );
+
+  const decimalOnlyQuestion: Question = {
+    ...rationalQuestion,
+    id: "NUMERIC_DECIMAL_ONLY_001",
+    correctAnswers: ["-0.75"],
+    acceptedInputFormats: ["decimal"],
+  };
+  assert.equal(
+    evaluateAnswer(decimalOnlyQuestion, {
+      questionType: "numeric",
+      data: { value: "-3/4" },
+    }).isCorrect,
+    false,
+  );
+  assert.equal(
+    evaluateAnswer(decimalOnlyQuestion, {
+      questionType: "numeric",
+      data: { value: "-0.75" },
+    }).isCorrect,
+    true,
+  );
+});
+
 run("generated question build flow", () => {
   const definition: GeneratedQuestionDefinition = {
     id: "GEN_TEST_001",
@@ -135,6 +211,7 @@ run("generated question build flow", () => {
       b: { type: "natural", min: 1, max: 3 },
     },
     constraints: ["a !== b"],
+    acceptedInputFormats: ["integer"],
     metadata: {
       difficulty: 0.2,
       subtopic: "subtraction",
@@ -158,6 +235,7 @@ run("generated question build flow", () => {
   assert.equal(question.variantGroup, "double_negative_subtraction");
   assert.equal(question.difficulty, question.computedDifficulty);
   assert.ok(Math.abs((question.computedDifficulty ?? 0) - 0.3) < 1e-9);
+  assert.deepEqual(question.acceptedInputFormats, ["integer"]);
   assert.equal(question.prompt[1]?.kind, "math");
   if (question.prompt[1]?.kind === "math") {
     assert.equal(question.prompt[1].latex, "-1-(-2)");
@@ -178,6 +256,7 @@ run("generated question seed is deterministic", () => {
       b: { type: "natural", min: 1, max: 20 },
     },
     constraints: ["a !== b"],
+    acceptedInputFormats: ["integer"],
     difficultyModel: ({ a, b }) =>
       Math.min(1, (Math.abs(Number(a.value.num)) + Math.abs(Number(b.value.num))) / 30),
   };
@@ -221,6 +300,12 @@ run("signed numbers generator definitions stay curated and buildable", () => {
     seenIds.add(definition.id);
     assert.ok(definition.structureKey, `missing structureKey: ${definition.id}`);
     assert.ok(definition.variantGroup, `missing variantGroup: ${definition.id}`);
+    if (definition.tags?.some((tag) => tag === "has:decimal" || tag === "has:fraction")) {
+      assert.ok(
+        definition.acceptedInputFormats && definition.acceptedInputFormats.length > 0,
+        `missing acceptedInputFormats: ${definition.id}`,
+      );
+    }
     assert.equal(
       seenStructureKeys.has(definition.structureKey),
       false,
@@ -231,12 +316,13 @@ run("signed numbers generator definitions stay curated and buildable", () => {
     const normalizedTemplate = definition.exprTemplate
       .replaceAll(/\{[a-zA-Z_]\w*\}/g, "{_}")
       .replaceAll(/\s+/g, "");
+    const duplicateKey = `${normalizedTemplate}||${(definition.acceptedInputFormats ?? []).join(",")}`;
     assert.equal(
-      seenTemplates.has(normalizedTemplate),
+      seenTemplates.has(duplicateKey),
       false,
       `duplicate exprTemplate shape: ${definition.exprTemplate}`,
     );
-    seenTemplates.add(normalizedTemplate);
+    seenTemplates.add(duplicateKey);
 
     for (const seed of [11, 29, 47]) {
       const question = buildGeneratedQuestion(definition, { seed, maxAttempts: 100 });
@@ -246,15 +332,25 @@ run("signed numbers generator definitions stay curated and buildable", () => {
       assert.ok(question.correctAnswers[0]);
       assert.ok(question.structureKey);
       assert.ok(question.variantGroup);
+      if (definition.acceptedInputFormats) {
+        assert.deepEqual(question.acceptedInputFormats, definition.acceptedInputFormats);
+      }
       assert.equal(
         question.computedDifficulty === undefined ||
           (question.computedDifficulty >= 0 && question.computedDifficulty <= 1),
         true,
       );
-      assert.deepEqual(
-        question.correctAnswers,
-        [toComputedAnswer(evaluateExpression(question.renderedExpression))],
+      const evaluatedAnswer = parseExactNumericInput(
+        toComputedAnswer(evaluateExpression(question.renderedExpression), {
+          preferDecimal: question.input?.allowDecimal,
+        }),
       );
+      const storedAnswer = parseExactNumericInput(question.correctAnswers[0]);
+      assert.equal(evaluatedAnswer.ok, true);
+      assert.equal(storedAnswer.ok, true);
+      if (evaluatedAnswer.ok && storedAnswer.ok) {
+        assert.equal(evaluatedAnswer.canonical, storedAnswer.canonical);
+      }
     }
   }
 });
