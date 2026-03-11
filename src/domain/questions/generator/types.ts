@@ -1,4 +1,4 @@
-import type { OptionContent } from "../types.ts";
+import type { NumericInputFormat, OptionContent } from "../types.ts";
 
 export type IntegerLikeParamSpec = {
   type: "integer" | "natural";
@@ -78,6 +78,7 @@ export interface GeneratedQuestionDefinition {
   structureKey?: string;
   variantGroup?: string;
   difficultyModel?: DifficultyModel;
+  acceptedInputFormats?: NumericInputFormat[];
   input?: {
     allowMinus?: boolean;
     allowDecimal?: boolean;

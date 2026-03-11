@@ -132,16 +132,17 @@ export function buildGeneratedQuestion(
           type: "numeric",
           prompt,
           hints,
-          correctAnswers: [correctAnswer],
-          difficulty: computedDifficulty ?? definition.metadata?.difficulty,
-          subtopic: definition.metadata?.subtopic,
-          misconceptions: definition.misconceptions,
-          version: definition.version,
-          tags: [...new Set([...(definition.tags ?? []), "source:generator"])],
-          input: {
-            allowMinus: definition.input?.allowMinus ?? true,
-            allowDecimal: shouldAllowDecimal(definition, renderedExpression),
-          },
+        correctAnswers: [correctAnswer],
+        difficulty: computedDifficulty ?? definition.metadata?.difficulty,
+        subtopic: definition.metadata?.subtopic,
+        misconceptions: definition.misconceptions,
+        version: definition.version,
+        tags: [...new Set([...(definition.tags ?? []), "source:generator"])],
+        acceptedInputFormats: definition.acceptedInputFormats,
+        input: {
+          allowMinus: definition.input?.allowMinus ?? true,
+          allowDecimal: shouldAllowDecimal(definition, renderedExpression),
+        },
         };
 
         const generatedQuestion: GeneratedQuestionInstance = {

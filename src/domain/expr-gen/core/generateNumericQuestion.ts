@@ -174,20 +174,23 @@ function runAttempt(
   const answerString = toAnswerString(evaluated.result);
   const prompt = buildPrompt(input.exprSpec, evaluated.latexRendered);
   const hints = buildHints(input.exprSpec, evaluated.latexRendered);
-  const question: NumericQuestion = {
+    const question: NumericQuestion = {
     id: input.id,
     topicId: input.exprSpec.topicId,
     type: "numeric",
     subtopic: input.exprSpec.subtopic,
     prompt,
     hints,
-    correctAnswers: [answerString],
-    difficulty: evaluated.difficulty.normalized,
-    tags: evaluated.tags,
-    misconceptions: input.exprSpec.misconceptions ?? [],
-    seeds: {
+      correctAnswers: [answerString],
       difficulty: evaluated.difficulty.normalized,
-    },
+      tags: evaluated.tags,
+      misconceptions: input.exprSpec.misconceptions ?? [],
+      acceptedInputFormats: resultIsInteger
+        ? ["integer"]
+        : ["fraction", "decimal"],
+      seeds: {
+        difficulty: evaluated.difficulty.normalized,
+      },
     input: {
       allowMinus: true,
       allowDecimal:

@@ -27,6 +27,7 @@ export interface NumericQuestion extends BaseQuestion {
   type: "numeric";
   correctAnswers: [string, ...string[]];
   tolerance?: number;
+  acceptedInputFormats?: NumericInputFormat[];
   input?: { allowMinus?: boolean; allowDecimal?: boolean }; // future-proof UX hints
 }
 
@@ -62,6 +63,12 @@ export type Question =
   | NumericQuestion
   | SingleChoiceQuestion
   | MultiChoiceQuestion;
+
+export type NumericInputFormat =
+  | "integer"
+  | "decimal"
+  | "fraction"
+  | "mixed";
 
 export function isGeneratedQuestionInstance(
   question: Question,
