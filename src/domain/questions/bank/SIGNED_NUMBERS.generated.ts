@@ -1,5 +1,6 @@
 import type { OptionContent } from "../types";
 import type {
+  DecimalParamSpec,
   GeneratedQuestionDefinition,
   IntegerLikeParamSpec,
   RationalParamSpec,
@@ -69,6 +70,19 @@ const SMALL_INTEGER: IntegerLikeParamSpec = {
   max: 12,
   exclude: [0],
 };
+const DECIMAL_TENTHS: DecimalParamSpec = {
+  type: "decimal",
+  min: -2,
+  max: 2,
+  step: 0.1,
+  exclude: [0],
+};
+const POSITIVE_DECIMAL_TENTHS: DecimalParamSpec = {
+  type: "decimal",
+  min: 0.2,
+  max: 2,
+  step: 0.1,
+};
 
 const FRACTION_BASE: RationalParamSpec = {
   type: "rational",
@@ -77,6 +91,16 @@ const FRACTION_BASE: RationalParamSpec = {
   simplify: false,
   excludeZero: true,
 };
+const SIGNED_HALF_TO_TENTHS: RationalParamSpec = {
+  type: "rational",
+  numerator: { min: -5, max: 5, exclude: [0] },
+  denominator: { min: 2, max: 5 },
+  simplify: true,
+  excludeZero: true,
+};
+const INPUT_INTEGER = ["integer"] as const;
+const INPUT_DECIMAL = ["decimal"] as const;
+const INPUT_FRACTION_OR_DECIMAL = ["fraction", "decimal"] as const;
 
 function asNumber(sampledParams: SampledParams, key: string): number {
   const sampled = sampledParams[key];
@@ -174,6 +198,7 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
     variantGroup: "signed_addition",
     difficultyModel: (sampledParams) =>
       signedAddSubDifficulty(sampledParams, 0.18, ["a", "b"]),
+    acceptedInputFormats: [...INPUT_INTEGER],
     tags: ["topic:signed_numbers", "signed", "category:addition"],
     misconceptions: ["SIGN_ERROR"],
     metadata: exprGenMetadata("SN_T1_ADD_INT", "addition", 0.2),
@@ -196,6 +221,7 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
     variantGroup: "signed_addition",
     difficultyModel: (sampledParams) =>
       signedAddSubDifficulty(sampledParams, 0.24, ["a", "b"], 0.04),
+    acceptedInputFormats: [...INPUT_INTEGER],
     tags: ["topic:signed_numbers", "signed", "category:addition"],
     misconceptions: ["SIGN_ERROR"],
     metadata: exprGenMetadata("SN_T1_ADD_INT", "addition", 0.25),
@@ -220,6 +246,7 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
     variantGroup: "signed_subtraction",
     difficultyModel: (sampledParams) =>
       signedAddSubDifficulty(sampledParams, 0.24, ["a", "b"]),
+    acceptedInputFormats: [...INPUT_INTEGER],
     tags: ["topic:signed_numbers", "signed", "category:subtraction"],
     misconceptions: ["SUBTRACTION_SIGN_ERROR"],
     metadata: exprGenMetadata("SN_T1_SUB_INT", "subtraction", 0.25),
@@ -242,6 +269,7 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
     variantGroup: "double_negative_subtraction",
     difficultyModel: (sampledParams) =>
       signedAddSubDifficulty(sampledParams, 0.32, ["a", "b"], 0.05),
+    acceptedInputFormats: [...INPUT_INTEGER],
     tags: ["topic:signed_numbers", "signed", "category:subtraction"],
     misconceptions: ["DOUBLE_MINUS_CONFUSION", "SUBTRACTION_SIGN_ERROR"],
     metadata: exprGenMetadata("SN_T1_SUB_INT", "subtraction", 0.35),
@@ -264,6 +292,7 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
     },
     structureKey: "-a*b",
     variantGroup: "signed_multiplication",
+    acceptedInputFormats: [...INPUT_INTEGER],
     tags: ["topic:signed_numbers", "signed", "category:multiplication"],
     misconceptions: ["NEGATIVE_MULTIPLY_RULE"],
     metadata: exprGenMetadata("SN_T1_MUL_INT", "multiplication", 0.3),
@@ -284,6 +313,7 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
     },
     structureKey: "(-a)*(-b)",
     variantGroup: "signed_multiplication",
+    acceptedInputFormats: [...INPUT_INTEGER],
     tags: ["topic:signed_numbers", "signed", "category:multiplication"],
     misconceptions: ["NEGATIVE_MULTIPLY_RULE"],
     metadata: exprGenMetadata("SN_T1_MUL_INT", "multiplication", 0.35),
@@ -312,6 +342,7 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
           Math.abs(asNumber(sampledParams, "c")) / 30 +
           Math.abs(asNumber(sampledParams, "b")) / 36,
       ),
+    acceptedInputFormats: [...INPUT_FRACTION_OR_DECIMAL],
     tags: [
       "topic:signed_numbers",
       "signed",
@@ -321,6 +352,110 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
     misconceptions: ["ORDER_OF_OPERATIONS", "NEGATIVE_DIVIDE_RULE", "SIGN_ERROR"],
     hintsTemplate: HINTS_ORDER_OF_OPS,
     metadata: exprGenMetadata("SN_T2_DIV_PLUS_INT", "mixed_operations", 0.55),
+  },
+
+  // Signed decimals
+  {
+    id: "SN_GEN_DEC_ADD_SIGNED_001",
+    topicId: "SIGNED_NUMBERS",
+    kind: "generated",
+    exprTemplate: "{a}+{b}",
+    promptTemplate: mathPrompt("{a}+{b}"),
+    params: {
+      a: DECIMAL_TENTHS,
+      b: DECIMAL_TENTHS,
+    },
+    constraints: ["a + b !== 0"],
+    structureKey: "decimal+decimal",
+    variantGroup: "signed_decimals",
+    difficultyModel: (sampledParams) =>
+      clamp01(0.34 + averageMagnitude(sampledParams, ["a", "b"]) / 10),
+    acceptedInputFormats: [...INPUT_DECIMAL],
+    tags: ["topic:signed_numbers", "signed", "category:decimals", "has:decimal"],
+    misconceptions: ["SIGN_ERROR", "DECIMAL_PLACE_VALUE"],
+    metadata: exprGenMetadata("SN_DEC_ADD_SIGNED", "decimals", 0.35),
+    input: {
+      allowMinus: true,
+      allowDecimal: true,
+    },
+  },
+  {
+    id: "SN_GEN_DEC_SUB_DOUBLE_NEG_002",
+    topicId: "SIGNED_NUMBERS",
+    kind: "generated",
+    exprTemplate: "{a}-(-{b})",
+    promptTemplate: mathPrompt("{a}-(-{b})"),
+    params: {
+      a: POSITIVE_DECIMAL_TENTHS,
+      b: POSITIVE_DECIMAL_TENTHS,
+    },
+    structureKey: "decimal-(-decimal)",
+    variantGroup: "signed_decimals",
+    difficultyModel: (sampledParams) =>
+      clamp01(0.42 + averageMagnitude(sampledParams, ["a", "b"]) / 12),
+    acceptedInputFormats: [...INPUT_DECIMAL],
+    tags: ["topic:signed_numbers", "signed", "category:decimals", "has:decimal"],
+    misconceptions: ["DOUBLE_MINUS_CONFUSION", "DECIMAL_PLACE_VALUE"],
+    metadata: exprGenMetadata("SN_DEC_SUB_DOUBLE_NEG", "decimals", 0.42),
+    input: {
+      allowMinus: true,
+      allowDecimal: true,
+    },
+  },
+
+  // Signed rational arithmetic
+  {
+    id: "SN_GEN_RAT_ADD_INT_001",
+    topicId: "SIGNED_NUMBERS",
+    kind: "generated",
+    exprTemplate: "{a}+{b}",
+    promptTemplate: mathPrompt("{a}+{b}"),
+    params: {
+      a: SIGNED_HALF_TO_TENTHS,
+      b: { type: "integer", min: -4, max: 4, exclude: [0] },
+    },
+    constraints: ["a + b !== 0"],
+    structureKey: "rational+integer",
+    variantGroup: "signed_rationals",
+    difficultyModel: (sampledParams) =>
+      clamp01(0.48 + averageMagnitude(sampledParams, ["a", "b"]) / 10),
+    acceptedInputFormats: [...INPUT_FRACTION_OR_DECIMAL],
+    tags: ["topic:signed_numbers", "signed", "category:rationals", "has:fraction"],
+    misconceptions: ["SIGN_ERROR", "FRACTION_INTEGER_COMBINATION"],
+    metadata: exprGenMetadata("SN_RAT_ADD_INT", "rationals", 0.48),
+    input: {
+      allowMinus: true,
+      allowDecimal: true,
+    },
+  },
+  {
+    id: "SN_GEN_RAT_SUB_DEC_002",
+    topicId: "SIGNED_NUMBERS",
+    kind: "generated",
+    exprTemplate: "{a}-{b}",
+    promptTemplate: mathPrompt("{a}-{b}"),
+    params: {
+      a: { type: "rational", numerator: { min: 1, max: 5 }, denominator: { min: 2, max: 4 }, simplify: true, excludeZero: true },
+      b: POSITIVE_DECIMAL_TENTHS,
+    },
+    structureKey: "rational-decimal",
+    variantGroup: "mixed_rational_decimal",
+    difficultyModel: (sampledParams) =>
+      clamp01(0.58 + averageMagnitude(sampledParams, ["a", "b"]) / 10),
+    acceptedInputFormats: [...INPUT_FRACTION_OR_DECIMAL],
+    tags: [
+      "topic:signed_numbers",
+      "signed",
+      "category:mixed_rational_decimal",
+      "has:fraction",
+      "has:decimal",
+    ],
+    misconceptions: ["DECIMAL_FRACTION_CONVERSION", "SIGN_ERROR"],
+    metadata: exprGenMetadata("SN_RAT_SUB_DEC", "mixed_rational_decimal", 0.58),
+    input: {
+      allowMinus: true,
+      allowDecimal: true,
+    },
   },
 
   // Multi-step expressions
@@ -338,6 +473,7 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
     structureKey: "-a+b-c",
     variantGroup: "signed_chain",
     difficultyModel: (sampledParams) => chainDifficulty(sampledParams, 0.42),
+    acceptedInputFormats: [...INPUT_INTEGER],
     tags: ["topic:signed_numbers", "signed", "category:multi_step"],
     misconceptions: ["SIGN_ERROR", "ORDER_OF_OPERATIONS_LINEAR"],
     hintsTemplate: HINTS_ORDER_OF_OPS,
@@ -363,6 +499,7 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
     structureKey: "-a-b+c",
     variantGroup: "signed_chain",
     difficultyModel: (sampledParams) => chainDifficulty(sampledParams, 0.47, 0.03),
+    acceptedInputFormats: [...INPUT_INTEGER],
     tags: ["topic:signed_numbers", "signed", "category:multi_step"],
     misconceptions: ["SUBTRACTION_SIGN_ERROR", "SIGN_ERROR"],
     hintsTemplate: HINTS_ORDER_OF_OPS,
@@ -386,6 +523,7 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
     structureKey: "-a-b-c",
     variantGroup: "signed_chain",
     difficultyModel: (sampledParams) => chainDifficulty(sampledParams, 0.52, 0.05),
+    acceptedInputFormats: [...INPUT_INTEGER],
     tags: ["topic:signed_numbers", "signed", "category:multi_step"],
     misconceptions: ["DOUBLE_MINUS_CONFUSION", "SIGN_ERROR"],
     hintsTemplate: HINTS_ORDER_OF_OPS,
@@ -409,6 +547,7 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
     variantGroup: "leading_minus",
     difficultyModel: (sampledParams) =>
       signedAddSubDifficulty(sampledParams, 0.36, ["a", "b"], 0.03),
+    acceptedInputFormats: [...INPUT_INTEGER],
     tags: ["topic:signed_numbers", "signed", "category:negation"],
     misconceptions: ["LEADING_MINUS_CONFUSION"],
     metadata: exprGenMetadata("SN_T2_LEADING_MINUS_ADD", "negation", 0.4),
@@ -434,6 +573,7 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
     variantGroup: "negation_parentheses",
     difficultyModel: (sampledParams) =>
       signedAddSubDifficulty(sampledParams, 0.56, ["a", "b"], 0.08),
+    acceptedInputFormats: [...INPUT_INTEGER],
     tags: ["topic:signed_numbers", "signed", "category:negation_parentheses"],
     misconceptions: [
       "DISTRIBUTE_NEGATIVE_OVER_PARENS",
@@ -460,6 +600,7 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
     variantGroup: "negation_parentheses",
     difficultyModel: (sampledParams) =>
       signedAddSubDifficulty(sampledParams, 0.52, ["a", "b"], 0.06),
+    acceptedInputFormats: [...INPUT_INTEGER],
     tags: ["topic:signed_numbers", "signed", "category:negation_parentheses"],
     misconceptions: ["DISTRIBUTE_NEGATIVE_OVER_PARENS", "SIGN_ERROR"],
     hintsTemplate: HINTS_DISTRIBUTE_MINUS,
@@ -491,6 +632,7 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
         0.66,
         closenessBoost(sampledParams, "b", "c"),
       ),
+    acceptedInputFormats: [...INPUT_INTEGER],
     tags: ["topic:signed_numbers", "signed", "category:distributive"],
     misconceptions: ["DISTRIBUTIVE_ERROR", "SIGN_ERROR", "ORDER_OF_OPERATIONS"],
     hintsTemplate: HINTS_ORDER_OF_OPS,
@@ -519,6 +661,7 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
         0.72,
         closenessBoost(sampledParams, "a", "b"),
       ),
+    acceptedInputFormats: [...INPUT_INTEGER],
     tags: ["topic:signed_numbers", "signed", "category:distributive"],
     misconceptions: ["DISTRIBUTIVE_ERROR", "SIGN_ERROR"],
     hintsTemplate: HINTS_ORDER_OF_OPS,
@@ -542,6 +685,7 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
     structureKey: "-a(b+c)",
     variantGroup: "signed_distributive",
     difficultyModel: (sampledParams) => distributiveDifficulty(sampledParams, 0.76, 0.04),
+    acceptedInputFormats: [...INPUT_INTEGER],
     tags: ["topic:signed_numbers", "signed", "category:distributive"],
     misconceptions: [
       "LEADING_MINUS_CONFUSION",
@@ -570,6 +714,7 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
     structureKey: "a^n",
     variantGroup: "powers",
     difficultyModel: (sampledParams) => powerDifficulty(sampledParams, 0.56),
+    acceptedInputFormats: [...INPUT_INTEGER],
     tags: ["topic:signed_numbers", "signed", "category:powers"],
     misconceptions: ["POWER_RULES", "NEGATIVE_BASE_PARITY"],
     hintsTemplate: HINTS_POWERS_PARENS,
@@ -592,6 +737,7 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
     structureKey: "(-a)^n",
     variantGroup: "powers_parentheses",
     difficultyModel: (sampledParams) => powerDifficulty(sampledParams, 0.72, 0.04),
+    acceptedInputFormats: [...INPUT_INTEGER],
     tags: ["topic:signed_numbers", "signed", "category:powers"],
     misconceptions: ["PARENS_IN_POWERS", "NEGATIVE_BASE_PARITY"],
     hintsTemplate: HINTS_POWERS_PARENS,
@@ -616,6 +762,7 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
     structureKey: "-a^n",
     variantGroup: "powers_parentheses",
     difficultyModel: (sampledParams) => powerDifficulty(sampledParams, 0.76, 0.07),
+    acceptedInputFormats: [...INPUT_INTEGER],
     tags: ["topic:signed_numbers", "signed", "category:powers"],
     misconceptions: ["PARENS_IN_POWERS"],
     hintsTemplate: HINTS_POWERS_PARENS,
@@ -640,6 +787,7 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
     structureKey: "(f)^c",
     variantGroup: "fraction_powers",
     difficultyModel: (sampledParams) => fractionPowerDifficulty(sampledParams, 0.76),
+    acceptedInputFormats: [...INPUT_FRACTION_OR_DECIMAL],
     tags: [
       "topic:signed_numbers",
       "signed",
@@ -666,6 +814,7 @@ export const SIGNED_NUMBERS_GENERATED_QUESTIONS: GeneratedQuestionDefinition[] =
     structureKey: "-(f)^2",
     variantGroup: "fraction_powers",
     difficultyModel: (sampledParams) => fractionPowerDifficulty(sampledParams, 0.8, 0.05),
+    acceptedInputFormats: [...INPUT_FRACTION_OR_DECIMAL],
     tags: [
       "topic:signed_numbers",
       "signed",
