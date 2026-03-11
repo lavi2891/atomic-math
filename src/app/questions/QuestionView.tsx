@@ -14,6 +14,7 @@ import {
 } from "./AnswerInputs";
 import { assert, unreachable } from "@shared/assert";
 import { parseMathInput } from "@shared/mathInput";
+import { parseExactNumericInput } from "@shared/mathInput/exactNumeric";
 import type { ParseErrCode } from "@shared/mathInput";
 import { he } from "@copy/he";
 import { colors, fontSize, lineHeight, radius, spacing } from "@ui/tokens";
@@ -172,6 +173,15 @@ export function QuestionView({
         : null,
     [question.type, numericValue],
   );
+  const exactNumeric = useMemo(
+    () => (question.type === "numeric" ? parseExactNumericInput(numericValue) : null),
+    [question.type, numericValue],
+  );
+
+  const numericAcceptedFormats =
+    question.type === "numeric"
+      ? (question.acceptedInputFormats ?? ["integer", "decimal", "fraction"])
+      : [];
 
   function mapErrorToHebrew(code: ParseErrCode | string): string {
     switch (code) {
@@ -205,11 +215,23 @@ export function QuestionView({
   const numericIsInvalid =
     question.type === "numeric" &&
     hasNumericInput &&
-    parsedNumeric !== null &&
-    !parsedNumeric.ok;
+    ((parsedNumeric !== null && !parsedNumeric.ok) ||
+      (exactNumeric !== null &&
+        exactNumeric.ok &&
+        !numericAcceptedFormats.includes(exactNumeric.format)));
   const numericHelperText =
     numericIsInvalid && parsedNumeric && !parsedNumeric.ok
       ? mapErrorToHebrew(parsedNumeric.error.code)
+      : question.type === "numeric" &&
+          hasNumericInput &&
+          exactNumeric &&
+          exactNumeric.ok &&
+          !numericAcceptedFormats.includes(exactNumeric.format)
+        ? exactNumeric.format === "fraction"
+          ? "כאן עונים בלי שבר פשוט"
+          : exactNumeric.format === "decimal"
+            ? "כאן עונים בלי מספר עשרוני"
+            : "הפורמט הזה לא נתמך כאן"
       : null;
   const numericEmphasizeFraction =
     question.type === "numeric" &&

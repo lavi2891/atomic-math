@@ -163,6 +163,22 @@ export interface ParseMathInputFail {
 
 export type ParseMathInputResult = ParseMathInputOk | ParseMathInputFail;
 
+export type ExactNumericParseResult =
+  | {
+      ok: true;
+      normalized: string;
+      format: "integer" | "decimal" | "fraction";
+      canonical: string;
+      value: {
+        num: bigint;
+        den: bigint;
+      };
+    }
+  | {
+      ok: false;
+      normalized: string;
+    };
+
 export type TokenKind =
   | "number"
   | "identifier"

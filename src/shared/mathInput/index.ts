@@ -6,6 +6,7 @@ export function parseMathInput(kind: MathInputKind, rawInput: string): ParseMath
 }
 
 export { normalizeMathInput } from "./normalize";
+export { exactNumericEquals, parseExactNumericInput } from "./exactNumeric";
 export { tokenize } from "./tokenize";
 export {
   parseExpressionInput,
@@ -32,6 +33,7 @@ export type {
   ParseMathInputOk,
   ParseMathInputResult,
   ParseOkNumeric,
+  ExactNumericParseResult,
   Token,
   TokenKind,
   UnaryOp,

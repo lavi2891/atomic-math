@@ -1,32 +1,30 @@
-import type { Evaluation } from "../results/types";
-import type { Question, RawAnswer, QuestionType } from "./types";
-import { assert, unreachable } from "../../shared/assert";
+import type { Evaluation } from "../results/types.ts";
+import type {
+  NumericInputFormat,
+  Question,
+  RawAnswer,
+  QuestionType,
+} from "./types.ts";
+import { assert, unreachable } from "../../shared/assert.ts";
+import {
+  exactNumericEquals,
+  parseExactNumericInput,
+} from "../../shared/mathInput/exactNumeric.ts";
+import { toNumber } from "../expr-gen/core/rational.ts";
 
 function approxEqual(a: number, b: number, tol: number) {
   return Math.abs(a - b) <= tol;
 }
 
-function normalizeNumericInput(value: string): string {
-  return value.trim().replace(",", ".").replace(/\s+/g, "");
+function resolveAcceptedInputFormats(question: Extract<Question, { type: "numeric" }>): NumericInputFormat[] {
+  return question.acceptedInputFormats ?? ["integer", "decimal", "fraction"];
 }
 
-function parseNumericValue(value: string): number | null {
-  if (value.length === 0) return null;
-
-  const fractionMatch = value.match(/^(-?\d+)\/(\d+)$/);
-  if (fractionMatch) {
-    const numerator = Number(fractionMatch[1]);
-    const denominator = Number(fractionMatch[2]);
-    if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) {
-      return null;
-    }
-    return numerator / denominator;
-  }
-
-  if (!/^-?(?:\d+\.?\d*|\.\d+)$/.test(value)) return null;
-
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
+function isAcceptedFormat(
+  acceptedFormats: NumericInputFormat[],
+  actualFormat: NumericInputFormat,
+): boolean {
+  return acceptedFormats.includes(actualFormat);
 }
 
 function assertAnswerType<T extends QuestionType>(
@@ -55,9 +53,10 @@ export function evaluateAnswer(question: Question, raw: RawAnswer): Evaluation {
     case "numeric": {
       assertAnswerType(question.type, raw, "numeric");
 
-      const studentValue = parseNumericValue(normalizeNumericInput(raw.data.value));
+      const acceptedFormats = resolveAcceptedInputFormats(question);
+      const studentValue = parseExactNumericInput(raw.data.value);
 
-      if (studentValue === null) {
+      if (!studentValue.ok || !isAcceptedFormat(acceptedFormats, studentValue.format)) {
         return {
           isCorrect: false,
           normalizedAnswer: null,
@@ -66,19 +65,17 @@ export function evaluateAnswer(question: Question, raw: RawAnswer): Evaluation {
       }
 
       const parsedCorrectAnswers = question.correctAnswers
-        .map((answer) => parseNumericValue(normalizeNumericInput(answer)))
-        .filter((value): value is number => value !== null);
+        .map((answer) => parseExactNumericInput(answer))
+        .filter((value): value is Extract<typeof value, { ok: true }> => value.ok);
 
       const tol = question.tolerance;
-      // We intentionally use strict numeric equality when tolerance is not set.
-      // Parsed forms like "1/2" and "0.5" both normalize to the same Number value.
       const ok = parsedCorrectAnswers.some((correctValue) =>
         tol === undefined
-          ? studentValue === correctValue
-          : approxEqual(studentValue, correctValue, tol),
+          ? exactNumericEquals(studentValue.value, correctValue.value)
+          : approxEqual(toNumber(studentValue.value), toNumber(correctValue.value), tol),
       );
 
-      return { isCorrect: ok, normalizedAnswer: studentValue };
+      return { isCorrect: ok, normalizedAnswer: studentValue.canonical };
     }
 
     case "singleChoice": {
@@ -145,6 +142,14 @@ function runNumericEvaluatorRuntimeChecks() {
   );
 
   assert(
+    !evaluateAnswer(
+      { ...numericQuestion, correctAnswers: ["0.5"], acceptedInputFormats: ["decimal"] },
+      { questionType: "numeric", data: { value: "1/2" } },
+    ).isCorrect,
+    "numeric check failed: decimal-only question should reject fraction input",
+  );
+
+  assert(
     !evaluateAnswer(numericQuestion, {
       questionType: "numeric",
       data: { value: "abc" },
@@ -153,6 +158,6 @@ function runNumericEvaluatorRuntimeChecks() {
   );
 }
 
-if (import.meta.env.DEV) {
+if ((import.meta as { env?: { DEV?: boolean } }).env?.DEV) {
   runNumericEvaluatorRuntimeChecks();
 }
