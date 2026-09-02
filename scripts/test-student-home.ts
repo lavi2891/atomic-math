@@ -3,7 +3,7 @@ import type { AttemptRepository } from "../src/domain/attempts/AttemptRepository
 import type { MasterySnapshot } from "../src/domain/mastery/projectMastery.ts";
 import { contentBackedCatalog } from "../src/domain/studentHome/contentAvailability.ts";
 import { chooseFresherMastery, deriveSkillDisplayState, fluencyLabel, isAssignmentComplete, sortAssignments } from "../src/domain/studentHome/deriveStudentHome.ts";
-import { assignmentSessionLaunch, isSkillSelected } from "../src/domain/studentHome/sessionLaunch.ts";
+import { assignmentSessionLaunch, isSkillSelected, toggleSkillSelection } from "../src/domain/studentHome/sessionLaunch.ts";
 import type { Assignment, CachedStudentHome } from "../src/domain/studentHome/types.ts";
 import { StudentHomeService } from "../src/app/studentHome/StudentHomeService.ts";
 import { DOMAINS, SKILLS } from "../src/content/catalog/index.ts";
@@ -42,6 +42,13 @@ await run("free-practice selection supports multiple skills and observable selec
   const selected = ["INT_ADD", "INT_SUB"];
   assert.equal(isSkillSelected(selected, "INT_ADD"), true);
   assert.equal(isSkillSelected(selected, "INT_MUL"), false);
+});
+
+await run("free-practice selection supports selecting and deselecting exactly one skill", () => {
+  const selected = toggleSkillSelection([], "INT_ADD");
+  assert.deepEqual(selected, ["INT_ADD"]);
+  assert.equal(isSkillSelected(selected, "INT_ADD"), true);
+  assert.deepEqual(toggleSkillSelection(selected, "INT_ADD"), []);
 });
 
 await run("only domains with active question-backed skills appear", () => {

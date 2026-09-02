@@ -99,6 +99,23 @@ run("sessions reject an empty skill selection", () => {
   assert.throws(() => createPracticeSession({ id: "S", studentId: "local", selectedSkillIds: [], settings: { mode: "practice" }, startedAt: 0 }), /At least one skill/);
 });
 
+run("a single selected skill reaches the session and question selector", () => {
+  const session = createPracticeSession({
+    id: "SINGLE",
+    studentId: "local",
+    selectedSkillIds: ["A"],
+    settings: { mode: "fixed", questionCount: 5 },
+    startedAt: 0,
+  });
+  const selector = new SkillQuestionSelector([
+    { id: "A1", topicId: "SIGNED_NUMBERS", skillId: "A", type: "numeric", prompt: [], correctAnswers: ["1"] },
+    { id: "B1", topicId: "SIGNED_NUMBERS", skillId: "B", type: "numeric", prompt: [], correctAnswers: ["1"] },
+  ]);
+  assert.deepEqual(session.selectedSkillIds, ["A"]);
+  assert.deepEqual(buildBalancedSkillPlan(session.selectedSkillIds, 5), ["A", "A", "A", "A", "A"]);
+  assert.equal(selector.pick(session.selectedSkillIds[0]!, 0.5).skillId, "A");
+});
+
 run("multi-skill selector preserves skill boundaries and picker anti-repetition", () => {
   const definitions: SkillQuestionDefinition[] = [
     { id: "A1", topicId: "SIGNED_NUMBERS", skillId: "A", type: "numeric", difficulty: 0.5, subtopic: "one", prompt: [], correctAnswers: ["1"] },

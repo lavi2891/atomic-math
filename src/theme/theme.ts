@@ -13,7 +13,7 @@ export const theme = {
     inset: "rgba(255,255,255,0.06)",
   },
   layout: {
-    phoneWidth: 390,
+    contentMaxWidth: 760,
     phoneRadius: 28,
     pagePadding: 24,
     phonePadding: "24px 16px",

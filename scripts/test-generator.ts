@@ -148,6 +148,44 @@ run("exact numeric parsing supports integer decimal and fraction only", () => {
   });
 });
 
+run("transient numeric input never throws and only complete decimals parse", () => {
+  const cases = [
+    ["2", true],
+    ["2.1", true],
+    ["2.", false],
+    ["-2.", false],
+    ["-2.1", true],
+    ["", false],
+    ["-", false],
+    ["+", false],
+    [".", false],
+    ["-.", false],
+  ] as const;
+  for (const [input, expectedOk] of cases) {
+    assert.doesNotThrow(() => parseExactNumericInput(input));
+    assert.equal(parseExactNumericInput(input).ok, expectedOk, input);
+  }
+});
+
+run("invalid submitted numeric input returns ordinary incorrect feedback", () => {
+  const question: Question = {
+    id: "NUMERIC_INVALID_SUBMISSION",
+    topicId: "SIGNED_NUMBERS",
+    type: "numeric",
+    prompt: [],
+    correctAnswers: ["2.1"],
+  };
+  for (const value of ["", "-", "2.", "-2."]) {
+    assert.doesNotThrow(() =>
+      evaluateAnswer(question, { questionType: "numeric", data: { value } }),
+    );
+    assert.equal(
+      evaluateAnswer(question, { questionType: "numeric", data: { value } }).isCorrect,
+      false,
+    );
+  }
+});
+
 run("numeric evaluator respects accepted input formats", () => {
   const rationalQuestion: Question = {
     id: "NUMERIC_RATIONAL_001",

@@ -8,7 +8,7 @@ import type { ExactNumericParseResult } from "./types.ts";
 import { normalizeMathInput } from "./normalize.ts";
 
 const INTEGER_PATTERN = /^-?\d+$/;
-const DECIMAL_PATTERN = /^-?(?:\d+\.\d*|\.\d+)$/;
+const DECIMAL_PATTERN = /^-?(?:\d+\.\d+|\.\d+)$/;
 const FRACTION_PATTERN = /^(-?\d+)\/(\d+)$/;
 
 function parseFraction(normalized: string): Rational | null {

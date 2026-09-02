@@ -4,7 +4,7 @@ import type { SessionMode, SessionSettings } from "@domain/session/practiceSessi
 import { FIXED_QUESTION_COUNTS } from "@domain/session/practiceSession";
 import type { SkillQuestionDefinition } from "@domain/session/skillQuestionSelector";
 import { borders, colors, icons, radius, spacing } from "@ui/tokens";
-import { isSkillSelected } from "@domain/studentHome/sessionLaunch";
+import { isSkillSelected, toggleSkillSelection } from "@domain/studentHome/sessionLaunch";
 import { sessionDefaults } from "@domain/session/config";
 
 type Props = {
@@ -29,9 +29,7 @@ export function SessionSetupScreen({ domainId, definitions, onBack, onStart }: P
   const [questionCount, setQuestionCount] = useState<5 | 10 | 15 | 20>(sessionDefaults.fixedQuestionCount);
 
   function toggleSkill(skillId: string): void {
-    setSelectedSkillIds((current) =>
-      current.includes(skillId) ? current.filter((id) => id !== skillId) : [...current, skillId],
-    );
+    setSelectedSkillIds((current) => toggleSkillSelection(current, skillId));
   }
 
   function start(): void {
@@ -53,12 +51,13 @@ export function SessionSetupScreen({ domainId, definitions, onBack, onStart }: P
         <h2 style={{ margin: 0 }}>בחירת מיומנויות</h2>
       </header>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: spacing.sm }}>
+      <div className="responsive-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: spacing.sm }}>
         {skills.map((skill) => {
           const selected = isSkillSelected(selectedSkillIds, skill.id);
           return (
             <button
               key={skill.id}
+              className="responsive-card"
               type="button"
               aria-pressed={selected}
               onClick={() => toggleSkill(skill.id)}
@@ -78,7 +77,7 @@ export function SessionSetupScreen({ domainId, definitions, onBack, onStart }: P
       ) : null}
 
       <h2 style={{ margin: 0 }}>בחירת מצב</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: spacing.sm }}>
+      <div className="responsive-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: spacing.sm }}>
         {MODES.map((item) => (
           <button key={item.id} type="button" aria-pressed={mode === item.id} onClick={() => setMode(item.id)} style={{ textAlign: "start", border: `${mode === item.id ? borders.strongPx : borders.normalPx}px solid ${mode === item.id ? colors.topicGreen : colors.border}`, borderRadius: radius.md, padding: spacing.md, background: mode === item.id ? colors.bgSelected : colors.bgSubtle, color: colors.text, cursor: "pointer" }}>
             <strong style={{ display: "block" }}>{item.title}</strong>

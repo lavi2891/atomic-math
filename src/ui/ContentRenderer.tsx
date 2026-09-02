@@ -18,7 +18,7 @@ function renderMath(latex: string, displayMode: boolean) {
 
 export function ContentRenderer({ content, dir = "rtl" }: Props) {
   return (
-    <span dir={dir}>
+    <span dir={dir} style={{ maxWidth: "100%", minWidth: 0 }}>
       {content.map((seg, i) => {
         if (seg.kind === "text") {
           return <Fragment key={seg.key ?? i}>{seg.value}</Fragment>;
@@ -33,7 +33,7 @@ export function ContentRenderer({ content, dir = "rtl" }: Props) {
               key={seg.key ?? i}
               className="math"
               dir="ltr"
-              style={{ display: "block", marginTop: 8, marginBottom: 8 }}
+              style={{ display: "block", maxWidth: "100%", marginTop: 8, marginBottom: 8 }}
               dangerouslySetInnerHTML={{ __html: html }}
             />
           );
@@ -47,6 +47,7 @@ export function ContentRenderer({ content, dir = "rtl" }: Props) {
             dir="ltr"
             style={{
               display: "inline-block",
+              maxWidth: "100%",
               unicodeBidi: "isolate",
             }}
             dangerouslySetInnerHTML={{ __html: html }}

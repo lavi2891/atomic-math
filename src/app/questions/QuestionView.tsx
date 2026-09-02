@@ -212,12 +212,16 @@ export function QuestionView({
     question.type === "numeric" &&
     hasNumericInput &&
     ((parsedNumeric !== null && !parsedNumeric.ok) ||
+      exactNumeric === null ||
+      !exactNumeric.ok ||
       (exactNumeric !== null &&
         exactNumeric.ok &&
         !numericAcceptedFormats.includes(exactNumeric.format)));
   const numericHelperText =
     numericIsInvalid && parsedNumeric && !parsedNumeric.ok
       ? mapErrorToHebrew(parsedNumeric.error.code)
+      : numericIsInvalid && (!exactNumeric || !exactNumeric.ok)
+        ? mapErrorToHebrew("SYNTAX")
       : question.type === "numeric" &&
           hasNumericInput &&
           exactNumeric &&
