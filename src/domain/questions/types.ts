@@ -28,10 +28,15 @@ export interface BaseQuestion {
 export interface NumericQuestion extends BaseQuestion {
   type: "numeric";
   correctAnswers: [string, ...string[]];
-  tolerance?: number;
+  answerSemantics?: NumericAnswerSemantics;
   acceptedInputFormats?: NumericInputFormat[];
   input?: { allowMinus?: boolean; allowDecimal?: boolean }; // future-proof UX hints
 }
+
+export type NumericAnswerSemantics =
+  | { kind: "exact" }
+  | { kind: "exactDecimal" }
+  | { kind: "rounded"; decimalPlaces: number };
 
 export interface GeneratedQuestionInstance extends NumericQuestion {
   baseId: string;

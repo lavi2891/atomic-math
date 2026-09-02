@@ -17,6 +17,9 @@ function approxEqual(a: number, b: number, tol: number) {
 }
 
 function resolveAcceptedInputFormats(question: Extract<Question, { type: "numeric" }>): NumericInputFormat[] {
+  if (question.answerSemantics?.kind === "rounded" || question.answerSemantics?.kind === "exactDecimal") {
+    return ["decimal"];
+  }
   return question.acceptedInputFormats ?? ["integer", "decimal", "fraction"];
 }
 
@@ -68,7 +71,9 @@ export function evaluateAnswer(question: Question, raw: RawAnswer): Evaluation {
         .map((answer) => parseExactNumericInput(answer))
         .filter((value): value is Extract<typeof value, { ok: true }> => value.ok);
 
-      const tol = question.tolerance;
+      const tol = question.answerSemantics?.kind === "rounded"
+        ? 0.5 * 10 ** -question.answerSemantics.decimalPlaces
+        : undefined;
       const ok = parsedCorrectAnswers.some((correctValue) =>
         tol === undefined
           ? exactNumericEquals(studentValue.value, correctValue.value)

@@ -14,7 +14,7 @@ function hasOnlyFactorsOfTwoAndFive(value: bigint): boolean {
   return current === 1n;
 }
 
-function toTerminatingDecimalString(value: Rational): string | null {
+export function toTerminatingDecimalString(value: Rational): string | null {
   const reduced = reduce(value);
   if (!hasOnlyFactorsOfTwoAndFive(reduced.den)) {
     return null;
@@ -37,6 +37,22 @@ function toTerminatingDecimalString(value: Rational): string | null {
   }
 
   return `${sign}${integerPart.toString()}.${digits.join("")}`;
+}
+
+export function roundRationalToDecimal(value: Rational, decimalPlaces: number): string {
+  if (!Number.isInteger(decimalPlaces) || decimalPlaces < 0 || decimalPlaces > 12) {
+    throw new Error(`Invalid rounding precision: ${decimalPlaces}`);
+  }
+  const reduced = reduce(value);
+  const scale = 10n ** BigInt(decimalPlaces);
+  const negative = reduced.num < 0n;
+  const numerator = (negative ? -reduced.num : reduced.num) * scale;
+  let rounded = numerator / reduced.den;
+  if ((numerator % reduced.den) * 2n >= reduced.den) rounded += 1n;
+  const sign = negative && rounded !== 0n ? "-" : "";
+  if (decimalPlaces === 0) return `${sign}${rounded}`;
+  const digits = rounded.toString().padStart(decimalPlaces + 1, "0");
+  return `${sign}${digits.slice(0, -decimalPlaces)}.${digits.slice(-decimalPlaces)}`;
 }
 
 export function evaluateExpression(expression: string): Rational {

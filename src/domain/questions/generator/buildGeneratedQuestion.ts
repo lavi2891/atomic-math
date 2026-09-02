@@ -8,7 +8,7 @@ import {
 } from "./antiRepetition.ts";
 import type { GeneratedQuestionDefinition, SampledParams } from "./types.ts";
 import { evaluateConstraint } from "./constraints.ts";
-import { evaluateExpression, toComputedAnswer } from "./evaluateExpression.ts";
+import { evaluateExpression, roundRationalToDecimal, toComputedAnswer, toTerminatingDecimalString } from "./evaluateExpression.ts";
 import {
   renderExpressionTemplate,
   renderHintsTemplate,
@@ -112,12 +112,30 @@ export function buildGeneratedQuestion(
           sampledParams,
         );
         const result = evaluateExpression(renderedExpression);
-        const prompt = renderPromptTemplate(definition.promptTemplate, sampledParams);
+        const answerSemantics = definition.answerSemantics ??
+          (definition.acceptedInputFormats?.length === 1 && definition.acceptedInputFormats[0] === "decimal"
+            ? { kind: "exactDecimal" as const }
+            : { kind: "exact" as const });
+        const terminatingDecimal = toTerminatingDecimalString(result);
+        if (answerSemantics.kind === "exactDecimal" && terminatingDecimal === null) continue;
+        const basePrompt = renderPromptTemplate(definition.promptTemplate, sampledParams);
+        const prompt = answerSemantics.kind === "rounded"
+          ? [...basePrompt, { kind: "text" as const, value: ` עגלו ל-${answerSemantics.decimalPlaces} ספרות אחרי הנקודה.` }]
+          : basePrompt;
         const hints = renderHintsTemplate(definition.hintsTemplate, sampledParams);
         const preferDecimal = Object.values(sampledParams).some(
           (param) => param.type === "decimal",
         );
-        const correctAnswer = toComputedAnswer(result, { preferDecimal });
+        const correctAnswer = answerSemantics.kind === "rounded"
+          ? roundRationalToDecimal(result, answerSemantics.decimalPlaces)
+          : answerSemantics.kind === "exactDecimal"
+            ? terminatingDecimal!
+            : toComputedAnswer(result, { preferDecimal });
+        const acceptedInputFormats = answerSemantics.kind === "rounded" || answerSemantics.kind === "exactDecimal"
+          ? ["decimal" as const]
+          : terminatingDecimal === null
+            ? ["fraction" as const]
+            : definition.acceptedInputFormats;
         const computedDifficulty = computeDifficulty(definition, sampledParams);
         const concrete: NumericQuestion = {
           id: `${definition.id}__${hashString32(serializeParams(sampledParams))}`,
@@ -132,7 +150,8 @@ export function buildGeneratedQuestion(
         misconceptions: definition.misconceptions,
         version: definition.version,
         tags: [...new Set([...(definition.tags ?? []), "source:generator"])],
-        acceptedInputFormats: definition.acceptedInputFormats,
+        acceptedInputFormats,
+        answerSemantics,
         input: {
           allowMinus: definition.input?.allowMinus ?? true,
           allowDecimal: shouldAllowDecimal(definition, renderedExpression),

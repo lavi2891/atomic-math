@@ -29,6 +29,7 @@ export function NumericAnswerInput(
     inputRef?: RefObject<HTMLInputElement | null>;
     previewLatex?: string | null;
     helperText?: string | null;
+    formatHint?: string | null;
     isInvalid?: boolean;
     emphasizeFraction?: boolean;
   } & Disabled,
@@ -42,6 +43,7 @@ export function NumericAnswerInput(
     inputRef,
     previewLatex,
     helperText,
+    formatHint,
     isInvalid,
     emphasizeFraction,
   } = props;
@@ -109,6 +111,11 @@ export function NumericAnswerInput(
         placeholder={he.placeholders.numericAnswer}
         style={inputStyle}
       />
+      {formatHint ? (
+        <div dir="rtl" style={{ fontSize: 12, color: colors.textMuted }}>
+          {formatHint}
+        </div>
+      ) : null}
       {isInvalid && value.trim().length > 0 && helperText ? (
         <div
           dir="rtl"

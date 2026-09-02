@@ -237,6 +237,15 @@ export function QuestionView({
     question.type === "numeric" &&
     hasNumericInput &&
     /[/\\]/.test(numericValue);
+  const numericFormatHint = question.type !== "numeric"
+    ? null
+    : question.answerSemantics?.kind === "rounded"
+      ? `יש להזין תשובה עשרונית מעוגלת ל-${question.answerSemantics.decimalPlaces} ספרות אחרי הנקודה.`
+      : question.answerSemantics?.kind === "exactDecimal"
+        ? "יש להזין תשובה עשרונית מדויקת."
+        : numericAcceptedFormats.length === 1 && numericAcceptedFormats[0] === "fraction"
+          ? "יש להזין את התשובה המדויקת כשבר."
+          : "יש להזין תשובה מדויקת; אפשר להשתמש בשבר.";
   const numericCanCheck =
     question.type === "numeric"
       ? canCheck && hasNumericInput && !numericIsInvalid
@@ -340,6 +349,7 @@ export function QuestionView({
     helperText: numericHelperText,
     isInvalid: numericIsInvalid,
     emphasizeFraction: numericEmphasizeFraction,
+    formatHint: numericFormatHint,
   } as const;
 
   return (

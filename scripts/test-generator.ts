@@ -9,6 +9,7 @@ import { evaluateConstraint } from "../src/domain/questions/generator/constraint
 import {
   evaluateExpression,
   toComputedAnswer,
+  toTerminatingDecimalString,
 } from "../src/domain/questions/generator/evaluateExpression.ts";
 import {
   extractTemplatePlaceholders,
@@ -232,6 +233,77 @@ run("numeric evaluator respects accepted input formats", () => {
   );
 });
 
+run("mixed rational and decimal arithmetic requires an exact fraction for repeating results", () => {
+  const definition: GeneratedQuestionDefinition = {
+    id: "EXACT_REPEATING",
+    topicId: "SIGNED_NUMBERS",
+    kind: "generated",
+    exprTemplate: "{fraction}-{decimal}",
+    promptTemplate: [{ kind: "math", latex: "{fraction}-{decimal}" }],
+    params: {
+      fraction: { type: "rational", numerator: { min: 2, max: 2 }, denominator: { min: 3, max: 3 } },
+      decimal: { type: "decimal", min: 0.8, max: 0.8, step: 0.1 },
+    },
+    answerSemantics: { kind: "exact" },
+    acceptedInputFormats: ["fraction", "decimal"],
+  };
+  const question = buildGeneratedQuestion(definition, { seed: 1 });
+  assert.equal(question.correctAnswers[0], "-2/15");
+  assert.deepEqual(question.acceptedInputFormats, ["fraction"]);
+  assert.equal(evaluateAnswer(question, { questionType: "numeric", data: { value: "-2/15" } }).isCorrect, true);
+  assert.equal(evaluateAnswer(question, { questionType: "numeric", data: { value: "-0.1333333" } }).isCorrect, false);
+});
+
+run("exact decimal generation accepts finite results and rejects repeating results", () => {
+  const finiteDefinition: GeneratedQuestionDefinition = {
+    id: "FINITE_DECIMAL",
+    topicId: "SIGNED_NUMBERS",
+    kind: "generated",
+    exprTemplate: "{left}-{right}",
+    promptTemplate: [{ kind: "math", latex: "{left}-{right}" }],
+    params: {
+      left: { type: "decimal", min: 0.8, max: 0.8, step: 0.1 },
+      right: { type: "decimal", min: 0.3, max: 0.3, step: 0.1 },
+    },
+    answerSemantics: { kind: "exactDecimal" },
+    acceptedInputFormats: ["decimal"],
+  };
+  const finite = buildGeneratedQuestion(finiteDefinition, { seed: 1 });
+  assert.equal(finite.correctAnswers[0], "0.5");
+  assert.equal(evaluateAnswer(finite, { questionType: "numeric", data: { value: "0.5" } }).isCorrect, true);
+
+  const repeatingDefinition: GeneratedQuestionDefinition = {
+    ...finiteDefinition,
+    id: "REPEATING_DECIMAL",
+    exprTemplate: "{fraction}",
+    promptTemplate: [{ kind: "math", latex: "{fraction}" }],
+    params: {
+      fraction: { type: "rational", numerator: { min: 2, max: 2 }, denominator: { min: 3, max: 3 } },
+    },
+  };
+  assert.throws(() => buildGeneratedQuestion(repeatingDefinition, { seed: 1, maxAttempts: 2 }), /Failed to build/);
+});
+
+run("declared rounding uses its precision and states it in the prompt", () => {
+  const definition: GeneratedQuestionDefinition = {
+    id: "ROUND_REPEATING",
+    topicId: "SIGNED_NUMBERS",
+    kind: "generated",
+    exprTemplate: "{fraction}-{decimal}",
+    promptTemplate: [{ kind: "math", latex: "{fraction}-{decimal}" }],
+    params: {
+      fraction: { type: "rational", numerator: { min: 2, max: 2 }, denominator: { min: 3, max: 3 } },
+      decimal: { type: "decimal", min: 0.8, max: 0.8, step: 0.1 },
+    },
+    answerSemantics: { kind: "rounded", decimalPlaces: 3 },
+  };
+  const question = buildGeneratedQuestion(definition, { seed: 1 });
+  assert.equal(question.correctAnswers[0], "-0.133");
+  assert.match(question.prompt.map((part) => part.kind === "text" ? part.value : "").join(""), /3/);
+  assert.equal(evaluateAnswer(question, { questionType: "numeric", data: { value: "-0.133" } }).isCorrect, true);
+  assert.equal(evaluateAnswer(question, { questionType: "numeric", data: { value: "-0.134" } }).isCorrect, false);
+});
+
 run("generated question build flow", () => {
   const definition: GeneratedQuestionDefinition = {
     id: "GEN_TEST_001",
@@ -373,7 +445,14 @@ run("signed numbers generator definitions stay curated and buildable", () => {
       assert.ok(question.structureKey);
       assert.ok(question.variantGroup);
       if (definition.acceptedInputFormats) {
-        assert.deepEqual(question.acceptedInputFormats, definition.acceptedInputFormats);
+        const exactAnswer = parseExactNumericInput(question.correctAnswers[0]);
+        const requiresFraction = question.answerSemantics?.kind === "exact" &&
+          exactAnswer.ok &&
+          toTerminatingDecimalString(exactAnswer.value) === null;
+        assert.deepEqual(
+          question.acceptedInputFormats,
+          requiresFraction ? ["fraction"] : definition.acceptedInputFormats,
+        );
       }
       assert.equal(
         question.computedDifficulty === undefined ||
