@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { Question } from "domain/questions/types";
-import type { AnswerResult } from "domain/results/types";
+import type { Question } from "@domain/questions/types";
+import type { AnswerResult } from "@domain/results/types";
 import { QuestionView } from "./questions/QuestionView";
 
 const demo: Question[] = [
