@@ -1,5 +1,5 @@
-import { isGeneratedQuestionInstance, type Question } from "@domain/questions/types";
-import { clamp01 } from "@shared/math";
+import { isGeneratedQuestionInstance, type Question } from "../questions/types.ts";
+import { clamp01 } from "../../shared/math.ts";
 
 export type PickConfig = {
   baseDelta: number;

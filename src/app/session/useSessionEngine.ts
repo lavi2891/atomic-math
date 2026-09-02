@@ -1,162 +1,87 @@
-import { useMemo, useState } from "react";
-import { isGeneratedQuestionInstance, type Question } from "@domain/questions/types";
+import { useMemo, useReducer, useState } from "react";
+import type { Question } from "@domain/questions/types";
 import type { AnswerResult } from "@domain/results/types";
-import { pickNextQuestion } from "@domain/session/questionPicker";
-import { clamp01 } from "@shared/math";
-
-type EngineState = {
-  results: AnswerResult[];
-  askedQuestionIds: string[];
-  targetDifficulty: number;
-  currentQuestionId: string | null;
-  isEnded: boolean;
-};
+import {
+  createInitialSessionState,
+  practiceSessionReducer,
+  type PracticeSession,
+  type PracticeSessionState,
+} from "@domain/session/practiceSession";
+import { buildBalancedSkillPlan, pickBalancedSkill } from "@domain/session/balancedSkills";
+import {
+  SkillQuestionSelector,
+  type SkillQuestionDefinition,
+} from "@domain/session/skillQuestionSelector";
 
 export type SessionEngine = {
-  state: {
-    results: AnswerResult[];
-    askedQuestionIds: string[];
-    targetDifficulty: number;
-    currentQuestion: Question | null;
-  };
+  state: PracticeSessionState & { currentQuestion: Question | null };
   actions: {
     submitAnswer: (result: AnswerResult) => void;
-    endIfNeeded: () => void;
+    timerExpired: () => void;
+    stopSession: () => void;
   };
-  flags: {
-    isEnded: boolean;
-  };
-  sessionId: string;
 };
 
-function createInitialState(
-  questions: Question[],
-  initialTargetDifficulty: number,
-): EngineState {
-  const currentQuestionId = questions[0]?.id ?? null;
-  return {
-    results: [],
-    askedQuestionIds: [],
-    targetDifficulty: clamp01(initialTargetDifficulty),
-    currentQuestionId,
-    isEnded: currentQuestionId === null,
-  };
-}
-
-function createSessionId(): string {
-  return `sess-${Math.random().toString(36).slice(2, 10)}`;
-}
-
 export function useSessionEngine(
-  questions: Question[],
+  session: PracticeSession,
+  definitions: readonly SkillQuestionDefinition[],
   initialTargetDifficulty = 0,
 ): SessionEngine {
-  const [sessionId] = useState<string>(createSessionId);
-  const [engineState, setEngineState] = useState<EngineState>(() =>
-    createInitialState(questions, initialTargetDifficulty),
+  const [selector] = useState(() => new SkillQuestionSelector(definitions));
+  const [questionsById] = useState(() => new Map<string, Question>());
+  const [fixedPlan] = useState(() =>
+    session.settings.mode === "fixed"
+      ? buildBalancedSkillPlan(session.selectedSkillIds, session.settings.questionCount)
+      : null,
   );
 
-  const currentQuestion = useMemo(() => {
-    if (!engineState.currentQuestionId) return null;
-    return (
-      questions.find((item) => item.id === engineState.currentQuestionId) ??
-      null
-    );
-  }, [engineState.currentQuestionId, questions]);
-
-  function submitAnswer(result: AnswerResult): void {
-    setEngineState((prev) => {
-      const nextResults = [...prev.results, { ...result, sessionId }];
-      const nextTargetDifficulty = clamp01(
-        prev.targetDifficulty + (result.isCorrect ? 0.05 : -0.05),
-      );
-      const nextAskedQuestionIds = [
-        ...prev.askedQuestionIds,
-        result.questionId,
-      ];
-      const questionById = new Map(
-        questions.map((question) => [question.id, question]),
-      );
-      const historySubtopics = nextAskedQuestionIds.map(
-        (questionId) => questionById.get(questionId)?.subtopic,
-      );
-      const historyRenderedExpressions = nextAskedQuestionIds
-        .map((questionId) => {
-          const question = questionById.get(questionId);
-          return question && isGeneratedQuestionInstance(question)
-            ? question.renderedExpression
-            : undefined;
-        })
-        .filter((value): value is string => !!value);
-      const historyStructureKeys = nextAskedQuestionIds
-        .map((questionId) => {
-          const question = questionById.get(questionId);
-          return question && isGeneratedQuestionInstance(question)
-            ? question.structureKey
-            : undefined;
-        })
-        .filter((value): value is string => !!value);
-      const historyVariantGroups = nextAskedQuestionIds
-        .map((questionId) => {
-          const question = questionById.get(questionId);
-          return question && isGeneratedQuestionInstance(question)
-            ? question.variantGroup
-            : undefined;
-        })
-        .filter((value): value is string => !!value);
-      const remainingQuestions = questions.filter(
-        (item) => !nextAskedQuestionIds.includes(item.id),
-      );
-      const nextQuestion =
-        remainingQuestions.length === 0
-          ? null
-          : pickNextQuestion({
-              questions: remainingQuestions,
-              targetDifficulty: nextTargetDifficulty,
-              history: {
-                questionIds: nextAskedQuestionIds,
-                subtopics: historySubtopics,
-                renderedExpressions: historyRenderedExpressions,
-                structureKeys: historyStructureKeys,
-                variantGroups: historyVariantGroups,
-              },
-            });
-
-      return {
-        results: nextResults,
-        askedQuestionIds: nextAskedQuestionIds,
-        targetDifficulty: nextTargetDifficulty,
-        currentQuestionId: nextQuestion?.id ?? null,
-        isEnded: nextQuestion === null,
-      };
-    });
+  function chooseQuestion(state: PracticeSessionState): { question: Question; skillId: string } {
+    const skillId = fixedPlan
+      ? fixedPlan[state.results.length]!
+      : pickBalancedSkill(session.selectedSkillIds, state.askedSkillIds);
+    const question = selector.pick(skillId, state.targetDifficulty);
+    questionsById.set(question.id, question);
+    return { question, skillId };
   }
 
-  function endIfNeeded(): void {
-    setEngineState((prev) => {
-      if (prev.isEnded) return prev;
-      if (currentQuestion !== null) return prev;
-      return {
-        ...prev,
-        isEnded: true,
-      };
-    });
+  const [state, dispatch] = useReducer(
+    practiceSessionReducer,
+    undefined,
+    (): PracticeSessionState => {
+      const initial = createInitialSessionState(session, initialTargetDifficulty);
+      const { question, skillId } = chooseQuestion(initial);
+      return practiceSessionReducer(initial, {
+        type: "START",
+        questionId: question.id,
+        skillId,
+      });
+    },
+  );
+
+  const currentQuestion = useMemo(
+    () => (state.currentQuestionId ? questionsById.get(state.currentQuestionId) ?? null : null),
+    [questionsById, state.currentQuestionId],
+  );
+
+  function submitAnswer(result: AnswerResult): void {
+    const action = { type: "ANSWER_SUBMITTED" as const, result };
+    const answered = practiceSessionReducer(state, action);
+    dispatch(action);
+    if (answered.status !== "active") return;
+    try {
+      const { question, skillId } = chooseQuestion(answered);
+      dispatch({ type: "NEXT_QUESTION", questionId: question.id, skillId });
+    } catch {
+      dispatch({ type: "STOP_SESSION", at: Date.now(), reason: "no_questions" });
+    }
   }
 
   return {
-    state: {
-      results: engineState.results,
-      askedQuestionIds: engineState.askedQuestionIds,
-      targetDifficulty: engineState.targetDifficulty,
-      currentQuestion,
-    },
+    state: { ...state, currentQuestion },
     actions: {
       submitAnswer,
-      endIfNeeded,
+      timerExpired: () => dispatch({ type: "TIMER_EXPIRED", at: Date.now() }),
+      stopSession: () => dispatch({ type: "STOP_SESSION", at: Date.now() }),
     },
-    flags: {
-      isEnded: engineState.isEnded,
-    },
-    sessionId,
   };
 }

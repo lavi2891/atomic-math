@@ -12,6 +12,8 @@ export interface QuestionSeeds {
 export interface BaseQuestion {
   id: string;
   topicId: string;
+  /** Required at the normal-practice boundary; optional here only for isolated legacy imports and playground content. */
+  skillId?: string;
   type: QuestionType;
   difficulty?: number;
   prompt: OptionContent[]; // what the student sees
@@ -34,6 +36,7 @@ export interface NumericQuestion extends BaseQuestion {
 export interface GeneratedQuestionInstance extends NumericQuestion {
   baseId: string;
   templateId: string;
+  generatorSeed?: number;
   renderedExpression: string;
   sampledParams: Record<string, string>;
   computedDifficulty?: number;

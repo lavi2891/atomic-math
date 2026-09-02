@@ -65,6 +65,8 @@ export type DifficultyModel = (sampledParams: SampledParams) => number;
 export interface GeneratedQuestionDefinition {
   id: string;
   topicId: string;
+  /** New content identity. Optional only while legacy generators are migrated. */
+  skillId?: string;
   kind: "generated";
   exprTemplate: string;
   promptTemplate: OptionContent[];

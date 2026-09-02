@@ -40,8 +40,8 @@ async function main(): Promise<void> {
   const minDifficulty = difficulties.length > 0 ? Math.min(...difficulties) : 0;
   const maxDifficulty = difficulties.length > 0 ? Math.max(...difficulties) : 0;
 
-  console.log(
-    `Exported SIGNED_NUMBERS bank: questions=${questions.length}, minDifficulty=${minDifficulty.toFixed(3)}, maxDifficulty=${maxDifficulty.toFixed(3)}, maxRawObserved=${maxRawObserved.toFixed(3)}`,
+  process.stdout.write(
+    `Exported SIGNED_NUMBERS bank: questions=${questions.length}, minDifficulty=${minDifficulty.toFixed(3)}, maxDifficulty=${maxDifficulty.toFixed(3)}, maxRawObserved=${maxRawObserved.toFixed(3)}\n`,
   );
 }
 

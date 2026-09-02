@@ -15,6 +15,7 @@ import {
   renderPromptTemplate,
 } from "./renderTemplate.ts";
 import { sampleParam } from "./sampleParam.ts";
+import { createSeededRandom } from "../../../shared/seededRandom.ts";
 
 type BuildGeneratedQuestionOptions = {
   rng?: () => number;
@@ -25,14 +26,6 @@ type BuildGeneratedQuestionOptions = {
 };
 
 const DEFAULT_MAX_ATTEMPTS = 50;
-
-function createSeededRng(seed: number): () => number {
-  let state = Math.trunc(seed) >>> 0;
-  return () => {
-    state = (state * 1664525 + 1013904223) >>> 0;
-    return state / 0x1_0000_0000;
-  };
-}
 
 function sampleParams(
   definition: GeneratedQuestionDefinition,
@@ -98,7 +91,7 @@ export function buildGeneratedQuestion(
   definition: GeneratedQuestionDefinition,
   options: BuildGeneratedQuestionOptions = {},
 ): GeneratedQuestionInstance {
-  const rng = options.rng ?? (options.seed === undefined ? Math.random : createSeededRng(options.seed));
+  const rng = options.rng ?? (options.seed === undefined ? Math.random : createSeededRandom(options.seed));
   const maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
   const antiRepetitionConfig = {
     ...DEFAULT_ANTI_REPETITION_CONFIG,
@@ -129,6 +122,7 @@ export function buildGeneratedQuestion(
         const concrete: NumericQuestion = {
           id: `${definition.id}__${hashString32(serializeParams(sampledParams))}`,
           topicId: definition.topicId,
+          skillId: definition.skillId,
           type: "numeric",
           prompt,
           hints,
@@ -149,6 +143,7 @@ export function buildGeneratedQuestion(
           ...concrete,
           baseId: definition.id,
           templateId: definition.id,
+          generatorSeed: options.seed,
           renderedExpression,
           sampledParams: Object.fromEntries(
             Object.entries(sampledParams).map(([name, value]) => [name, value.expr]),

@@ -19,10 +19,7 @@ import { parseExactNumericInput } from "@shared/mathInput/exactNumeric";
 import type { ParseErrCode } from "@shared/mathInput";
 import { he } from "@copy/he";
 import { colors, fontSize, lineHeight, radius, spacing } from "@ui/tokens";
-import {
-  useQuestionSolve,
-  type QuestionAttemptEvent,
-} from "./useQuestionSolve";
+import { useQuestionSolve } from "./useQuestionSolve";
 
 type Mode = "solve" | "review";
 
@@ -40,9 +37,8 @@ type ReviewData = {
 type Props = {
   question: Question;
   mode?: Mode;
-  rated?: boolean;
   onNext?: (result: AnswerResult) => void;
-  onAttempt?: (event: QuestionAttemptEvent) => void;
+  onEvaluated?: (result: AnswerResult) => void;
   review?: ReviewData;
 };
 
@@ -144,9 +140,8 @@ function getCorrectAnswerNode(question: Question) {
 export function QuestionView({
   question,
   mode = "solve",
-  rated = false,
   onNext,
-  onAttempt,
+  onEvaluated,
   review,
 }: Props) {
   const numericInputRef = useRef<HTMLInputElement>(null);
@@ -156,7 +151,7 @@ export function QuestionView({
     [question.id],
   );
 
-  const solve = useQuestionSolve(question, mode, rated);
+  const solve = useQuestionSolve(question, mode);
   const {
     state: {
       phase,
@@ -247,17 +242,13 @@ export function QuestionView({
     if (question.type === "numeric") {
       if (!parsedNumeric || !parsedNumeric.ok || parsedNumeric.kind !== "RATIONAL")
         return;
-      const attemptEvent = check(parsedNumeric.value);
-      if (attemptEvent) {
-        onAttempt?.(attemptEvent);
-      }
+      const result = check(parsedNumeric.value);
+      if (result) onEvaluated?.(result);
       return;
     }
 
-    const attemptEvent = check();
-    if (attemptEvent) {
-      onAttempt?.(attemptEvent);
-    }
+    const result = check();
+    if (result) onEvaluated?.(result);
   }
 
   const onNextClick = useCallback(() => {

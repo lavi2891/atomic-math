@@ -1,158 +1,70 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PlaygroundScreen } from "@app/PlaygroundScreen";
-import { HomeScreen } from "@app/HomeScreen";
-import { TopicsScreen } from "@app/TopicsScreen";
+import { SessionSetupScreen } from "@app/session/SessionSetupScreen";
 import { SessionView } from "@app/session/SessionView";
-import type { Question } from "@domain/questions/types";
-import type { AnswerResult } from "@domain/results/types";
-import { buildSession } from "@domain/session/buildSession";
-import { listTopicsByGrade } from "@domain/topics/registry";
-import type { GradeId, TopicId } from "@domain/topics/types";
-import { getTopicById } from "@domain/topics/registry";
-import { he } from "@copy/he";
-import { styles } from "@ui/styles";
-import { colors, radius, spacing } from "@ui/tokens";
-import { statsRepo } from "@app/statsRepoInstance";
+import { SessionSummaryScreen } from "@app/session/SessionSummaryScreen";
+import { studentPracticeService } from "@app/session/studentPracticeServiceInstance";
+import { StudentHomeScreen } from "@app/studentHome/StudentHomeScreen";
+import { studentHomeService } from "@app/studentHome/studentHomeServiceInstance";
+import type { PracticeSession, PracticeSessionState, SessionSettings } from "@domain/session/practiceSession";
+import type { MasterySnapshot } from "@domain/mastery/projectMastery";
+import type { StudentHomeData } from "@domain/studentHome/types";
+import { assignmentSessionLaunch } from "@domain/studentHome/sessionLaunch";
+import { studentIdentityProvider } from "./config/runtime.ts";
 import { selectQuestionPool } from "@app/questionPools";
-import { getSummaryCounts } from "@app/summary/summaryUtils";
+import { syncCoordinator } from "@app/syncInstance";
+import { syncConfig } from "./infrastructure/sync/config.ts";
+import { styles } from "@ui/styles";
 import { theme } from "./theme/theme";
 
-type Screen = "home" | "topics" | "session" | "summary";
-const DEFAULT_SESSION_LENGTH = 5;
-const ENABLED_TOPIC_IDS: TopicId[] = ["SIGNED_NUMBERS"];
+type Screen = "home" | "setup" | "session" | "summary";
 
 export default function App() {
-  const showPlayground = useMemo(
-    () => new URLSearchParams(window.location.search).get("playground") === "1",
-    [],
-  );
+  const showPlayground = useMemo(() => new URLSearchParams(window.location.search).get("playground") === "1", []);
+  const definitions = useMemo(() => selectQuestionPool("SIGNED_NUMBERS"), []);
   const [screen, setScreen] = useState<Screen>("home");
-  const [selectedGrade, setSelectedGrade] = useState<GradeId | undefined>();
-  const [activeTopicId, setActiveTopicId] = useState<TopicId | undefined>();
-  const [activeQuestions, setActiveQuestions] = useState<
-    Question[] | undefined
-  >();
-  const [initialTargetDifficulty, setInitialTargetDifficulty] = useState(0);
-  const [lastResults, setLastResults] = useState<AnswerResult[] | undefined>();
+  const [activeDomainId, setActiveDomainId] = useState<string>();
+  const [homeData, setHomeData] = useState<StudentHomeData>();
+  const [session, setSession] = useState<PracticeSession>();
+  const [completed, setCompleted] = useState<PracticeSessionState>();
+  const [masteryBefore, setMasteryBefore] = useState<Record<string, MasterySnapshot>>({});
+  const [masteryAfter, setMasteryAfter] = useState<Record<string, MasterySnapshot>>({});
+  const [operationError, setOperationError] = useState<string>();
 
-  if (showPlayground) {
-    return <PlaygroundScreen />;
+  async function refreshHome() {
+    try { setHomeData(await studentHomeService.load(studentIdentityProvider.getStudentId())); setOperationError(undefined); }
+    catch { setOperationError("לא ניתן לטעון כרגע את נתוני הבית. אפשר לנסות שוב."); }
   }
 
-  function startQuickPractice() {
-    if (!selectedGrade) return;
-    const firstEnabledTopic = listTopicsByGrade(selectedGrade).find((topic) =>
-      ENABLED_TOPIC_IDS.includes(topic.id),
-    );
-    if (!firstEnabledTopic) return;
-    startSession(firstEnabledTopic.id);
+  useEffect(() => {
+    queueMicrotask(() => { void refreshHome(); void syncCoordinator.flush(); });
+    const interval = window.setInterval(() => void syncCoordinator.flush(), syncConfig.flushIntervalMs);
+    const online = () => { void syncCoordinator.flush(); void refreshHome(); };
+    window.addEventListener("online", online);
+    return () => { window.clearInterval(interval); window.removeEventListener("online", online); };
+  }, []);
+
+  if (showPlayground) return <PlaygroundScreen />;
+
+  async function startSession(skillIds: string[], settings: SessionSettings, assignmentId?: string) {
+    try {
+      const started = await studentPracticeService.start({ studentId: studentIdentityProvider.getStudentId(), skillIds, settings, assignmentId });
+      setOperationError(undefined); setSession(started.session); setCompleted(undefined); setMasteryBefore(started.masteryBefore); setMasteryAfter(started.masteryBefore); setScreen("session");
+    } catch { setOperationError("לא ניתן להתחיל את התרגול. נסו שוב."); }
   }
 
-  function startSession(topicId: TopicId) {
-    const skill01 = statsRepo.getTopicSkill(topicId);
-    const session = buildSession({
-      topicId,
-      questions: selectQuestionPool(topicId),
-      length: DEFAULT_SESSION_LENGTH,
-      skill01,
-      rated: true,
-    });
-
-    setActiveTopicId(topicId);
-    setActiveQuestions(session.questions);
-    setInitialTargetDifficulty(session.initialTargetDifficulty);
-    setLastResults(undefined);
-    setScreen("session");
+  async function finishSession(state: PracticeSessionState) {
+    setMasteryAfter(await studentPracticeService.finish(state));
+    setCompleted(state); setScreen("summary"); await refreshHome();
   }
 
-  function backToHome() {
-    setScreen("home");
-    setActiveTopicId(undefined);
-    setActiveQuestions(undefined);
-  }
+  async function returnHome() { await refreshHome(); setSession(undefined); setScreen("home"); }
 
-  const topicTitle = activeTopicId
-    ? (getTopicById(activeTopicId)?.title ?? activeTopicId)
-    : undefined;
-  const { answeredCount, correctCount } = getSummaryCounts(lastResults);
-
-  return (
-    <div className="page" style={styles.page} dir="rtl">
-      <div className="phone" style={{ ...styles.phone, color: theme.colors.text }}>
-        <main style={styles.content}>
-          {screen === "home" ? (
-            <HomeScreen
-              selectedGrade={selectedGrade}
-              onQuickPractice={startQuickPractice}
-              onPracticeByTopic={() => {
-                if (!selectedGrade) return;
-                setScreen("topics");
-              }}
-              onChangeGrade={() => {
-                setSelectedGrade(undefined);
-                setScreen("home");
-              }}
-              onSelectGrade={(gradeId) => {
-                setSelectedGrade(gradeId);
-                setScreen("home");
-              }}
-            />
-          ) : null}
-
-          {screen === "topics" && selectedGrade ? (
-            <TopicsScreen
-              onBack={() => setScreen("home")}
-              onStartTopic={startSession}
-              selectedGrade={selectedGrade}
-            />
-          ) : null}
-
-          {screen === "session" ? (
-            <SessionView
-              questions={activeQuestions ?? []}
-              initialTargetDifficulty={initialTargetDifficulty}
-              onSessionEnd={(results) => {
-                setLastResults(results);
-                setScreen("summary");
-              }}
-            />
-          ) : null}
-
-          {/* TODO: Replace this simple summary with SessionSummary component (accuracy %, avg time, review) */}
-          {screen === "summary" ? (
-            <section style={{ display: "grid", gap: spacing.md }}>
-              <h2 style={{ margin: 0 }}>{topicTitle ?? he.topics.title}</h2>
-              <div
-                style={{
-                  border: `1px solid ${colors.borderSubtle}`,
-                  borderRadius: radius.md,
-                  padding: spacing.md,
-                  background: colors.bgSubtle,
-                  display: "grid",
-                  gap: spacing.sm,
-                }}
-              >
-                <div>{`${he.summary.answered} ${answeredCount}`}</div>
-                <div>{`${he.summary.correct} ${correctCount}`}</div>
-              </div>
-
-              <button
-                type="button"
-                onClick={backToHome}
-                style={{
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: radius.md,
-                  padding: `${spacing.sm}px ${spacing.md}px`,
-                  background: colors.bgSubtle,
-                  cursor: "pointer",
-                }}
-              >
-                {he.summary.backToHome}
-              </button>
-            </section>
-          ) : null}
-        </main>
-      </div>
-    </div>
-  );
+  return <div className="page" style={styles.page} dir="rtl"><div className="phone" style={{ ...styles.phone, color: theme.colors.text }}><main style={styles.content}>
+    {operationError ? <p role="alert">{operationError}</p> : null}
+    {screen === "home" ? homeData ? <StudentHomeScreen data={homeData} definitions={definitions} onOpenDomain={(domainId) => { setActiveDomainId(domainId); setScreen("setup"); }} onStartAssignment={(skillId, assignmentId) => { const launch = assignmentSessionLaunch(skillId); void startSession(launch.skillIds, launch.settings, assignmentId); }} /> : <p role="status" aria-live="polite">טוען את העבודה שלך…</p> : null}
+    {screen === "setup" && activeDomainId ? <SessionSetupScreen domainId={activeDomainId} definitions={definitions} onBack={() => setScreen("home")} onStart={(skillIds, settings) => void startSession(skillIds, settings)} /> : null}
+    {screen === "session" && session ? <SessionView session={session} definitions={definitions} onSessionEnd={(state) => void finishSession(state)} /> : null}
+    {screen === "summary" && completed ? <SessionSummaryScreen completed={completed} masteryBefore={masteryBefore} masteryAfter={masteryAfter} onHome={() => void returnHome()} onRepeat={() => void startSession(completed.session.selectedSkillIds, completed.session.settings, completed.session.assignmentId)} /> : null}
+  </main></div></div>;
 }

@@ -1,73 +1,59 @@
-# React + TypeScript + Vite
+# Atomic Math
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Atomic Math is a Hebrew-first mathematics practice application. The current student experience presents teacher assignments, Domain-based free practice, and a Skill Map while continuing to work when the optional Google Sheets backend is unavailable.
 
-Currently, two official plugins are available:
+## Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Requirements: a current Node.js release and npm.
 
-## React Compiler
-
-The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```text
+npm install
+npm run dev
+npm test
+npm run lint
+npm run build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Copy `.env.example` to `.env.local` to set the temporary development student and optional Apps Script URL. `.env.local` is ignored by Git. Without a backend URL, the application runs in local/offline mode and stores attempts and sessions in IndexedDB.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Manual Google Sheets and Apps Script deployment is documented in [SETUP.md](./SETUP.md).
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Current architecture
+
+```text
+Student UI
+  → session engine
+  → Attempt evidence
+  → local IndexedDB
+  → synchronization queue
+  → Apps Script / Google Sheets
 ```
+
+`Attempt` is the authoritative learning record. Mastery is a deterministic projection derived from Attempts; the `Mastery` Sheet and cached snapshots are rebuildable views, not primary evidence.
+
+- `src/app`: React screens, top-level composition, and application services.
+- `src/domain`: framework-independent session, mastery, attempt, and student-home rules.
+- `src/content`: Domain/Skill catalog plus explicitly isolated legacy content adapters.
+- `src/infrastructure`: IndexedDB persistence, transport client, and synchronization.
+- `src/shared`: generic parsing, logging, assertions, and seeded-random utilities.
+- `src/ui`: reusable rendering and design primitives.
+- `apps-script`: manually deployed Google Apps Script backend.
+- `scripts`: deterministic generators and Node-based test suites.
+
+See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for boundaries and current compatibility decisions.
+
+## Adding skills and questions
+
+1. Add the Domain or Skill metadata under `src/content/catalog`.
+2. Add question definitions under the appropriate content/question module.
+3. Ensure every question entering normal practice has a registered `skillId`.
+4. Add the definition to the relevant question pool.
+5. Run catalog, generator, and session tests.
+
+Legacy signed-number definitions still receive `skillId` through `src/content/legacy/signedNumbersAdapter.ts`. New content should provide `skillId` directly and must not add new topic-to-skill mappings.
+
+## Offline and synchronization behavior
+
+Attempts are saved locally before synchronization. Retryable failures remain pending with bounded exponential backoff. Non-retryable records are marked `invalid`, retained in IndexedDB for inspection, and excluded from future retries without blocking other records. Student bootstrap data is cached for offline Home rendering.
+
+The current server/local mastery policy chooses the projection with demonstrably fresher evidence. It does not merge histories from multiple devices; that limitation is documented in the architecture notes.

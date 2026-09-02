@@ -17,7 +17,7 @@ function getVarType(spec: VarSpec): VarType {
 
 function normalizeBounds(spec: VarSpec): { min: number; max: number } {
   let min = Math.min(spec.min, spec.max);
-  let max = Math.max(spec.min, spec.max);
+  const max = Math.max(spec.min, spec.max);
   if (getVarType(spec) === "natural") {
     min = Math.max(0, min);
   }

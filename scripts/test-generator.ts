@@ -266,6 +266,8 @@ run("generated question seed is deterministic", () => {
   const different = buildGeneratedQuestion(definition, { seed: 43 });
 
   assert.equal(first.id, second.id);
+  assert.equal(first.generatorSeed, 42);
+  assert.equal(second.generatorSeed, 42);
   assert.equal(first.renderedExpression, second.renderedExpression);
   assert.equal(first.computedDifficulty, second.computedDifficulty);
   assert.notEqual(first.id, different.id);

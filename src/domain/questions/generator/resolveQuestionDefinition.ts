@@ -10,6 +10,7 @@ import {
 } from "./antiRepetition.ts";
 
 type ResolveQuestionOptions = {
+  seed?: number;
   recentHistory?: GeneratedQuestionRecentHistory;
   antiRepetitionConfig?: Partial<AntiRepetitionConfig>;
 };
@@ -23,6 +24,7 @@ export function resolveQuestionDefinition(
   }
 
   const resolved = buildGeneratedQuestion(question, {
+    seed: options.seed,
     recentHistory: options.recentHistory,
     antiRepetitionConfig: options.antiRepetitionConfig,
   });

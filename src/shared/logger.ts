@@ -1,6 +1,7 @@
 type Level = "debug" | "info" | "warn" | "error";
 
-const isDev = import.meta.env.DEV;
+const runtimeMeta = import.meta as ImportMeta & { env?: { DEV?: boolean } };
+const isDev = runtimeMeta.env?.DEV ?? false;
 
 function fmt(scope: string | undefined, args: unknown[]) {
   return scope ? [`[${scope}]`, ...args] : args;

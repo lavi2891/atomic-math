@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AnswerResult } from "@domain/results/types";
 import type { RawAnswer, Question } from "@domain/questions/types";
-import type { RecordAttemptInput } from "@domain/stats/types";
 import { evaluateAnswer } from "@domain/questions/evaluators";
 import { assert, unreachable } from "@shared/assert";
 
@@ -20,6 +19,7 @@ type LastEval = {
   attemptIndex: number;
   responseTimeMs: number;
   checkedAt: number;
+  normalizedAnswer?: unknown;
 };
 
 type SolveState = {
@@ -42,15 +42,13 @@ export type QuestionSolveState = {
   lastEval: LastEval | null;
 };
 
-export type QuestionAttemptEvent = RecordAttemptInput;
-
 export type UseQuestionSolveResult = {
   state: QuestionSolveState;
   actions: {
     setNumericValue: (value: string) => void;
     setSingleId: (value: string) => void;
     setMultiIds: (value: string[]) => void;
-    check: (numericParsedValue?: number | null) => QuestionAttemptEvent | null;
+    check: (numericParsedValue?: number | null) => AnswerResult | null;
     nextResult: () => AnswerResult | null;
   };
   derived: {
@@ -84,7 +82,6 @@ function getStateForQuestion(
 export function useQuestionSolve(
   question: Question,
   mode: Mode,
-  rated: boolean,
 ): UseQuestionSolveResult {
   const startTsRef = useRef<number>(0);
   const checkedAtRef = useRef<number | null>(null);
@@ -164,7 +161,7 @@ export function useQuestionSolve(
 
   function check(
     numericParsedValue?: number | null,
-  ): QuestionAttemptEvent | null {
+  ): AnswerResult | null {
     if (mode !== "solve") return null;
     if (!canCheck) return null;
 
@@ -184,6 +181,7 @@ export function useQuestionSolve(
     let raw: AnyRawAnswer;
     let isCorrect: boolean;
     let message: string | undefined;
+    let normalizedAnswer: unknown;
 
     if (question.type === "numeric") {
       assert(
@@ -197,11 +195,13 @@ export function useQuestionSolve(
       const evaluation = evaluateAnswer(question, raw);
       isCorrect = evaluation.isCorrect;
       message = evaluation.message;
+      normalizedAnswer = evaluation.normalizedAnswer;
     } else {
       raw = buildRaw();
       const evaluation = evaluateAnswer(question, raw);
       isCorrect = evaluation.isCorrect;
       message = evaluation.message;
+      normalizedAnswer = evaluation.normalizedAnswer;
     }
 
     const responseTimeMs =
@@ -220,6 +220,7 @@ export function useQuestionSolve(
           attemptIndex,
           responseTimeMs,
           checkedAt,
+          normalizedAnswer,
         },
         nextAttemptIndex: next.nextAttemptIndex + 1,
       };
@@ -228,9 +229,12 @@ export function useQuestionSolve(
     return {
       questionId: question.id,
       topicId: question.topicId,
-      correct: isCorrect,
-      timeMs: responseTimeMs,
-      rated,
+      attemptIndex,
+      isCorrect,
+      rawAnswer: raw,
+      normalizedAnswer,
+      responseTimeMs,
+      timestamp: checkedAt,
     };
   }
 
@@ -244,8 +248,9 @@ export function useQuestionSolve(
       attemptIndex: lastEval.attemptIndex,
       isCorrect: lastEval.isCorrect,
       rawAnswer: lastEval.raw,
+      normalizedAnswer: lastEval.normalizedAnswer,
       responseTimeMs: lastEval.responseTimeMs,
-      timestamp: Date.now(),
+      timestamp: lastEval.checkedAt,
     };
   }
 

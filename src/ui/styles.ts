@@ -1,21 +1,6 @@
 import { theme } from "../theme/theme";
 
 export const styles = {
-  header: {
-    width: "100%",
-    minHeight: 72,
-    paddingBottom: 12,
-    display: "flex",
-    flexDirection: "column" as const,
-    justifyContent: "center",
-  },
-  footer: {
-    width: "100%",
-    paddingTop: 12,
-    paddingBottom: 8,
-    display: "flex",
-    justifyContent: "center",
-  },
   content: {
     width: "100%",
     flex: 1,
@@ -26,11 +11,9 @@ export const styles = {
   },
   page: {
     minHeight: "100vh",
-    width: "100vw",
     display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    overflow: "hidden",
+    justifyContent: "flex-start",
+    alignItems: "stretch",
     padding: theme.layout.pagePadding,
     background: theme.colors.desktopBg,
   },
@@ -46,10 +29,10 @@ export const styles = {
     boxShadow: `0 24px 60px ${theme.colors.shadow}, inset 0 1px 0 ${theme.colors.inset}`,
     display: "flex",
     flexDirection: "column" as const,
-    justifyContent: "flex-start",
-    alignItems: "strech",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 16,
     fontFamily: theme.type.fontFamily,
-    overflow: "hidden",
   },
   title: {
     fontSize: 32,
@@ -63,8 +46,7 @@ export const styles = {
     textAlign: "center" as const,
   },
   button: {
-    width: "100%",
-    padding: "16px 24px",
+    padding: "14px 24px",
     fontSize: 18,
     fontWeight: 600,
     borderRadius: 14,

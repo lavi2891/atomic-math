@@ -1,11 +1,13 @@
 import type { RawAnswer } from "../questions/types";
 
 export interface AnswerResult {
+  /** Ephemeral evaluation/UI state. Attempt is the only persisted learning evidence. */
   questionId: string;
   topicId: string;
   attemptIndex: number;
   isCorrect: boolean;
   rawAnswer: RawAnswer;
+  normalizedAnswer?: unknown;
   responseTimeMs: number;
   timestamp: number; // Date.now()
   sessionId?: string;
