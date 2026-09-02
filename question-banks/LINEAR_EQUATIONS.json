@@ -1,0 +1,1212 @@
+[
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: x + 0 = -3",
+    "answer": -3,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=0|i=0",
+      "seedNumber": 4126636089,
+      "difficulty": 0,
+      "difficultyBucket": 0,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 2x + 1 = 1",
+    "answer": 0,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=0|i=1",
+      "seedNumber": 4109858470,
+      "difficulty": 0,
+      "difficultyBucket": 0,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 4x + 4 = 0",
+    "answer": -1,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=0|i=2",
+      "seedNumber": 4093080851,
+      "difficulty": 0,
+      "difficultyBucket": 0,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 4(x + 0) - 1 = 11",
+    "answer": 3,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=0|i=3",
+      "seedNumber": 4076303232,
+      "difficulty": 0,
+      "difficultyBucket": 0,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 3x - 2 = 7",
+    "answer": 3,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=0|i=4",
+      "seedNumber": 4193746565,
+      "difficulty": 0,
+      "difficultyBucket": 0,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 2(x + 5) + 1 = 19",
+    "answer": 4,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=1|i=0",
+      "seedNumber": 1434665946,
+      "difficulty": 0.1,
+      "difficultyBucket": 1,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 3(x - 6) - 5 = -20",
+    "answer": 1,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=1|i=1",
+      "seedNumber": 1451443565,
+      "difficulty": 0.1,
+      "difficultyBucket": 1,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 4x - 5 = -5",
+    "answer": 0,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=1|i=2",
+      "seedNumber": 1401110708,
+      "difficulty": 0.1,
+      "difficultyBucket": 1,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 4x - 1 = -13",
+    "answer": -3,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=1|i=3",
+      "seedNumber": 1417888327,
+      "difficulty": 0.1,
+      "difficultyBucket": 1,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 4x - 5 = -13",
+    "answer": -2,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=1|i=4",
+      "seedNumber": 1367555470,
+      "difficulty": 0.1,
+      "difficultyBucket": 1,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: x - 6 = -1",
+    "answer": 5,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=2|i=0",
+      "seedNumber": 1594616071,
+      "difficulty": 0.2,
+      "difficultyBucket": 2,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -4x - 5 = -13",
+    "answer": 2,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=2|i=1",
+      "seedNumber": 1577838452,
+      "difficulty": 0.2,
+      "difficultyBucket": 2,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 7x - 1 = 34",
+    "answer": 5,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=2|i=2",
+      "seedNumber": 1628171309,
+      "difficulty": 0.2,
+      "difficultyBucket": 2,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -1(x - 1) + 1 = 7",
+    "answer": -5,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=2|i=3",
+      "seedNumber": 1611393690,
+      "difficulty": 0.2,
+      "difficultyBucket": 2,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 4x + 6 = -6",
+    "answer": -3,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=2|i=4",
+      "seedNumber": 1527505595,
+      "difficulty": 0.2,
+      "difficultyBucket": 2,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: x - 8 = -9",
+    "answer": -1,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=3|i=0",
+      "seedNumber": 3881191336,
+      "difficulty": 0.3,
+      "difficultyBucket": 3,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -9(x + 3) - 1 = -73",
+    "answer": 5,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=3|i=1",
+      "seedNumber": 3897968955,
+      "difficulty": 0.3,
+      "difficultyBucket": 3,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -8(x - 1) - 1 = -33",
+    "answer": 5,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=3|i=2",
+      "seedNumber": 3914746574,
+      "difficulty": 0.3,
+      "difficultyBucket": 3,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 8(x - 3) + 9 = -23",
+    "answer": -1,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=3|i=3",
+      "seedNumber": 3931524193,
+      "difficulty": 0.3,
+      "difficultyBucket": 3,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -2x - 5 = -3",
+    "answer": -1,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=3|i=4",
+      "seedNumber": 3948301812,
+      "difficulty": 0.3,
+      "difficultyBucket": 3,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -9(x - 4) + 5 = 41",
+    "answer": 0,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=4|i=0",
+      "seedNumber": 1066981253,
+      "difficulty": 0.4,
+      "difficultyBucket": 4,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -10x - 7 = -57",
+    "answer": 5,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=4|i=1",
+      "seedNumber": 1050203634,
+      "difficulty": 0.4,
+      "difficultyBucket": 4,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -4x - 3 = 25",
+    "answer": -7,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=4|i=2",
+      "seedNumber": 1033426015,
+      "difficulty": 0.4,
+      "difficultyBucket": 4,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -6x + 2 = -22",
+    "answer": 4,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=4|i=3",
+      "seedNumber": 1016648396,
+      "difficulty": 0.4,
+      "difficultyBucket": 4,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: x - 7 = -7",
+    "answer": 0,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=4|i=4",
+      "seedNumber": 999870777,
+      "difficulty": 0.4,
+      "difficultyBucket": 4,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -x + 0 = -1",
+    "answer": 1,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=5|i=0",
+      "seedNumber": 2133094598,
+      "difficulty": 0.5,
+      "difficultyBucket": 5,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 1(x + 3) - 1 = 3",
+    "answer": 1,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=5|i=1",
+      "seedNumber": 2149872217,
+      "difficulty": 0.5,
+      "difficultyBucket": 5,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 6(x + 10) + 3 = 39",
+    "answer": -4,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=5|i=2",
+      "seedNumber": 2099539360,
+      "difficulty": 0.5,
+      "difficultyBucket": 5,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -2x + 6 = 8",
+    "answer": -1,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=5|i=3",
+      "seedNumber": 2116316979,
+      "difficulty": 0.5,
+      "difficultyBucket": 5,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -x + 0 = 8",
+    "answer": -8,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=5|i=4",
+      "seedNumber": 2200205074,
+      "difficulty": 0.5,
+      "difficultyBucket": 5,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 13(x + 8) - 11 = 132",
+    "answer": 3,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=6|i=0",
+      "seedNumber": 3035375347,
+      "difficulty": 0.6,
+      "difficultyBucket": 6,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -1(x + 8) + 5 = 4",
+    "answer": -7,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=6|i=1",
+      "seedNumber": 3018597728,
+      "difficulty": 0.6,
+      "difficultyBucket": 6,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -4x + 5 = 37",
+    "answer": -8,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=6|i=2",
+      "seedNumber": 3068930585,
+      "difficulty": 0.6,
+      "difficultyBucket": 6,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 9x - 6 = -42",
+    "answer": -4,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=6|i=3",
+      "seedNumber": 3052152966,
+      "difficulty": 0.6,
+      "difficultyBucket": 6,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 7x - 14 = 28",
+    "answer": 6,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=6|i=4",
+      "seedNumber": 3102485823,
+      "difficulty": 0.6,
+      "difficultyBucket": 6,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -6(x + 14) - 11 = -47",
+    "answer": -8,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=7|i=0",
+      "seedNumber": 1563867124,
+      "difficulty": 0.7,
+      "difficultyBucket": 7,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 9(x + 9) - 5 = 148",
+    "answer": 8,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=7|i=1",
+      "seedNumber": 1580644743,
+      "difficulty": 0.7,
+      "difficultyBucket": 7,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 15(x + 1) + 7 = 142",
+    "answer": 8,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=7|i=2",
+      "seedNumber": 1597422362,
+      "difficulty": 0.7,
+      "difficultyBucket": 7,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 3x - 12 = 15",
+    "answer": 9,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=7|i=3",
+      "seedNumber": 1614199981,
+      "difficulty": 0.7,
+      "difficultyBucket": 7,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 15(x + 3) - 5 = 145",
+    "answer": 7,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=7|i=4",
+      "seedNumber": 1496756648,
+      "difficulty": 0.7,
+      "difficultyBucket": 7,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 10(x - 8) + 8 = -22",
+    "answer": 5,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=8|i=0",
+      "seedNumber": 2217999361,
+      "difficulty": 0.8,
+      "difficultyBucket": 8,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 17(x - 13) + 0 = -170",
+    "answer": 3,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=8|i=1",
+      "seedNumber": 2201221742,
+      "difficulty": 0.8,
+      "difficultyBucket": 8,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 12x + 5 = -19",
+    "answer": -2,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=8|i=2",
+      "seedNumber": 2184444123,
+      "difficulty": 0.8,
+      "difficultyBucket": 8,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -14x - 2 = 124",
+    "answer": -9,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=8|i=3",
+      "seedNumber": 2167666504,
+      "difficulty": 0.8,
+      "difficultyBucket": 8,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -3(x + 13) - 9 = -78",
+    "answer": 10,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=8|i=4",
+      "seedNumber": 2285109837,
+      "difficulty": 0.8,
+      "difficultyBucket": 8,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -11(x - 9) - 13 = 53",
+    "answer": 3,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=9|i=0",
+      "seedNumber": 642395362,
+      "difficulty": 0.9,
+      "difficultyBucket": 9,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -18(x + 4) - 5 = 103",
+    "answer": -10,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=9|i=1",
+      "seedNumber": 659172981,
+      "difficulty": 0.9,
+      "difficultyBucket": 9,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -15(x - 5) + 8 = 233",
+    "answer": -10,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=9|i=2",
+      "seedNumber": 608840124,
+      "difficulty": 0.9,
+      "difficultyBucket": 9,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 12(x + 13) + 1 = 169",
+    "answer": 1,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=9|i=3",
+      "seedNumber": 625617743,
+      "difficulty": 0.9,
+      "difficultyBucket": 9,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -14(x + 1) - 2 = 82",
+    "answer": -7,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=9|i=4",
+      "seedNumber": 575284886,
+      "difficulty": 0.9,
+      "difficultyBucket": 9,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 8(x - 7) - 2 = -50",
+    "answer": 1,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=10|i=0",
+      "seedNumber": 48320010,
+      "difficulty": 1,
+      "difficultyBucket": 10,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 1(x + 15) - 2 = 6",
+    "answer": -7,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=10|i=1",
+      "seedNumber": 65097629,
+      "difficulty": 1,
+      "difficultyBucket": 10,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -8(x - 4) - 7 = 9",
+    "answer": 2,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=10|i=2",
+      "seedNumber": 14764772,
+      "difficulty": 1,
+      "difficultyBucket": 10,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: -12(x + 15) + 12 = -168",
+    "answer": 0,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=10|i=3",
+      "seedNumber": 31542391,
+      "difficulty": 1,
+      "difficultyBucket": 10,
+      "tags": [
+        "linear-equation",
+        "parentheses",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "distribution-errors",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "numeric",
+    "prompt": "פתרו: 4x - 7 = -11",
+    "answer": -1,
+    "meta": {
+      "topicId": "LINEAR_EQUATIONS",
+      "templateId": "linearEquation1",
+      "seedKey": "LINEAR_EQUATIONS|linearEquation1|d=10|i=4",
+      "seedNumber": 4276176830,
+      "difficulty": 1,
+      "difficultyBucket": 10,
+      "tags": [
+        "linear-equation",
+        "one-step",
+        "integer-solution"
+      ],
+      "misconceptions": [
+        "sign-errors",
+        "move-terms-wrong-direction"
+      ]
+    }
+  }
+]

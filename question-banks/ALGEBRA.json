@@ -1,0 +1,1487 @@
+[
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -3,  B = 4",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 1,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=0|i=0",
+      "seedNumber": 1968378369,
+      "difficulty": 0,
+      "difficultyBucket": 0,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 2,  B = 2",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 2,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=0|i=1",
+      "seedNumber": 1951600750,
+      "difficulty": 0,
+      "difficultyBucket": 0,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 3,  B = -2",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 0,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=0|i=2",
+      "seedNumber": 1934823131,
+      "difficulty": 0,
+      "difficultyBucket": 0,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 0,  B = 2",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 1,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=0|i=3",
+      "seedNumber": 1918045512,
+      "difficulty": 0,
+      "difficultyBucket": 0,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 0,  B = 1",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 1,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=0|i=4",
+      "seedNumber": 2035488845,
+      "difficulty": 0,
+      "difficultyBucket": 0,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -2,  B = 2",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 1,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=1|i=0",
+      "seedNumber": 392774370,
+      "difficulty": 0.1,
+      "difficultyBucket": 1,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 4,  B = -4",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 0,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=1|i=1",
+      "seedNumber": 409551989,
+      "difficulty": 0.1,
+      "difficultyBucket": 1,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 4x + 1,  B = 4x + 4",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 1,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=1|i=2",
+      "seedNumber": 359219132,
+      "difficulty": 0.1,
+      "difficultyBucket": 1,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 2x + 5,  B = 2x - 2",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 0,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=1|i=3",
+      "seedNumber": 375996751,
+      "difficulty": 0.1,
+      "difficultyBucket": 1,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 2,  B = -1",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 0,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=1|i=4",
+      "seedNumber": 325663894,
+      "difficulty": 0.1,
+      "difficultyBucket": 1,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -5,  B = -4",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 1,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=2|i=0",
+      "seedNumber": 3618899311,
+      "difficulty": 0.2,
+      "difficultyBucket": 2,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -3,  B = -3",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 2,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=2|i=1",
+      "seedNumber": 3602121692,
+      "difficulty": 0.2,
+      "difficultyBucket": 2,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -6,  B = -7",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 0,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=2|i=2",
+      "seedNumber": 3652454549,
+      "difficulty": 0.2,
+      "difficultyBucket": 2,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -3,  B = -5",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 0,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=2|i=3",
+      "seedNumber": 3635676930,
+      "difficulty": 0.2,
+      "difficultyBucket": 2,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -1,  B = -1",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 2,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=2|i=4",
+      "seedNumber": 3551788835,
+      "difficulty": 0.2,
+      "difficultyBucket": 2,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 4,  B = 1",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 0,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=3|i=0",
+      "seedNumber": 1186049808,
+      "difficulty": 0.3,
+      "difficultyBucket": 3,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 6x - 7,  B = 7x - 8",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=3|i=1",
+      "seedNumber": 1202827427,
+      "difficulty": 0.3,
+      "difficultyBucket": 3,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 2,  B = -2",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 0,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=3|i=2",
+      "seedNumber": 1219605046,
+      "difficulty": 0.3,
+      "difficultyBucket": 3,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -5x + 3,  B = -8x - 2",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=3|i=3",
+      "seedNumber": 1236382665,
+      "difficulty": 0.3,
+      "difficultyBucket": 3,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -8,  B = 2",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 1,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=3|i=4",
+      "seedNumber": 1253160284,
+      "difficulty": 0.3,
+      "difficultyBucket": 3,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -3x - 5,  B = 7x + 1",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=4|i=0",
+      "seedNumber": 96299981,
+      "difficulty": 0.4,
+      "difficultyBucket": 4,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -2,  B = 5",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 1,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=4|i=1",
+      "seedNumber": 79522362,
+      "difficulty": 0.4,
+      "difficultyBucket": 4,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 6,  B = 9",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 1,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=4|i=2",
+      "seedNumber": 62744743,
+      "difficulty": 0.4,
+      "difficultyBucket": 4,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 6x,  B = 10x + 5",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=4|i=3",
+      "seedNumber": 45967124,
+      "difficulty": 0.4,
+      "difficultyBucket": 4,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = x + 1,  B = x - 8",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 0,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=4|i=4",
+      "seedNumber": 29189505,
+      "difficulty": 0.4,
+      "difficultyBucket": 4,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 10,  B = 3",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 0,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=5|i=0",
+      "seedNumber": 2815663278,
+      "difficulty": 0.5,
+      "difficultyBucket": 5,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 6x + 4,  B = -x + 2",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=5|i=1",
+      "seedNumber": 2832440897,
+      "difficulty": 0.5,
+      "difficultyBucket": 5,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 7x - 7,  B = -6x - 4",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=5|i=2",
+      "seedNumber": 2782108040,
+      "difficulty": 0.5,
+      "difficultyBucket": 5,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -10,  B = -6",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 1,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=5|i=3",
+      "seedNumber": 2798885659,
+      "difficulty": 0.5,
+      "difficultyBucket": 5,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -10,  B = 8",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 1,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=5|i=4",
+      "seedNumber": 2882773754,
+      "difficulty": 0.5,
+      "difficultyBucket": 5,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -3,  B = 12",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 1,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=6|i=0",
+      "seedNumber": 1322363451,
+      "difficulty": 0.6,
+      "difficultyBucket": 6,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -6,  B = 6",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 1,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=6|i=1",
+      "seedNumber": 1305585832,
+      "difficulty": 0.6,
+      "difficultyBucket": 6,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -x - 5,  B = 12x - 5",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=6|i=2",
+      "seedNumber": 1355918689,
+      "difficulty": 0.6,
+      "difficultyBucket": 6,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -12x - 3,  B = -12x + 7",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 1,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=6|i=3",
+      "seedNumber": 1339141070,
+      "difficulty": 0.6,
+      "difficultyBucket": 6,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -2,  B = 3",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 1,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=6|i=4",
+      "seedNumber": 1389473927,
+      "difficulty": 0.6,
+      "difficultyBucket": 6,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 4x - 14,  B = 8x - 10",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=7|i=0",
+      "seedNumber": 3608938716,
+      "difficulty": 0.7,
+      "difficultyBucket": 7,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 2x - 7,  B = -12x + 5",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=7|i=1",
+      "seedNumber": 3625716335,
+      "difficulty": 0.7,
+      "difficultyBucket": 7,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -11x + 5,  B = 8x - 11",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=7|i=2",
+      "seedNumber": 3642493954,
+      "difficulty": 0.7,
+      "difficultyBucket": 7,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 11x - 1,  B = 8x + 5",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=7|i=3",
+      "seedNumber": 3659271573,
+      "difficulty": 0.7,
+      "difficultyBucket": 7,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -2x - 3,  B = -x - 5",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=7|i=4",
+      "seedNumber": 3541828240,
+      "difficulty": 0.7,
+      "difficultyBucket": 7,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 8x - 10,  B = -4x - 8",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=8|i=0",
+      "seedNumber": 3877015097,
+      "difficulty": 0.8,
+      "difficultyBucket": 8,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 5x + 15,  B = -14x - 15",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=8|i=1",
+      "seedNumber": 3860237478,
+      "difficulty": 0.8,
+      "difficultyBucket": 8,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 13x + 9,  B = 15x + 9",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=8|i=2",
+      "seedNumber": 3843459859,
+      "difficulty": 0.8,
+      "difficultyBucket": 8,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -5x + 10,  B = -12x - 10",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=8|i=3",
+      "seedNumber": 3826682240,
+      "difficulty": 0.8,
+      "difficultyBucket": 8,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 5x + 6,  B = -15x + 3",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=8|i=4",
+      "seedNumber": 3944125573,
+      "difficulty": 0.8,
+      "difficultyBucket": 8,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -3x + 2,  B = 16x - 7",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=9|i=0",
+      "seedNumber": 1185044954,
+      "difficulty": 0.9,
+      "difficultyBucket": 9,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 8x - 16,  B = 6x - 16",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=9|i=1",
+      "seedNumber": 1201822573,
+      "difficulty": 0.9,
+      "difficultyBucket": 9,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 16,  B = -13x - 11",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=9|i=2",
+      "seedNumber": 1151489716,
+      "difficulty": 0.9,
+      "difficultyBucket": 9,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -14,  B = 4",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 1,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=9|i=3",
+      "seedNumber": 1168267335,
+      "difficulty": 0.9,
+      "difficultyBucket": 9,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 14,  B = -17",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 0,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=9|i=4",
+      "seedNumber": 1117934478,
+      "difficulty": 0.9,
+      "difficultyBucket": 9,
+      "tags": [
+        "compare-expressions",
+        "constant-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -2x - 13,  B = 3x + 7",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=10|i=0",
+      "seedNumber": 3415620418,
+      "difficulty": 1,
+      "difficultyBucket": 10,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 8x + 18,  B = 3x + 10",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=10|i=1",
+      "seedNumber": 3432398037,
+      "difficulty": 1,
+      "difficultyBucket": 10,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -9x + 15,  B = 2x + 1",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=10|i=2",
+      "seedNumber": 3382065180,
+      "difficulty": 1,
+      "difficultyBucket": 10,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = -16x - 9,  B = -18x - 15",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=10|i=3",
+      "seedNumber": 3398842799,
+      "difficulty": 1,
+      "difficultyBucket": 10,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  },
+  {
+    "kind": "singleChoice",
+    "prompt": "השוו בין A ו-B:  A = 13x - 15,  B = -11x - 12",
+    "choices": [
+      "A > B",
+      "A < B",
+      "A = B",
+      "אי אפשר לדעת"
+    ],
+    "correctIndex": 3,
+    "meta": {
+      "topicId": "ALGEBRA",
+      "templateId": "compareExpressions1",
+      "seedKey": "ALGEBRA|compareExpressions1|d=10|i=4",
+      "seedNumber": 3348509942,
+      "difficulty": 1,
+      "difficultyBucket": 10,
+      "tags": [
+        "compare-expressions",
+        "algebraic-comparison"
+      ],
+      "misconceptions": [
+        "compare-by-constant-only",
+        "sign-errors"
+      ]
+    }
+  }
+]
