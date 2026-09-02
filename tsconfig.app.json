@@ -26,13 +26,12 @@
     "noUncheckedSideEffectImports": true,
 
     /* Paths */
-    "baseUrl": "src",
     "paths": {
-      "@domain/*": ["domain/*"],
-      "@ui/*": ["ui/*"],
-      "@app/*": ["app/*"],
-      "@copy/*": ["copy/*"],
-      "@shared/*": ["shared/*"]
+      "@domain/*": ["./src/domain/*"],
+      "@ui/*": ["./src/ui/*"],
+      "@app/*": ["./src/app/*"],
+      "@copy/*": ["./src/copy/*"],
+      "@shared/*": ["./src/shared/*"]
     }
   },
   "include": ["src"]
