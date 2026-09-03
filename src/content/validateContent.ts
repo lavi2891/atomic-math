@@ -6,6 +6,8 @@ import { isGeneratedQuestionDefinition } from "../domain/questions/definitions.t
 import { createRecentHistory, recordGeneratedQuestionHistory } from "../domain/questions/generator/antiRepetition.ts";
 import { buildGeneratedQuestion } from "../domain/questions/generator/buildGeneratedQuestion.ts";
 import { evaluateExpression } from "../domain/questions/generator/evaluateExpression.ts";
+import type { GeneratedQuestionDefinition, ParamSpec } from "../domain/questions/generator/types.ts";
+import type { SkillQuestionDefinition } from "../domain/session/skillQuestionSelector.ts";
 
 export interface SkillContentAudit {
   skillId: string;
@@ -75,6 +77,36 @@ function difficultyMatchesBand(band: string | undefined, difficulty: number | un
   return difficulty >= 0.8 && difficulty <= 1;
 }
 
+function parameterBounds(spec: ParamSpec): { min: number; max: number } | null {
+  if (spec.type === "rational") return null;
+  return { min: spec.min, max: spec.max };
+}
+
+const BAND_ORDER = ["A", "B", "C", "D"];
+
+export function magnitudeBandProgressionIssues(definitions: readonly SkillQuestionDefinition[]): string[] {
+  const groups = new Map<string, GeneratedQuestionDefinition[]>();
+  for (const definition of definitions) {
+    if (!isGeneratedQuestionDefinition(definition) || definition.metadata?.difficultyFeature !== "magnitude" || !definition.contentFamily) continue;
+    const key = `${definition.skillId}|${definition.contentFamily}`;
+    groups.set(key, [...(groups.get(key) ?? []), definition]);
+  }
+  const issues: string[] = [];
+  for (const [key, family] of groups) {
+    family.sort((left, right) => BAND_ORDER.indexOf(left.difficultyBand ?? "") - BAND_ORDER.indexOf(right.difficultyBand ?? ""));
+    for (let index = 1; index < family.length; index += 1) {
+      const easier = family[index - 1]!; const harder = family[index]!;
+      const meaningfulIncrease = Object.entries(harder.params).some(([name, hardSpec]) => {
+        const easySpec = easier.params[name]; if (!easySpec) return true;
+        const easy = parameterBounds(easySpec); const hard = parameterBounds(hardSpec); if (!easy || !hard) return false;
+        return hard.min >= easy.max || (hard.min > easy.min && hard.max > easy.max);
+      });
+      if (!meaningfulIncrease) issues.push(`${key}: Band ${harder.difficultyBand} does not increase a magnitude range beyond Band ${easier.difficultyBand}`);
+    }
+  }
+  return issues;
+}
+
 export function validateFoundationalContent(samplesPerGenerator = 100): ContentValidationReport {
   const issues: string[] = [];
   const warnings: string[] = [];
@@ -83,6 +115,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
   const correctPositions = new Map<number, number>();
   const fixedSurfaceKeys = new Set<string>();
   const normalizedFamilies = new Map<string, { skillId: string; family: string; ids: string[] }>();
+  issues.push(...magnitudeBandProgressionIssues(FOUNDATIONAL_QUESTIONS));
   for (const skill of SKILLS) for (const issue of validateEvidencePolicy(skill.evidencePolicy)) issues.push(`${skill.id}: ${issue}`);
   for (const entry of CONTENT_READINESS) for (const issue of readinessIssues(entry, FOUNDATIONAL_QUESTIONS)) issues.push(`${entry.skillId}: ${issue}`);
   for (const definition of FOUNDATIONAL_QUESTIONS) {
@@ -95,7 +128,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
       const authoringMode: string | undefined = definition.authoringMode;
       if (authoringMode !== "generated") issues.push("generated definition: authoring mode is missing");
       if (!Object.keys(definition.params).length) issues.push(`${definition.id}: generator has no parameters`);
-      if (!definition.answerSemantics) issues.push(`${definition.id}: answer semantics are implicit`);
+      if (!definition.choiceBuilder && !definition.answerSemantics) issues.push(`${definition.id}: answer semantics are implicit`);
       const rendered = new Set<string>();
       for (let seed = 1; seed <= samplesPerGenerator; seed += 1) {
         try {
@@ -103,9 +136,20 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
           const repeat = buildGeneratedQuestion(definition, { seed, maxAttempts: 100 });
           if (question.id !== repeat.id || question.renderedExpression !== repeat.renderedExpression) issues.push(`${definition.id}: seed ${seed} is not reproducible`);
           if (question.renderedExpression.includes("undefined") || optionText(question.prompt).includes("undefined")) issues.push(`${definition.id}: seed ${seed} rendered undefined content`);
-          const expected = evaluateExpression(question.renderedExpression);
-          const actual = evaluateExpression(question.correctAnswers[0]);
-          if (rationalKey(expected) !== rationalKey(actual)) issues.push(`${definition.id}: seed ${seed} answer does not match expression`);
+          if (question.type === "numeric") {
+            const expected = evaluateExpression(question.renderedExpression);
+            const actual = evaluateExpression(question.correctAnswers[0]);
+            if (rationalKey(expected) !== rationalKey(actual)) issues.push(`${definition.id}: seed ${seed} answer does not match expression`);
+          } else {
+            const optionValues = question.options.map((option) => optionText(option.content));
+            const correctIds = question.type === "singleChoice" ? [question.correctOptionId] : question.correctOptionIds;
+            if (new Set(optionValues).size !== optionValues.length) issues.push(`${definition.id}: seed ${seed} has duplicate options`);
+            if (correctIds.length === 0 || correctIds.some((id) => !question.options.some((option) => option.id === id))) issues.push(`${definition.id}: seed ${seed} has invalid correct options`);
+            for (const option of question.options) {
+              if (correctIds.includes(option.id) && option.misconceptionId) issues.push(`${definition.id}: seed ${seed} correct option has misconception metadata`);
+              if (!correctIds.includes(option.id) && (!option.misconceptionId || !option.misconceptionRationale)) issues.push(`${definition.id}: seed ${seed} distractor metadata is incomplete`);
+            }
+          }
           if (!difficultyMatchesBand(definition.difficultyBand, question.difficulty)) issues.push(`${definition.id}: seed ${seed} difficulty is outside band ${definition.difficultyBand}`);
           rendered.add(question.renderedExpression);
           generatedSamples += 1;

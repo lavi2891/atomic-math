@@ -59,7 +59,7 @@ export type NumericAnswerSemantics =
   | { kind: "exactDecimal" }
   | { kind: "rounded"; decimalPlaces: number };
 
-export interface GeneratedQuestionInstance extends NumericQuestion {
+export type GeneratedQuestionInstance = (NumericQuestion | SingleChoiceQuestion | MultiChoiceQuestion) & {
   baseId: string;
   templateId: string;
   generatorSeed?: number;
@@ -69,7 +69,7 @@ export interface GeneratedQuestionInstance extends NumericQuestion {
   structureKey?: string;
   variantGroup?: string;
   metadata?: Record<string, string | number | boolean | null | undefined>;
-}
+};
 
 export interface ChoiceOption {
   id: string;
@@ -106,7 +106,7 @@ export type NumericInputFormat =
 export function isGeneratedQuestionInstance(
   question: Question,
 ): question is GeneratedQuestionInstance {
-  return "renderedExpression" in question;
+  return "templateId" in question;
 }
 
 export type RawAnswerByType = {

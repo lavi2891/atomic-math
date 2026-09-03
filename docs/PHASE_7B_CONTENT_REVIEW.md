@@ -81,3 +81,51 @@ The bank can now be consumed by a future review tool without implementing that t
 ## Deferred content
 
 Multi-digit written algorithms, estimation, decimal content, fraction operations beyond equivalence, advanced order of operations, multi-step algebra/equations, coordinates, and the ratio/proportion/percent roadmap remain outside Phase 7B.
+
+## First human content-review correction pass — 2026-09-03
+
+The exported review contained 198 records: 195 `needs-fix`, 3 `approved`, and no `rejected` records. Empty notes adjacent to a noted definition were treated as family-level feedback. This pass does not import review status into `CONTENT_READINESS`; every structurally replaced family is tagged `requires-rereview` and must be reviewed again under its new generator IDs.
+
+### Applied feedback themes
+
+- Repeated fixed numeric conceptual variants were replaced with deterministic choice generators.
+- `AR_ADD_FACTS` A/B magnitude ranges now progress from 0–10 to 10–20 instead of allowing the harder Band to routinely produce smaller operands.
+- Multiplication uses concise concrete equal-group contexts and excludes the ambiguous `2 + 2 = 2 × 2` case.
+- Division has separate equal-sharing and grouping families.
+- `AR_SUB_FACTS` now tests subtraction-as-removal and the inverse addition relationship with explicit questions.
+- Number-line wording explicitly says “משמאל לאפס על ציר המספרים”.
+- Factors/multiples uses “איזה מהמספרים הבאים” and `multiChoice` when two answers are intended.
+- `FRAC_MEANING` and both directions of `FRAC_EQUIV` are generated without duplicate or accidentally equivalent options.
+
+### Review-ID migration
+
+| Old reviewed IDs/family | Structural replacement | Re-review status |
+|---|---|---|
+| `MVP_AR_PLACE_VALUE_CONCEPT_1..18` | `MVP_AR_PLACE_VALUE_GEN_A/B/C` | Required |
+| active `MVP_AR_ADD_FACTS_CONCEPT_*` | `MVP_AR_ADD_FACTS_MISSING_A/B`, `MVP_AR_ADD_FACTS_COMMUTE_A/B` | Required |
+| active `MVP_AR_SUB_FACTS_CONCEPT_*` | `MVP_AR_SUB_FACTS_REMOVE_A/B`, `MVP_AR_SUB_FACTS_INVERSE_A/B` | Required |
+| active `MVP_AR_MUL_F_*_CONCEPT_*` | `MVP_AR_MUL_F_*_CONTEXT_A/B` | Required |
+| active `MVP_AR_DIV_F_*_CONCEPT_*` | `MVP_AR_DIV_F_*_SHARING_A/B`, `MVP_AR_DIV_F_*_GROUPING_A/B` | Required |
+| active `MVP_AR_FACTORS_MULTIPLES_CONCEPT_*` | `MVP_AR_FACTORS_MULTIPLES_MULTI_A/B/C` | Required |
+| active `MVP_OPS_ORDER_BASIC_CONCEPT_*` | `MVP_OPS_ORDER_BASIC_FIRST_A/B/C` | Required |
+| `MVP_INT_NUMBER_LINE_CONCEPT_1..18` | `MVP_INT_NUMBER_LINE_LEFT_A/B/C` | Required |
+| `MVP_FRAC_MEANING_CONCEPT_1..18` | `MVP_FRAC_MEANING_PARTS_A/B/C` | Required |
+| `MVP_FRAC_EQUIV_CONCEPT_1..18` | `MVP_FRAC_EQUIV_FORWARD_A/B/C`, `MVP_FRAC_EQUIV_REVERSE_A/B/C` | Required |
+| `MVP_AR_ADD_FACTS_A_A`, `MVP_AR_ADD_FACTS_B_A/B` | IDs retained; A/B parameter ranges corrected structurally | Required |
+
+The 192 replaced curated IDs remain valid as historical `Attempt.questionId` values but are no longer active definitions. No automatic migration of local author-review records is performed.
+
+### Preserved and deferred families
+
+The approved definitions `MVP_INT_ADD_B_A`, `MVP_INT_ADD_C_A`, and `MVP_OPS_ORDER_BASIC_A_A` retain identical seed-42 expression/answer snapshots. Unreviewed families such as `INT_COMPARE`, `INT_NEGATION`, `ALG_EQUALITY`, `ALG_VARIABLE`, `ALG_SUBSTITUTE`, `EQ_ADD`, and `EQ_MUL` were intentionally left unchanged. Their existing near-identical-family warnings remain future review debt, not unresolved notes from this export.
+
+### Inventory change
+
+| Inventory | Before | After |
+|---|---:|---:|
+| Active definitions | 428 | 289 |
+| Generated definitions | 94 | 147 |
+| Curated fixed definitions | 334 | 142 |
+| Fixed numeric definitions | 0 | 0 |
+
+This removes 192 repeated fixed definitions and adds 53 reusable conceptual generators. The broad validator now samples 14,700 deterministic generated instances per run and checks generated choice option uniqueness, answer presence, distractor metadata, reproducibility, and semantic Band progression for magnitude-driven families.

@@ -23,10 +23,11 @@ export function readinessIssues(entry: SkillReadiness, definitions: readonly Ski
   const content = definitions.filter((item) => item.skillId === entry.skillId);
   const fixed = content.filter((item) => !isGeneratedQuestionDefinition(item));
   const generated = content.filter(isGeneratedQuestionDefinition);
+  const generatedEvidence = generated.filter((item) => questionCategory(item) !== "calculation");
   const issues: string[] = [];
   if (!entry.humanReviewed) issues.push("human review flag is false");
-  if (entry.strategy === "fixedHeavy" && fixed.length < 18) issues.push("fixed-heavy threshold requires 18 items");
-  if (entry.strategy === "mixed" && (generated.length < 1 || fixed.length < 10)) issues.push("mixed threshold requires a generator and 10 fixed items");
+  if (entry.strategy === "fixedHeavy" && fixed.length < 18 && generatedEvidence.length < 2) issues.push("fixed-heavy threshold requires 18 curated items or 2 conceptual generators");
+  if (entry.strategy === "mixed" && (generated.length < 1 || (fixed.length < 10 && generatedEvidence.length < 1))) issues.push("mixed threshold requires generated calculation plus curated or generated conceptual evidence");
   for (const category of entry.requiredCategories) if (!content.some((item) => questionCategory(item) === category)) issues.push(`missing category ${category}`);
   for (const band of entry.requiredBands) if (!content.some((item) => item.difficultyBand === band)) issues.push(`missing band ${band}`);
   return issues;

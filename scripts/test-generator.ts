@@ -23,11 +23,15 @@ import { sampleParam } from "../src/domain/questions/generator/sampleParam.ts";
 import { SIGNED_NUMBERS_SAMPLE_QUESTIONS } from "../src/domain/questions/samples/SIGNED_NUMBERS.samples.ts";
 import { parseExactNumericInput } from "../src/shared/mathInput/exactNumeric.ts";
 import type { GeneratedQuestionDefinition, SampledParams } from "../src/domain/questions/generator/types.ts";
-import type { Question } from "../src/domain/questions/types.ts";
+import type { GeneratedQuestionInstance, NumericQuestion, Question } from "../src/domain/questions/types.ts";
 
 function run(name: string, testFn: () => void): void {
   testFn();
   process.stdout.write(`PASS ${name}\n`);
+}
+
+function assertNumericGenerated(question: GeneratedQuestionInstance): asserts question is GeneratedQuestionInstance & NumericQuestion {
+  assert.equal(question.type, "numeric");
 }
 
 function sequenceRng(values: number[]): () => number {
@@ -254,6 +258,7 @@ run("mixed rational and decimal arithmetic requires an exact fraction for repeat
     acceptedInputFormats: ["fraction", "decimal"],
   };
   const question = buildGeneratedQuestion(definition, { seed: 1 });
+  assertNumericGenerated(question);
   assert.equal(question.correctAnswers[0], "-2/15");
   assert.deepEqual(question.acceptedInputFormats, ["fraction"]);
   assert.equal(evaluateAnswer(question, { questionType: "numeric", data: { value: "-2/15" } }).isCorrect, true);
@@ -275,6 +280,7 @@ run("exact decimal generation accepts finite results and rejects repeating resul
     acceptedInputFormats: ["decimal"],
   };
   const finite = buildGeneratedQuestion(finiteDefinition, { seed: 1 });
+  assertNumericGenerated(finite);
   assert.equal(finite.correctAnswers[0], "0.5");
   assert.equal(evaluateAnswer(finite, { questionType: "numeric", data: { value: "0.5" } }).isCorrect, true);
 
@@ -304,6 +310,7 @@ run("declared rounding uses its precision and states it in the prompt", () => {
     answerSemantics: { kind: "rounded", decimalPlaces: 3 },
   };
   const question = buildGeneratedQuestion(definition, { seed: 1 });
+  assertNumericGenerated(question);
   assert.equal(question.correctAnswers[0], "-0.133");
   assert.match(question.prompt.map((part) => part.kind === "text" ? part.value : "").join(""), /3/);
   assert.equal(evaluateAnswer(question, { questionType: "numeric", data: { value: "-0.133" } }).isCorrect, true);
@@ -341,6 +348,7 @@ run("generated question build flow", () => {
     rng: sequenceRng([0, 0, 0, 0.6]),
     maxAttempts: 5,
   });
+  assertNumericGenerated(question);
 
   assert.match(question.id, /^GEN_TEST_001__/);
   assert.equal(question.baseId, "GEN_TEST_001");
@@ -444,6 +452,7 @@ run("signed numbers generator definitions stay curated and buildable", () => {
 
     for (const seed of [11, 29, 47]) {
       const question = buildGeneratedQuestion(definition, { seed, maxAttempts: 100 });
+      assertNumericGenerated(question);
       assert.equal(question.baseId, definition.id);
       assert.equal(question.topicId, "SIGNED_NUMBERS");
       assert.ok(question.renderedExpression.length > 0);

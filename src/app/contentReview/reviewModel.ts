@@ -119,7 +119,7 @@ export function reviewDeepLink(filters: ReviewFilters): string {
 }
 
 function definitionType(definition: SkillQuestionDefinition): Question["type"] {
-  return isGeneratedQuestionDefinition(definition) ? "numeric" : definition.type;
+  return isGeneratedQuestionDefinition(definition) ? definition.generatedType ?? "numeric" : definition.type;
 }
 
 export function filterReviewDefinitions(

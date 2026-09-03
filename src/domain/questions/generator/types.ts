@@ -1,4 +1,4 @@
-import type { NumericAnswerSemantics, NumericInputFormat, OptionContent, QuestionAuthoringMode } from "../types.ts";
+import type { ChoiceOption, NumericAnswerSemantics, NumericInputFormat, OptionContent, QuestionAuthoringMode } from "../types.ts";
 import type { QuestionCategory } from "../categories.ts";
 import type { DifficultyBand } from "../../../content/catalog/types.ts";
 
@@ -64,6 +64,12 @@ export type SampledParams = Record<string, SampledParamValue>;
 
 export type DifficultyModel = (sampledParams: SampledParams) => number;
 
+export type GeneratedChoiceDraft =
+  | { type: "singleChoice"; prompt: OptionContent[]; options: ChoiceOption[]; correctOptionId: string }
+  | { type: "multiChoice"; prompt: OptionContent[]; options: ChoiceOption[]; correctOptionIds: string[] };
+
+export type GeneratedChoiceBuilder = (sampledParams: SampledParams) => GeneratedChoiceDraft;
+
 export interface GeneratedQuestionDefinition {
   id: string;
   topicId: string;
@@ -91,6 +97,10 @@ export interface GeneratedQuestionDefinition {
   difficultyModel?: DifficultyModel;
   acceptedInputFormats?: NumericInputFormat[];
   answerSemantics?: NumericAnswerSemantics;
+  /** Optional executable authoring path for generated conceptual choice questions. */
+  choiceBuilder?: GeneratedChoiceBuilder;
+  /** Generated output type; numeric remains the backwards-compatible default. */
+  generatedType?: "singleChoice" | "multiChoice";
   input?: {
     allowMinus?: boolean;
     allowDecimal?: boolean;

@@ -111,6 +111,36 @@ export function buildGeneratedQuestion(
           definition.exprTemplate,
           sampledParams,
         );
+        const computedDifficulty = computeDifficulty(definition, sampledParams);
+        if (definition.choiceBuilder) {
+          const draft = definition.choiceBuilder(sampledParams);
+          if (definition.generatedType && definition.generatedType !== draft.type) throw new Error(`Generated type mismatch for ${definition.id}`);
+          const generatedChoice: GeneratedQuestionInstance = {
+            ...draft,
+            id: `${definition.id}__${hashString32(serializeParams(sampledParams))}`,
+            topicId: definition.topicId,
+            skillId: definition.skillId,
+            category: definition.category ?? "conceptual",
+            difficultyBand: definition.difficultyBand,
+            difficulty: computedDifficulty ?? definition.metadata?.difficulty,
+            misconceptions: draft.options.flatMap((option) => option.misconceptionId ? [option.misconceptionId] : []),
+            version: definition.version,
+            tags: [...new Set([...(definition.tags ?? []), "source:generator"])],
+            authoringMode: definition.authoringMode,
+            contentFamily: definition.contentFamily,
+            baseId: definition.id,
+            templateId: definition.id,
+            generatorSeed: options.seed,
+            renderedExpression,
+            sampledParams: Object.fromEntries(Object.entries(sampledParams).map(([name, value]) => [name, value.expr])),
+            computedDifficulty,
+            structureKey: definition.structureKey,
+            variantGroup: definition.variantGroup,
+            metadata: { ...definition.metadata, source: definition.metadata?.source ?? "generator" },
+          };
+          if (enforceRecentHistory && options.recentHistory && shouldRejectByRecentHistory(generatedChoice, options.recentHistory, antiRepetitionConfig)) continue;
+          return generatedChoice;
+        }
         const result = evaluateExpression(renderedExpression);
         const answerSemantics = definition.answerSemantics ??
           (definition.acceptedInputFormats?.length === 1 && definition.acceptedInputFormats[0] === "decimal"
@@ -136,7 +166,6 @@ export function buildGeneratedQuestion(
           : terminatingDecimal === null
             ? ["fraction" as const]
             : definition.acceptedInputFormats;
-        const computedDifficulty = computeDifficulty(definition, sampledParams);
         const concrete: NumericQuestion = {
           id: `${definition.id}__${hashString32(serializeParams(sampledParams))}`,
           topicId: definition.topicId,

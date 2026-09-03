@@ -11,10 +11,25 @@ import type { Attempt } from "../src/domain/attempts/types.ts";
 import { isAssignmentComplete } from "../src/domain/studentHome/deriveStudentHome.ts";
 import { createChallengeSignature, challengeSignatureKey } from "../src/domain/personalBests/challengeSignature.ts";
 import { resolveQuickPracticeScope } from "../src/domain/studentHome/quickPractice.ts";
-import { auditFoundationalContent, validateFoundationalContent } from "../src/content/validateContent.ts";
+import { auditFoundationalContent, magnitudeBandProgressionIssues, validateFoundationalContent } from "../src/content/validateContent.ts";
+import type { GeneratedQuestionInstance, OptionContent } from "../src/domain/questions/types.ts";
+import type { GeneratedQuestionDefinition } from "../src/domain/questions/generator/types.ts";
 
 function run(name: string, fn: () => void) { fn(); process.stdout.write(`PASS ${name}\n`); }
 const skill = (id: string) => SKILLS.find((item) => item.id === id)!;
+const generatedDefinition = (id: string): GeneratedQuestionDefinition & { skillId: string } => {
+  const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === id);
+  if (!definition || !isGeneratedQuestionDefinition(definition)) throw new Error(`Missing generator ${id}`);
+  return definition;
+};
+const renderedText = (content: OptionContent[]) => content.map((segment) => segment.kind === "text" ? segment.value : segment.latex).join("");
+const optionTexts = (question: GeneratedQuestionInstance) => question.type === "numeric" ? [] : question.options.map((option) => renderedText(option.content));
+const correctOptionTexts = (question: GeneratedQuestionInstance) => {
+  if (question.type === "numeric") return question.correctAnswers;
+  const ids = question.type === "singleChoice" ? [question.correctOptionId] : question.correctOptionIds;
+  return question.options.filter((option) => ids.includes(option.id)).map((option) => renderedText(option.content));
+};
+const fractionValue = (text: string) => { const [numerator, denominator] = text.split("/").map(Number); return numerator! / denominator!; };
 
 run("Skill Group selection maps to atomic fact-family IDs", () => {
   assert.deepEqual(groupAtomicSkillIds("AR_MULTIPLICATION_FACTS"), ["AR_MUL_F_2_5_10", "AR_MUL_F_3_4", "AR_MUL_F_6_7", "AR_MUL_F_8_9"]);
@@ -57,12 +72,12 @@ run("every ready definition carries category and meaningful band metadata", () =
 
 run("foundational authoring intent and normalized inventory stay explicit", () => {
   const audit = auditFoundationalContent();
-  assert.deepEqual({ total: audit.total, generated: audit.generated, curatedFixed: audit.curatedFixed, fixedNumeric: audit.fixedNumeric }, { total: 428, generated: 94, curatedFixed: 334, fixedNumeric: 0 });
+  assert.deepEqual({ total: audit.total, generated: audit.generated, curatedFixed: audit.curatedFixed, fixedNumeric: audit.fixedNumeric }, { total: 289, generated: 147, curatedFixed: 142, fixedNumeric: 0 });
   for (const definition of FOUNDATIONAL_QUESTIONS) {
     assert.ok(definition.contentFamily, definition.id);
     if (isGeneratedQuestionDefinition(definition)) {
       assert.equal(definition.authoringMode, "generated", definition.id);
-      assert.deepEqual(definition.answerSemantics, { kind: "exact" }, definition.id);
+      if (!definition.choiceBuilder) assert.deepEqual(definition.answerSemantics, { kind: "exact" }, definition.id);
     } else {
       assert.equal(definition.authoringMode, "curated", definition.id);
       assert.ok(definition.curationReason, definition.id);
@@ -84,24 +99,125 @@ run("foundational generators cover exact edge cases deterministically", () => {
   };
   const sequence = (values: number[]) => { let index = 0; return () => values[index++] ?? values.at(-1) ?? 0; };
   const addWithZero = buildGeneratedQuestion(generated("MVP_AR_ADD_FACTS_A_A"), { rng: sequence([0, 0]) });
+  assert.equal(addWithZero.type, "numeric");
   assert.deepEqual(addWithZero.sampledParams, { a: "0", b: "1" });
   assert.equal(addWithZero.correctAnswers[0], "1");
   const zeroDifference = buildGeneratedQuestion(generated("MVP_INT_SUB_A_A"), { rng: sequence([0.52, 0]) });
+  assert.equal(zeroDifference.type, "numeric");
   assert.equal(zeroDifference.correctAnswers[0], "0");
   const oppositeSigns = buildGeneratedQuestion(generated("MVP_INT_ADD_A_A"), { rng: sequence([0.44, 0]) });
+  assert.equal(oppositeSigns.type, "numeric");
   assert.equal(oppositeSigns.renderedExpression, "-1+1");
   assert.equal(oppositeSigns.correctAnswers[0], "0");
   const negativeOne = buildGeneratedQuestion(generated("MVP_INT_MUL_A_A"), { rng: sequence([0.45, 0]) });
+  assert.equal(negativeOne.type, "numeric");
   assert.equal(negativeOne.correctAnswers[0], "-1");
   const exactNegativeDivision = buildGeneratedQuestion(generated("MVP_INT_DIV_A_B"), { rng: sequence([0.45, 0]) });
+  assert.equal(exactNegativeDivision.type, "numeric");
   assert.equal(exactNegativeDivision.correctAnswers[0], "-1");
 });
 
 run("full content validation checks configured samples and reports review families", () => {
   const report = validateFoundationalContent(20);
   assert.deepEqual(report.issues, []);
-  assert.equal(report.generatedSamples, 94 * 20);
+  assert.equal(report.generatedSamples, 147 * 20);
   assert.ok(report.warnings.some((warning) => warning.includes("near-identical curated family")));
+});
+
+run("reviewed place-value and fraction-meaning repetitions are generated", () => {
+  const place = buildGeneratedQuestion(generatedDefinition("MVP_AR_PLACE_VALUE_GEN_A"), { seed: 41 });
+  assert.equal(place.type, "singleChoice");
+  assert.match(renderedText(place.prompt), /מה הערך של הספרה/);
+  assert.equal(place.skillId, "AR_PLACE_VALUE");
+  const fraction = buildGeneratedQuestion(generatedDefinition("MVP_FRAC_MEANING_PARTS_B"), { seed: 41 });
+  assert.equal(fraction.type, "singleChoice");
+  const denominator = fraction.sampledParams.a; const numerator = fraction.sampledParams.b;
+  assert.deepEqual(correctOptionTexts(fraction), [`${numerator}/${denominator}`]);
+  assert.match(renderedText(fraction.prompt), /חלקים שווים/);
+});
+
+run("equivalent-fraction generators cover expansion and reverse simplification", () => {
+  for (const id of ["MVP_FRAC_EQUIV_FORWARD_B", "MVP_FRAC_EQUIV_REVERSE_B"]) {
+    const question = buildGeneratedQuestion(generatedDefinition(id), { seed: 27 });
+    assert.equal(question.type, "singleChoice");
+    const answers = correctOptionTexts(question); assert.equal(answers.length, 1);
+    const promptFraction = id.includes("FORWARD") ? `${question.sampledParams.a}/${question.sampledParams.b}` : `${Number(question.sampledParams.a) * Number(question.sampledParams.c)}/${Number(question.sampledParams.b) * Number(question.sampledParams.c)}`;
+    assert.equal(optionTexts(question).filter((option) => Math.abs(fractionValue(option) - fractionValue(promptFraction)) < 1e-12).length, 1, id);
+    assert.match(renderedText(question.prompt), id.includes("FORWARD") ? /שווה ל/ : /הצמצום/);
+  }
+});
+
+run("multiplication generators use concrete contexts without ambiguous addition", () => {
+  for (const skillId of ["AR_MUL_F_2_5_10", "AR_MUL_F_3_4", "AR_MUL_F_6_7", "AR_MUL_F_8_9"]) {
+    const definition = generatedDefinition(`MVP_${skillId}_CONTEXT_A`);
+    for (let seed = 1; seed <= 100; seed += 1) {
+      const question = buildGeneratedQuestion(definition, { seed });
+      const a = Number(question.sampledParams.a); const b = Number(question.sampledParams.b);
+      assert.notEqual(a + b, a * b, `${skillId}:${seed}`);
+      assert.match(renderedText(question.prompt), /(שקיות|קופסאות|מדפים).+\?/);
+      assert.equal(new Set(optionTexts(question)).size, optionTexts(question).length);
+    }
+  }
+});
+
+run("division generators preserve equal-sharing and grouping meanings", () => {
+  const sharing = buildGeneratedQuestion(generatedDefinition("MVP_AR_DIV_F_3_4_SHARING_A"), { seed: 12 });
+  const grouping = buildGeneratedQuestion(generatedDefinition("MVP_AR_DIV_F_3_4_GROUPING_A"), { seed: 12 });
+  assert.match(renderedText(sharing.prompt), /מחלקים שווה בשווה/);
+  assert.match(renderedText(grouping.prompt), /בכל שקית/);
+  assert.equal(sharing.skillId, "AR_DIV_F_3_4");
+  assert.equal(grouping.skillId, "AR_DIV_F_3_4");
+});
+
+run("factors and multiples generator uses multiChoice with exactly the valid multiples", () => {
+  const question = buildGeneratedQuestion(generatedDefinition("MVP_AR_FACTORS_MULTIPLES_MULTI_B"), { seed: 18 });
+  assert.equal(question.type, "multiChoice");
+  const divisor = Number(question.sampledParams.a);
+  assert.equal(correctOptionTexts(question).length, 2);
+  for (const value of correctOptionTexts(question)) assert.equal(Number(value) % divisor, 0);
+  for (const value of optionTexts(question).filter((value) => !correctOptionTexts(question).includes(value))) assert.notEqual(Number(value) % divisor, 0);
+  assert.match(renderedText(question.prompt), /^איזה מהמספרים הבאים/);
+});
+
+run("number-line and subtraction generators use clarified purposeful wording", () => {
+  const numberLine = buildGeneratedQuestion(generatedDefinition("MVP_INT_NUMBER_LINE_LEFT_A"), { seed: 8 });
+  assert.match(renderedText(numberLine.prompt), /משמאל לאפס על ציר המספרים/);
+  assert.equal(FOUNDATIONAL_QUESTIONS.some((item) => item.id.startsWith("MVP_AR_SUB_FACTS_CONCEPT_")), false);
+  for (const id of ["MVP_AR_SUB_FACTS_REMOVE_A", "MVP_AR_SUB_FACTS_INVERSE_A"]) {
+    const question = buildGeneratedQuestion(generatedDefinition(id), { seed: 8 });
+    assert.match(renderedText(question.prompt), /\?/);
+    assert.equal(question.skillId, "AR_SUB_FACTS");
+  }
+});
+
+run("magnitude-driven Bands progress monotonically", () => {
+  assert.deepEqual(magnitudeBandProgressionIssues(FOUNDATIONAL_QUESTIONS), []);
+  const easier = generatedDefinition("MVP_AR_ADD_FACTS_A_A").params.a;
+  const harder = generatedDefinition("MVP_AR_ADD_FACTS_B_A").params.a;
+  assert.ok(easier.type !== "rational" && harder.type !== "rational" && harder.min >= easier.max);
+});
+
+run("reviewed conceptual generators preserve attribution, determinism, and unique options", () => {
+  const reviewedSkills = new Set(["AR_PLACE_VALUE", "AR_ADD_FACTS", "AR_SUB_FACTS", "AR_FACTORS_MULTIPLES", "OPS_ORDER_BASIC", "INT_NUMBER_LINE", "FRAC_MEANING", "FRAC_EQUIV"]);
+  const definitions = FOUNDATIONAL_QUESTIONS.filter((item): item is GeneratedQuestionDefinition & { skillId: string } => isGeneratedQuestionDefinition(item) && !!item.choiceBuilder && (reviewedSkills.has(item.skillId) || item.skillId.startsWith("AR_MUL_F_") || item.skillId.startsWith("AR_DIV_F_")));
+  assert.equal(definitions.length, 53);
+  for (const definition of definitions) {
+    const first = buildGeneratedQuestion(definition, { seed: 73 }); const repeat = buildGeneratedQuestion(definition, { seed: 73 });
+    assert.equal(first.id, repeat.id, definition.id);
+    assert.equal(renderedText(first.prompt), renderedText(repeat.prompt), definition.id);
+    assert.equal(first.skillId, definition.skillId, definition.id);
+    assert.notEqual(first.category, "calculation", definition.id);
+    assert.equal(new Set(optionTexts(first)).size, optionTexts(first).length, definition.id);
+  }
+});
+
+run("previously approved generated definitions remain stable", () => {
+  const snapshots = { MVP_INT_ADD_B_A: ["-12+4", "-8"], MVP_INT_ADD_C_A: ["-24+4", "-20"], MVP_OPS_ORDER_BASIC_A_A: ["4+2*2", "8"] } as const;
+  for (const [id, expected] of Object.entries(snapshots)) {
+    const question = buildGeneratedQuestion(generatedDefinition(id), { seed: 42 });
+    assert.equal(question.type, "numeric");
+    assert.deepEqual([question.renderedExpression, question.correctAnswers[0]], expected, id);
+  }
 });
 
 run("Evidence Policies validate and assignment completion requires coverage and fluency", () => {

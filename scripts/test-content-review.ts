@@ -74,8 +74,8 @@ await run("atomic Skill, category, difficulty, family, and authoring filters com
 
 await run("question type and curationReason filters use definition metadata", () => {
   assert.ok(filter({ questionType: "numeric" }).every(isGeneratedQuestionDefinition));
-  const representation = filter({ questionType: "singleChoice", curationReason: "representation-evidence" });
-  assert.ok(representation.length > 0 && representation.every((item) => !isGeneratedQuestionDefinition(item) && item.curationReason === "representation-evidence"));
+  const reasoning = filter({ questionType: "singleChoice", curationReason: "reasoning-evidence" });
+  assert.ok(reasoning.length > 0 && reasoning.every((item) => !isGeneratedQuestionDefinition(item) && item.curationReason === "reasoning-evidence"));
 });
 
 await run("curated navigation is deterministic and bounded", () => {
@@ -100,7 +100,7 @@ await run("generated review samples are seeded, reproducible, valid, and batchab
   const batch = generatedSampleBatch(definition, 100, 10);
   assert.equal(batch.length, 10);
   assert.deepEqual(batch.map((item) => item.generatorSeed), Array.from({ length: 10 }, (_, index) => 100 + index));
-  assert.ok(batch.every((item) => item.correctAnswers[0] && item.prompt.length));
+  assert.ok(batch.every((item) => item.type === "numeric" && item.correctAnswers[0] && item.prompt.length));
 });
 
 await run("review state persists across repository recreation and supports every status", async () => {
@@ -226,7 +226,7 @@ await run("normal navigation never reparses or replaces URL-derived filters", ()
 
 await run("normalized near-identical content families are first-class", () => {
   const flagged = flaggedCuratedFamilies(FOUNDATIONAL_QUESTIONS);
-  assert.ok(flagged.has("AR_PLACE_VALUE:representation"));
+  assert.ok(flagged.has("INT_COMPARE:reasoning"));
 });
 
 await run("generator parameter types map automatically to Hebrew", () => {
