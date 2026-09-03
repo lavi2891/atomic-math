@@ -44,6 +44,13 @@ body {
 .mastery-badge { flex: 0 0 auto; border: 1px solid #555; border-radius: 999px; padding: 3px 8px; color: #d4d4d4; }
 .assignment-card { display: grid; gap: 6px; padding: 14px; border: 1px solid #424242; border-radius: 12px; background: #353535; }
 .assignment-card .quiet-button { justify-self: start; }
+.timed-presets { display: flex; flex-wrap: wrap; gap: 8px; border: 1px solid #424242; border-radius: 12px; padding: 12px; }
+.timed-presets legend { padding-inline: 6px; }
+.timed-presets button { flex: 1 1 92px; border: 1px solid #4a4a4a; background: #353535; color: #fff; }
+.timed-presets button[aria-pressed="true"] { border: 2px solid #3b82f6; background: #263750; }
+.timed-presets small { flex-basis: 100%; }
+.personal-best-preview, .personal-best-result { display: grid; gap: 5px; padding: 12px 14px; border: 1px solid #4a4a4a; border-radius: 12px; background: #303744; }
+.personal-best-result strong { font-size: 20px; color: #8ab8ff; }
 
 .numeric-answer-input::placeholder {
   color: var(--numeric-placeholder-color, rgba(255, 255, 255, 0.6));

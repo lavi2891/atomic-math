@@ -1,12 +1,14 @@
 import type { PersistenceDriver, StoredAttempt, StoredSession, SyncState } from "./driver.ts";
 import type { SyncMetadata } from "../../domain/sync/types.ts";
 import type { CachedStudentHome } from "../../domain/studentHome/types.ts";
+import type { PersonalBest } from "../../domain/personalBests/types.ts";
 
 export class MemoryPersistenceDriver implements PersistenceDriver {
   readonly attempts = new Map<string, StoredAttempt>();
   readonly sessions = new Map<string, StoredSession>();
   metadata: SyncMetadata = { retryCount: 0 };
   readonly homes = new Map<string, CachedStudentHome>();
+  readonly personalBests = new Map<string, PersonalBest>();
 
   async putAttempt(record: StoredAttempt): Promise<void> {
     if (!this.attempts.has(record.value.attemptId)) this.attempts.set(record.value.attemptId, structuredClone(record));
@@ -25,4 +27,11 @@ export class MemoryPersistenceDriver implements PersistenceDriver {
   async putMetadata(metadata: SyncMetadata) { this.metadata = structuredClone(metadata); }
   async getStudentHome(studentId: string) { const value = this.homes.get(studentId); return value ? structuredClone(value) : null; }
   async putStudentHome(home: CachedStudentHome) { this.homes.set(home.studentId, structuredClone(home)); }
+  async getPersonalBest(key: string) { const value = this.personalBests.get(key); return value ? structuredClone(value) : null; }
+  async putPersonalBestIfHigher(best: PersonalBest) {
+    const previousBest = this.personalBests.get(best.key) ?? null;
+    const updated = !previousBest || best.bestScore > previousBest.bestScore;
+    if (updated) this.personalBests.set(best.key, structuredClone(best));
+    return { best: structuredClone(updated ? best : previousBest!), previousBest: previousBest ? structuredClone(previousBest) : null, updated };
+  }
 }

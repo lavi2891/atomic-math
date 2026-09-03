@@ -16,6 +16,7 @@ import { syncCoordinator } from "@app/syncInstance";
 import { syncConfig } from "./infrastructure/sync/config.ts";
 import { styles } from "@ui/styles";
 import { theme } from "./theme/theme";
+import type { PersonalBest, PersonalBestUpdate } from "@domain/personalBests/types";
 
 type Screen = "home" | "setup" | "session" | "summary";
 
@@ -30,6 +31,8 @@ export default function App() {
   const [masteryBefore, setMasteryBefore] = useState<Record<string, MasterySnapshot>>({});
   const [masteryAfter, setMasteryAfter] = useState<Record<string, MasterySnapshot>>({});
   const [operationError, setOperationError] = useState<string>();
+  const [previousBest, setPreviousBest] = useState<PersonalBest | null>(null);
+  const [personalBestUpdate, setPersonalBestUpdate] = useState<PersonalBestUpdate | null>(null);
 
   async function refreshHome() {
     try { setHomeData(await studentHomeService.load(studentIdentityProvider.getStudentId())); setOperationError(undefined); }
@@ -49,12 +52,12 @@ export default function App() {
   async function startSession(skillIds: string[], settings: SessionSettings, assignmentId?: string) {
     try {
       const started = await studentPracticeService.start({ studentId: studentIdentityProvider.getStudentId(), skillIds, settings, assignmentId });
-      setOperationError(undefined); setSession(started.session); setCompleted(undefined); setMasteryBefore(started.masteryBefore); setMasteryAfter(started.masteryBefore); setScreen("session");
+      setOperationError(undefined); setSession(started.session); setCompleted(undefined); setPreviousBest(started.previousBest); setPersonalBestUpdate(null); setMasteryBefore(started.masteryBefore); setMasteryAfter(started.masteryBefore); setScreen("session");
     } catch { setOperationError("לא ניתן להתחיל את התרגול. נסו שוב."); }
   }
 
   async function finishSession(state: PracticeSessionState) {
-    setMasteryAfter(await studentPracticeService.finish(state));
+    const finished = await studentPracticeService.finish(state); setMasteryAfter(finished.masteryAfter); setPersonalBestUpdate(finished.personalBest);
     setCompleted(state); setScreen("summary"); await refreshHome();
   }
 
@@ -63,8 +66,8 @@ export default function App() {
   return <div className="page" style={styles.page} dir="rtl"><div className="phone" style={{ ...styles.phone, color: theme.colors.text }}><main style={styles.content}>
     {operationError ? <p role="alert">{operationError}</p> : null}
     {screen === "home" ? homeData ? <StudentHomeScreen data={homeData} definitions={definitions} onOpenDomain={(domainId) => { setActiveDomainId(domainId); setScreen("setup"); }} onStartAssignment={(skillId, assignmentId) => { const launch = assignmentSessionLaunch(skillId); void startSession(launch.skillIds, launch.settings, assignmentId); }} /> : <p role="status" aria-live="polite">טוען את העבודה שלך…</p> : null}
-    {screen === "setup" && activeDomainId ? <SessionSetupScreen domainId={activeDomainId} definitions={definitions} onBack={() => setScreen("home")} onStart={(skillIds, settings) => void startSession(skillIds, settings)} /> : null}
-    {screen === "session" && session ? <SessionView session={session} definitions={definitions} onSessionEnd={(state) => void finishSession(state)} /> : null}
-    {screen === "summary" && completed ? <SessionSummaryScreen completed={completed} masteryBefore={masteryBefore} masteryAfter={masteryAfter} onHome={() => void returnHome()} onRepeat={() => void startSession(completed.session.selectedSkillIds, completed.session.settings, completed.session.assignmentId)} /> : null}
+    {screen === "setup" && activeDomainId ? <SessionSetupScreen studentId={studentIdentityProvider.getStudentId()} domainId={activeDomainId} definitions={definitions} onBack={() => setScreen("home")} onStart={(skillIds, settings) => void startSession(skillIds, settings)} /> : null}
+    {screen === "session" && session ? <SessionView session={session} definitions={definitions} previousBest={previousBest} onSessionEnd={(state) => void finishSession(state)} /> : null}
+    {screen === "summary" && completed ? <SessionSummaryScreen completed={completed} masteryBefore={masteryBefore} masteryAfter={masteryAfter} personalBestUpdate={personalBestUpdate} onHome={() => void returnHome()} onRepeat={() => void startSession(completed.session.selectedSkillIds, completed.session.settings, completed.session.assignmentId)} /> : null}
   </main></div></div>;
 }

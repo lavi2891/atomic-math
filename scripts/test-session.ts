@@ -71,6 +71,11 @@ run("timed session terminates only on timer expiry", () => {
   assert.equal(state.endReason, "timer_expired");
 });
 
+run("selected timed duration persists in the session", () => {
+  const session = createPracticeSession({ id: "T", studentId: "local", selectedSkillIds: ["A"], settings: { mode: "timed", durationSeconds: 30 }, startedAt: 0 });
+  assert.deepEqual(session.settings, { mode: "timed", durationSeconds: 30 });
+});
+
 run("practice never auto-terminates", () => {
   let state = started({ mode: "practice" });
   for (let index = 0; index < 50; index += 1) state = answerAndAdvance(state, false, index);

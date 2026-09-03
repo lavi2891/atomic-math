@@ -1,5 +1,5 @@
-import { attemptRepository, sessionRepository } from "../persistenceInstances.ts";
+import { attemptRepository, personalBestRepository, sessionRepository } from "../persistenceInstances.ts";
 import { syncCoordinator } from "../syncInstance.ts";
 import { StudentPracticeService } from "./StudentPracticeService.ts";
 
-export const studentPracticeService = new StudentPracticeService(attemptRepository, sessionRepository, syncCoordinator);
+export const studentPracticeService = new StudentPracticeService(attemptRepository, sessionRepository, personalBestRepository, syncCoordinator);

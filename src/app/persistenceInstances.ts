@@ -5,6 +5,7 @@ import {
   DurableSessionRepository,
   DurableSyncMetadataRepository,
 } from "../infrastructure/persistence/DurableRepositories.ts";
+import { DurablePersonalBestRepository } from "../infrastructure/persistence/DurablePersonalBestRepository.ts";
 
 export const persistenceDriver = typeof indexedDB === "undefined"
   ? new MemoryPersistenceDriver()
@@ -13,3 +14,4 @@ export const persistenceDriver = typeof indexedDB === "undefined"
 export const attemptRepository = new DurableAttemptRepository(persistenceDriver);
 export const sessionRepository = new DurableSessionRepository(persistenceDriver);
 export const syncMetadataRepository = new DurableSyncMetadataRepository(persistenceDriver);
+export const personalBestRepository = new DurablePersonalBestRepository(persistenceDriver);

@@ -4,8 +4,12 @@ import { createPracticeSession, type PracticeSession, type PracticeSessionState,
 import type { SessionRepository } from "../../domain/sync/types.ts";
 import { getSkillById } from "../../content/catalog/index.ts";
 import type { SyncCoordinator } from "../../infrastructure/sync/SyncCoordinator.ts";
+import type { PersonalBestRepository, PersonalBestUpdate } from "../../domain/personalBests/types.ts";
+import { createChallengeSignature } from "../../domain/personalBests/challengeSignature.ts";
+import { DOMAINS, SKILLS } from "../../content/catalog/index.ts";
 
-export type SessionStartResult = { session: PracticeSession; masteryBefore: Record<string, MasterySnapshot> };
+export type SessionStartResult = { session: PracticeSession; masteryBefore: Record<string, MasterySnapshot>; previousBest: import("../../domain/personalBests/types.ts").PersonalBest | null };
+export type SessionFinishResult = { masteryAfter: Record<string, MasterySnapshot>; personalBest: PersonalBestUpdate | null };
 
 function createSessionId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `sess-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -14,11 +18,13 @@ function createSessionId(): string {
 export class StudentPracticeService {
   private readonly attempts: AttemptRepository;
   private readonly sessions: SessionRepository;
+  private readonly personalBests: PersonalBestRepository;
   private readonly sync: SyncCoordinator;
 
-  constructor(attempts: AttemptRepository, sessions: SessionRepository, sync: SyncCoordinator) {
+  constructor(attempts: AttemptRepository, sessions: SessionRepository, personalBests: PersonalBestRepository, sync: SyncCoordinator) {
     this.attempts = attempts;
     this.sessions = sessions;
+    this.personalBests = personalBests;
     this.sync = sync;
   }
 
@@ -32,17 +38,23 @@ export class StudentPracticeService {
   async start(input: { studentId: string; skillIds: string[]; settings: SessionSettings; assignmentId?: string }): Promise<SessionStartResult> {
     const masteryBefore = await this.snapshot(input.studentId, input.skillIds);
     const session = createPracticeSession({ id: createSessionId(), studentId: input.studentId, selectedSkillIds: input.skillIds, settings: input.settings, startedAt: Date.now(), source: input.assignmentId ? "assignment" : "freePractice", assignmentId: input.assignmentId });
+    const signature = createChallengeSignature(session.settings, session.selectedSkillIds, DOMAINS, SKILLS);
+    const previousBest = signature ? await this.personalBests.get(session.studentId, signature) : null;
     await this.sessions.saveSession({ ...session, source: session.source ?? "freePractice", strategy: "balanced", status: "active", questionCount: 0, correctCount: 0, incorrectCount: 0, accuracy: 0 });
     void this.sync.flush();
-    return { session, masteryBefore };
+    return { session, masteryBefore, previousBest };
   }
 
-  async finish(state: PracticeSessionState): Promise<Record<string, MasterySnapshot>> {
+  async finish(state: PracticeSessionState): Promise<SessionFinishResult> {
     const correctCount = state.results.filter((result) => result.isCorrect).length;
     const incorrectCount = state.results.length - correctCount;
-    await this.sessions.saveSession({ ...state.session, source: state.session.source ?? "freePractice", strategy: "balanced", endedAt: state.endedAt, status: state.endReason === "stopped" ? "abandoned" : "completed", questionCount: state.results.length, correctCount, incorrectCount, accuracy: state.results.length ? correctCount / state.results.length : 0, gameScore: state.session.settings.mode === "timed" ? correctCount - incorrectCount : undefined });
+    const accuracy = state.results.length ? correctCount / state.results.length : 0;
+    await this.sessions.saveSession({ ...state.session, source: state.session.source ?? "freePractice", strategy: "balanced", endedAt: state.endedAt, status: state.endReason === "stopped" ? "abandoned" : "completed", questionCount: state.results.length, correctCount, incorrectCount, accuracy, gameScore: state.session.settings.mode === "timed" || state.session.settings.mode === "survival" ? correctCount : undefined });
+    const challengeCompleted = state.endReason === "timer_expired" || state.endReason === "errors_exhausted" || state.endReason === "completed";
+    const signature = challengeCompleted ? createChallengeSignature(state.session.settings, state.session.selectedSkillIds, DOMAINS, SKILLS) : null;
+    const personalBest = signature ? await this.personalBests.record({ studentId: state.session.studentId, signature, bestScore: correctCount, achievedAt: new Date(state.endedAt ?? Date.now()).toISOString(), sessionId: state.session.id, metrics: { attempted: state.results.length, correct: correctCount, incorrect: incorrectCount, accuracy } }) : null;
     const masteryAfter = await this.snapshot(state.session.studentId, state.session.selectedSkillIds);
     void this.sync.flush();
-    return masteryAfter;
+    return { masteryAfter, personalBest };
   }
 }

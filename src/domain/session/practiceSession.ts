@@ -1,4 +1,5 @@
 import type { AnswerResult } from "../results/types.ts";
+import type { TimedDurationSeconds } from "./config.ts";
 
 export const FIXED_QUESTION_COUNTS = [5, 10, 15, 20] as const;
 export type FixedQuestionCount = (typeof FIXED_QUESTION_COUNTS)[number];
@@ -8,7 +9,7 @@ export type SessionEndReason = "completed" | "errors_exhausted" | "timer_expired
 export type SessionSettings =
   | { mode: "fixed"; questionCount: FixedQuestionCount }
   | { mode: "survival"; maxErrors: number }
-  | { mode: "timed"; durationSeconds: number }
+  | { mode: "timed"; durationSeconds: TimedDurationSeconds }
   | { mode: "practice" };
 
 export interface PracticeSession {

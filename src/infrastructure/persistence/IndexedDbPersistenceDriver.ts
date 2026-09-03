@@ -2,9 +2,10 @@ import type { PersistenceDriver, StoredAttempt, StoredSession, SyncState } from 
 import type { SyncMetadata } from "../../domain/sync/types.ts";
 import type { Attempt } from "../../domain/attempts/types.ts";
 import type { CachedStudentHome } from "../../domain/studentHome/types.ts";
+import type { PersonalBest } from "../../domain/personalBests/types.ts";
 
 const DB_NAME = "atomic-math";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const LEGACY_ATTEMPTS_KEY = "atomicMath.attempts.v1";
 
 function requestResult<T>(request: IDBRequest<T>): Promise<T> {
@@ -37,6 +38,7 @@ export class IndexedDbPersistenceDriver implements PersistenceDriver {
       if (!db.objectStoreNames.contains("attempts")) db.createObjectStore("attempts", { keyPath: "value.attemptId" });
       if (!db.objectStoreNames.contains("sessions")) db.createObjectStore("sessions", { keyPath: "value.id" });
       if (!db.objectStoreNames.contains("metadata")) db.createObjectStore("metadata", { keyPath: "id" });
+      if (!db.objectStoreNames.contains("personalBests")) db.createObjectStore("personalBests", { keyPath: "key" });
     };
     const database = await requestResult(request);
     await this.migrateLegacyAttempts(database);
@@ -130,5 +132,22 @@ export class IndexedDbPersistenceDriver implements PersistenceDriver {
     const transaction = database.transaction("metadata", "readwrite");
     transaction.objectStore("metadata").put({ id: `student-home:${home.studentId}`, value: home });
     await transactionDone(transaction);
+  }
+
+  async getPersonalBest(key: string): Promise<PersonalBest | null> {
+    const database = await this.databasePromise;
+    const transaction = database.transaction("personalBests", "readonly");
+    return (await requestResult(transaction.objectStore("personalBests").get(key)) as PersonalBest | undefined) ?? null;
+  }
+
+  async putPersonalBestIfHigher(best: PersonalBest) {
+    const database = await this.databasePromise;
+    const transaction = database.transaction("personalBests", "readwrite");
+    const store = transaction.objectStore("personalBests");
+    const previousBest = (await requestResult(store.get(best.key)) as PersonalBest | undefined) ?? null;
+    const updated = !previousBest || best.bestScore > previousBest.bestScore;
+    if (updated) store.put(best);
+    await transactionDone(transaction);
+    return { best: updated ? best : previousBest!, previousBest, updated };
   }
 }

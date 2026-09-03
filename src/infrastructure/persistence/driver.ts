@@ -1,6 +1,7 @@
 import type { Attempt } from "../../domain/attempts/types.ts";
 import type { PersistedSession, SyncMetadata } from "../../domain/sync/types.ts";
 import type { CachedStudentHome } from "../../domain/studentHome/types.ts";
+import type { PersonalBest } from "../../domain/personalBests/types.ts";
 
 export type SyncState = "pending" | "synced" | "invalid";
 export type StoredAttempt = { value: Attempt; syncState: SyncState };
@@ -18,4 +19,6 @@ export interface PersistenceDriver {
   putMetadata(metadata: SyncMetadata): Promise<void>;
   getStudentHome(studentId: string): Promise<CachedStudentHome | null>;
   putStudentHome(home: CachedStudentHome): Promise<void>;
+  getPersonalBest(key: string): Promise<PersonalBest | null>;
+  putPersonalBestIfHigher(best: PersonalBest): Promise<{ best: PersonalBest; previousBest: PersonalBest | null; updated: boolean }>;
 }

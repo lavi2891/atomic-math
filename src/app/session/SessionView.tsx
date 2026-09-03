@@ -9,12 +9,14 @@ import { syncCoordinator } from "@app/syncInstance";
 import { colors, radius, spacing } from "@ui/tokens";
 import { QuestionView } from "../questions/QuestionView";
 import { useSessionEngine } from "./useSessionEngine";
+import type { PersonalBest } from "@domain/personalBests/types";
 
 type Props = {
   session: PracticeSession;
   definitions: readonly SkillQuestionDefinition[];
   initialTargetDifficulty?: number;
   onSessionEnd: (state: PracticeSessionState) => void;
+  previousBest?: PersonalBest | null;
 };
 
 function SessionStatus({ state, remainingSeconds }: { state: PracticeSessionState; remainingSeconds?: number }) {
@@ -31,7 +33,7 @@ function SessionStatus({ state, remainingSeconds }: { state: PracticeSessionStat
   return <strong>תרגול ללא הגבלה</strong>;
 }
 
-export function SessionView({ session, definitions, initialTargetDifficulty = 0, onSessionEnd }: Props) {
+export function SessionView({ session, definitions, initialTargetDifficulty = 0, onSessionEnd, previousBest }: Props) {
   const engine = useSessionEngine(session, definitions, initialTargetDifficulty);
   const didEndRef = useRef(false);
   const [now, setNow] = useState(() => Date.now());
@@ -39,6 +41,7 @@ export function SessionView({ session, definitions, initialTargetDifficulty = 0,
   const remainingSeconds = durationSeconds === undefined
     ? undefined
     : Math.max(0, durationSeconds - Math.floor((now - session.startedAt) / 1000));
+  const correctCount = engine.state.results.filter((result) => result.isCorrect).length;
 
   useEffect(() => {
     if (durationSeconds === undefined || engine.state.status === "ended") return;
@@ -78,7 +81,7 @@ export function SessionView({ session, definitions, initialTargetDifficulty = 0,
   return (
     <section style={{ display: "grid", gap: spacing.md }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: spacing.sm }}>
-        <SessionStatus state={engine.state} remainingSeconds={remainingSeconds} />
+        <span><SessionStatus state={engine.state} remainingSeconds={remainingSeconds} />{session.settings.mode === "timed" ? <small style={{ display: "block", color: colors.textMuted }}>נכונות עכשיו: {correctCount}{previousBest ? ` · השיא שלך: ${previousBest.bestScore}` : ""}</small> : null}</span>
         <button
           type="button"
           onClick={engine.actions.stopSession}
