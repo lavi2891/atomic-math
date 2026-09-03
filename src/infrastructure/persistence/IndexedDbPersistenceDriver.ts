@@ -3,6 +3,7 @@ import type { SyncMetadata } from "../../domain/sync/types.ts";
 import type { Attempt } from "../../domain/attempts/types.ts";
 import type { CachedStudentHome } from "../../domain/studentHome/types.ts";
 import type { PersonalBest } from "../../domain/personalBests/types.ts";
+import { isBetterPersonalBest } from "../../domain/personalBests/compare.ts";
 
 const DB_NAME = "atomic-math";
 const DB_VERSION = 2;
@@ -145,7 +146,7 @@ export class IndexedDbPersistenceDriver implements PersistenceDriver {
     const transaction = database.transaction("personalBests", "readwrite");
     const store = transaction.objectStore("personalBests");
     const previousBest = (await requestResult(store.get(best.key)) as PersonalBest | undefined) ?? null;
-    const updated = !previousBest || best.bestScore > previousBest.bestScore;
+    const updated = isBetterPersonalBest(best, previousBest);
     if (updated) store.put(best);
     await transactionDone(transaction);
     return { best: updated ? best : previousBest!, previousBest, updated };

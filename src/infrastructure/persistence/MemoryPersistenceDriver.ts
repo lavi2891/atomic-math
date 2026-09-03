@@ -2,6 +2,7 @@ import type { PersistenceDriver, StoredAttempt, StoredSession, SyncState } from 
 import type { SyncMetadata } from "../../domain/sync/types.ts";
 import type { CachedStudentHome } from "../../domain/studentHome/types.ts";
 import type { PersonalBest } from "../../domain/personalBests/types.ts";
+import { isBetterPersonalBest } from "../../domain/personalBests/compare.ts";
 
 export class MemoryPersistenceDriver implements PersistenceDriver {
   readonly attempts = new Map<string, StoredAttempt>();
@@ -30,7 +31,7 @@ export class MemoryPersistenceDriver implements PersistenceDriver {
   async getPersonalBest(key: string) { const value = this.personalBests.get(key); return value ? structuredClone(value) : null; }
   async putPersonalBestIfHigher(best: PersonalBest) {
     const previousBest = this.personalBests.get(best.key) ?? null;
-    const updated = !previousBest || best.bestScore > previousBest.bestScore;
+    const updated = isBetterPersonalBest(best, previousBest);
     if (updated) this.personalBests.set(best.key, structuredClone(best));
     return { best: structuredClone(updated ? best : previousBest!), previousBest: previousBest ? structuredClone(previousBest) : null, updated };
   }

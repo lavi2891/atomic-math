@@ -17,7 +17,7 @@ import {
   renderExpressionTemplate,
 } from "../src/domain/questions/generator/renderTemplate.ts";
 import { SIGNED_NUMBERS_GENERATED_QUESTIONS } from "../src/domain/questions/bank/SIGNED_NUMBERS.generated.ts";
-import { evaluateAnswer } from "../src/domain/questions/evaluators.ts";
+import { evaluateAnswer, numericAnswerFormatHint } from "../src/domain/questions/evaluators.ts";
 import { resolveQuestionDefinition } from "../src/domain/questions/generator/resolveQuestionDefinition.ts";
 import { sampleParam } from "../src/domain/questions/generator/sampleParam.ts";
 import { SIGNED_NUMBERS_SAMPLE_QUESTIONS } from "../src/domain/questions/samples/SIGNED_NUMBERS.samples.ts";
@@ -231,6 +231,12 @@ run("numeric evaluator respects accepted input formats", () => {
     }).isCorrect,
     true,
   );
+});
+
+run("exact rational answers accept integer fraction and finite decimal forms", () => {
+  const question = (answer: string): Question => ({ id: `EXACT_${answer}`, topicId: "SIGNED_NUMBERS", type: "numeric", answerSemantics: { kind: "exact" }, acceptedInputFormats: ["fraction", "decimal"], prompt: [], correctAnswers: [answer] });
+  for (const [answer, input] of [["0", "0"], ["2", "2"], ["-5", "-5"], ["1/2", "4/8"], ["1/2", "0.5"]]) assert.equal(evaluateAnswer(question(answer!), { questionType: "numeric", data: { value: input! } }).isCorrect, true, `${answer} from ${input}`);
+  assert.match(numericAnswerFormatHint(question("0") as Extract<Question, { type: "numeric" }>), /מספר שלם/);
 });
 
 run("mixed rational and decimal arithmetic requires an exact fraction for repeating results", () => {

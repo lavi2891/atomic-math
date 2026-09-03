@@ -3,6 +3,7 @@ export type ChallengeScope =
   | { type: "domain"; domainId: string; scopeVersion: string };
 
 export type ChallengeSignature =
+  | { mode: "fixed"; questionCount: number; scope: ChallengeScope }
   | { mode: "timed"; durationSeconds: number; scope: ChallengeScope }
   | { mode: "survival"; maxErrors: number; scope: ChallengeScope };
 
@@ -11,6 +12,7 @@ export interface PersonalBestMetrics {
   correct: number;
   incorrect: number;
   accuracy: number;
+  durationMs?: number;
 }
 
 export interface PersonalBest {

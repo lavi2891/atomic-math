@@ -16,11 +16,18 @@ function approxEqual(a: number, b: number, tol: number) {
   return Math.abs(a - b) <= tol;
 }
 
-function resolveAcceptedInputFormats(question: Extract<Question, { type: "numeric" }>): NumericInputFormat[] {
+export function resolveAcceptedInputFormats(question: Extract<Question, { type: "numeric" }>): NumericInputFormat[] {
   if (question.answerSemantics?.kind === "rounded" || question.answerSemantics?.kind === "exactDecimal") {
     return ["decimal"];
   }
-  return question.acceptedInputFormats ?? ["integer", "decimal", "fraction"];
+  const configured = question.acceptedInputFormats ?? ["integer", "decimal", "fraction"];
+  return configured.includes("integer") ? configured : ["integer", ...configured];
+}
+
+export function numericAnswerFormatHint(question: Extract<Question, { type: "numeric" }>): string {
+  if (question.answerSemantics?.kind === "rounded") return `יש להזין תשובה עשרונית מעוגלת ל-${question.answerSemantics.decimalPlaces} ספרות אחרי הנקודה.`;
+  if (question.answerSemantics?.kind === "exactDecimal") return "יש להזין תשובה עשרונית מדויקת.";
+  return resolveAcceptedInputFormats(question).includes("fraction") ? "יש להזין תשובה מדויקת; אפשר לכתוב מספר שלם, עשרוני סופי או שבר לפי הצורך." : "יש להזין תשובה מדויקת.";
 }
 
 function isAcceptedFormat(

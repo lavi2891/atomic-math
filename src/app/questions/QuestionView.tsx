@@ -20,6 +20,7 @@ import type { ParseErrCode } from "@shared/mathInput";
 import { he } from "@copy/he";
 import { colors, fontSize, lineHeight, radius, spacing } from "@ui/tokens";
 import { useQuestionSolve } from "./useQuestionSolve";
+import { numericAnswerFormatHint, resolveAcceptedInputFormats } from "@domain/questions/evaluators";
 
 type Mode = "solve" | "review";
 
@@ -176,7 +177,7 @@ export function QuestionView({
 
   const numericAcceptedFormats =
     question.type === "numeric"
-      ? (question.acceptedInputFormats ?? ["integer", "decimal", "fraction"])
+      ? resolveAcceptedInputFormats(question)
       : [];
 
   function mapErrorToHebrew(code: ParseErrCode | string): string {
@@ -237,15 +238,7 @@ export function QuestionView({
     question.type === "numeric" &&
     hasNumericInput &&
     /[/\\]/.test(numericValue);
-  const numericFormatHint = question.type !== "numeric"
-    ? null
-    : question.answerSemantics?.kind === "rounded"
-      ? `יש להזין תשובה עשרונית מעוגלת ל-${question.answerSemantics.decimalPlaces} ספרות אחרי הנקודה.`
-      : question.answerSemantics?.kind === "exactDecimal"
-        ? "יש להזין תשובה עשרונית מדויקת."
-        : numericAcceptedFormats.length === 1 && numericAcceptedFormats[0] === "fraction"
-          ? "יש להזין את התשובה המדויקת כשבר."
-          : "יש להזין תשובה מדויקת; אפשר להשתמש בשבר.";
+  const numericFormatHint = question.type === "numeric" ? numericAnswerFormatHint(question) : null;
   const numericCanCheck =
     question.type === "numeric"
       ? canCheck && hasNumericInput && !numericIsInvalid

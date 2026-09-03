@@ -22,13 +22,14 @@ export function eligibleChallengeScope(selectedSkillIds: readonly string[], doma
 }
 
 export function createChallengeSignature(settings: SessionSettings, selectedSkillIds: readonly string[], domains: readonly Domain[], skills: readonly Skill[]): ChallengeSignature | null {
-  if (settings.mode !== "timed" && settings.mode !== "survival") return null;
+  if (settings.mode === "practice") return null;
   const scope = eligibleChallengeScope(selectedSkillIds, domains, skills); if (!scope) return null;
+  if (settings.mode === "fixed") return { mode: "fixed", questionCount: settings.questionCount, scope };
   return settings.mode === "timed" ? { mode: "timed", durationSeconds: settings.durationSeconds, scope } : { mode: "survival", maxErrors: settings.maxErrors, scope };
 }
 
 export function challengeSignatureKey(studentId: string, signature: ChallengeSignature): string {
-  const modeValue = signature.mode === "timed" ? `duration:${signature.durationSeconds}` : `errors:${signature.maxErrors}`;
+  const modeValue = signature.mode === "fixed" ? `questions:${signature.questionCount}` : signature.mode === "timed" ? `duration:${signature.durationSeconds}` : `errors:${signature.maxErrors}`;
   const scopeValue = signature.scope.type === "skill" ? `skill:${signature.scope.skillId}` : `domain:${signature.scope.domainId}:v:${signature.scope.scopeVersion}`;
   return `${studentId}|${signature.mode}|${modeValue}|${scopeValue}`;
 }

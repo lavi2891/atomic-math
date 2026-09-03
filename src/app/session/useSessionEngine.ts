@@ -28,6 +28,7 @@ export function useSessionEngine(
   initialTargetDifficulty = 0,
 ): SessionEngine {
   const [selector] = useState(() => new SkillQuestionSelector(definitions));
+  const [monotonicStartedAt] = useState(() => performance.now());
   const [questionsById] = useState(() => new Map<string, Question>());
   const [fixedPlan] = useState(() =>
     session.settings.mode === "fixed"
@@ -64,7 +65,7 @@ export function useSessionEngine(
   );
 
   function submitAnswer(result: AnswerResult): void {
-    const action = { type: "ANSWER_SUBMITTED" as const, result };
+    const action = { type: "ANSWER_SUBMITTED" as const, result, elapsedMs: Math.max(0, performance.now() - monotonicStartedAt) };
     const answered = practiceSessionReducer(state, action);
     dispatch(action);
     if (answered.status !== "active") return;

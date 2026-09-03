@@ -10,6 +10,7 @@ import { StudentHomeService } from "../src/app/studentHome/StudentHomeService.ts
 import { DOMAINS, SKILLS } from "../src/content/catalog/index.ts";
 import { MemoryPersistenceDriver } from "../src/infrastructure/persistence/MemoryPersistenceDriver.ts";
 import { AppsScriptClient } from "../src/infrastructure/sync/AppsScriptClient.ts";
+import { resolveQuickPracticeScope } from "../src/domain/studentHome/quickPractice.ts";
 
 async function run(name: string, testFn: () => void | Promise<void>) { await testFn(); process.stdout.write(`PASS ${name}\n`); }
 const snapshot = (mastery: number, evidenceLevel: MasterySnapshot["evidenceLevel"], attemptCount = 12, lastAttemptAt = "2026-01-01T00:00:00.000Z"): MasterySnapshot => ({ studentId: "student", skillId: "INT_ADD", mastery, accuracy: mastery, attemptCount, recentAverage: mastery / 100, historyAverage: mastery / 100, evidenceLevel, lastAttemptAt, calculatedAt: lastAttemptAt });
@@ -78,6 +79,24 @@ await run("only domains with active question-backed skills appear", () => {
   const catalog = contentBackedCatalog(DOMAINS, SKILLS, [{ skillId: "INT_ADD" }] as never);
   assert.equal(catalog.length, 1); assert.deepEqual(catalog[0]?.skills.map((skill) => skill.id), ["INT_ADD"]);
   assert.equal(contentBackedCatalog(DOMAINS, SKILLS, [] as never).length, 0);
+});
+
+await run("quick practice prefers usable active assignments", () => {
+  const result = resolveQuickPracticeScope({ assignments: [assignment({ skillId: "INT_SUB" })], masteryBySkill: {}, domains: DOMAINS, skills: SKILLS, definitions: [{ skillId: "INT_ADD" }, { skillId: "INT_SUB" }] as never });
+  assert.deepEqual(result, { skillIds: ["INT_SUB"], reason: "assignments" });
+});
+
+await run("quick practice falls back to non-mastered evidence then foundations", () => {
+  const learning = resolveQuickPracticeScope({ assignments: [], masteryBySkill: { INT_SUB: snapshot(60, "established") }, domains: DOMAINS, skills: SKILLS, definitions: [{ skillId: "INT_ADD" }, { skillId: "INT_SUB" }] as never });
+  assert.deepEqual(learning, { skillIds: ["INT_SUB"], reason: "learning" });
+  const fresh = resolveQuickPracticeScope({ assignments: [], masteryBySkill: {}, domains: DOMAINS, skills: SKILLS, definitions: [{ skillId: "INT_ADD" }] as never });
+  assert.deepEqual(fresh, { skillIds: ["INT_ADD"], reason: "foundations" });
+});
+
+await run("quick practice filters unbacked content and handles no content offline", () => {
+  const result = resolveQuickPracticeScope({ assignments: [assignment({ skillId: "INT_SUB" })], masteryBySkill: {}, domains: DOMAINS, skills: SKILLS, definitions: [{ skillId: "INT_ADD" }] as never });
+  assert.deepEqual(result.skillIds, ["INT_ADD"]);
+  assert.deepEqual(resolveQuickPracticeScope({ assignments: [], masteryBySkill: {}, domains: DOMAINS, skills: SKILLS, definitions: [] as never }), { skillIds: [], reason: "no_content" });
 });
 
 await run("newer local mastery wins over stale remote mastery", () => {

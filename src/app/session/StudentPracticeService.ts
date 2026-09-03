@@ -7,6 +7,7 @@ import type { SyncCoordinator } from "../../infrastructure/sync/SyncCoordinator.
 import type { PersonalBestRepository, PersonalBestUpdate } from "../../domain/personalBests/types.ts";
 import { createChallengeSignature } from "../../domain/personalBests/challengeSignature.ts";
 import { DOMAINS, SKILLS } from "../../content/catalog/index.ts";
+import { isFixedPersonalBestEligible } from "../../domain/personalBests/eligibility.ts";
 
 export type SessionStartResult = { session: PracticeSession; masteryBefore: Record<string, MasterySnapshot>; previousBest: import("../../domain/personalBests/types.ts").PersonalBest | null };
 export type SessionFinishResult = { masteryAfter: Record<string, MasterySnapshot>; personalBest: PersonalBestUpdate | null };
@@ -49,10 +50,13 @@ export class StudentPracticeService {
     const correctCount = state.results.filter((result) => result.isCorrect).length;
     const incorrectCount = state.results.length - correctCount;
     const accuracy = state.results.length ? correctCount / state.results.length : 0;
-    await this.sessions.saveSession({ ...state.session, source: state.session.source ?? "freePractice", strategy: "balanced", endedAt: state.endedAt, status: state.endReason === "stopped" ? "abandoned" : "completed", questionCount: state.results.length, correctCount, incorrectCount, accuracy, gameScore: state.session.settings.mode === "timed" || state.session.settings.mode === "survival" ? correctCount : undefined });
+    const durationMs = state.elapsedDurationMs ?? (state.endedAt === undefined ? undefined : Math.max(0, state.endedAt - state.session.startedAt));
+    await this.sessions.saveSession({ ...state.session, source: state.session.source ?? "freePractice", strategy: "balanced", endedAt: state.endedAt, durationMs, status: state.endReason === "stopped" ? "abandoned" : "completed", questionCount: state.results.length, correctCount, incorrectCount, accuracy, gameScore: state.session.settings.mode === "fixed" ? durationMs : state.session.settings.mode === "timed" || state.session.settings.mode === "survival" ? correctCount : undefined });
     const challengeCompleted = state.endReason === "timer_expired" || state.endReason === "errors_exhausted" || state.endReason === "completed";
     const signature = challengeCompleted ? createChallengeSignature(state.session.settings, state.session.selectedSkillIds, DOMAINS, SKILLS) : null;
-    const personalBest = signature ? await this.personalBests.record({ studentId: state.session.studentId, signature, bestScore: correctCount, achievedAt: new Date(state.endedAt ?? Date.now()).toISOString(), sessionId: state.session.id, metrics: { attempted: state.results.length, correct: correctCount, incorrect: incorrectCount, accuracy } }) : null;
+    const fixedEligible = state.session.settings.mode !== "fixed" || isFixedPersonalBestEligible(accuracy, durationMs);
+    const score = state.session.settings.mode === "fixed" ? durationMs : correctCount;
+    const personalBest = signature && fixedEligible && score !== undefined ? await this.personalBests.record({ studentId: state.session.studentId, signature, bestScore: score, achievedAt: new Date(state.endedAt ?? Date.now()).toISOString(), sessionId: state.session.id, metrics: { attempted: state.results.length, correct: correctCount, incorrect: incorrectCount, accuracy, durationMs } }) : null;
     const masteryAfter = await this.snapshot(state.session.studentId, state.session.selectedSkillIds);
     void this.sync.flush();
     return { masteryAfter, personalBest };

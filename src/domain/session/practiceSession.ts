@@ -32,12 +32,14 @@ export type PracticeSessionState = {
   askedSkillIds: string[];
   targetDifficulty: number;
   endedAt?: number;
+  /** Monotonic elapsed time captured by the active client; background time counts. */
+  elapsedDurationMs?: number;
   endReason?: SessionEndReason;
 };
 
 export type PracticeSessionAction =
   | { type: "START"; questionId: string; skillId: string }
-  | { type: "ANSWER_SUBMITTED"; result: AnswerResult }
+  | { type: "ANSWER_SUBMITTED"; result: AnswerResult; elapsedMs?: number }
   | { type: "NEXT_QUESTION"; questionId: string; skillId: string }
   | { type: "TIMER_EXPIRED"; at: number }
   | { type: "STOP_SESSION"; at: number; reason?: SessionEndReason };
@@ -99,7 +101,7 @@ export function practiceSessionReducer(state: PracticeSessionState, action: Prac
         targetDifficulty: Math.max(0, Math.min(1, state.targetDifficulty + (result.isCorrect ? 0.05 : -0.05))),
       };
       return isSessionComplete(state.session.settings, results)
-        ? { ...answeredState, status: "ended", endedAt: result.timestamp, endReason: completionReason(state.session.settings) }
+        ? { ...answeredState, status: "ended", endedAt: result.timestamp, elapsedDurationMs: action.elapsedMs, endReason: completionReason(state.session.settings) }
         : answeredState;
     }
     case "NEXT_QUESTION":

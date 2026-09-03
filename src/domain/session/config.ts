@@ -6,3 +6,5 @@ export const sessionDefaults = {
   survivalMaxErrors: 3,
   timedDurationSeconds: 60 as TimedDurationSeconds,
 } as const;
+
+export const challengeConfig = { fixedMinimumAccuracy: 0.9 } as const;

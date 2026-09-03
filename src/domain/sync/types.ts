@@ -12,6 +12,7 @@ export interface PersistedSession extends PracticeSession {
   correctCount: number;
   incorrectCount: number;
   accuracy: number;
+  durationMs?: number;
   gameScore?: number;
 }
 
