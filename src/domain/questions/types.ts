@@ -3,6 +3,14 @@ import type { DifficultyBand } from "../../content/catalog/types.ts";
 
 export type QuestionType = "numeric" | "singleChoice" | "multiChoice"; // TODO: expression, drag & drop, desmos?, geometry?
 
+export type QuestionAuthoringMode = "generated" | "curated";
+export type QuestionCurationReason =
+  | "conceptual-evidence"
+  | "reasoning-evidence"
+  | "representation-evidence"
+  | "misconception-diagnostic"
+  | "wording-sensitive";
+
 export type OptionContent =
   | { kind: "text"; value: string; key?: string }
   | { kind: "math"; latex: string; display?: boolean; key?: string };
@@ -30,6 +38,12 @@ export interface BaseQuestion {
   tags?: string[];
   seeds?: QuestionSeeds;
   hints?: OptionContent[][];
+  /** Explicit content-authoring intent; optional only for legacy/playground content. */
+  authoringMode?: QuestionAuthoringMode;
+  /** Stable pedagogical family for audits and future review tooling. */
+  contentFamily?: string;
+  /** Required by validation for curated foundational content. */
+  curationReason?: QuestionCurationReason;
 }
 
 export interface NumericQuestion extends BaseQuestion {
@@ -60,6 +74,10 @@ export interface GeneratedQuestionInstance extends NumericQuestion {
 export interface ChoiceOption {
   id: string;
   content: OptionContent[];
+  /** Named error pattern represented by this distractor; absent on the correct option. */
+  misconceptionId?: string;
+  /** Why the distractor is plausible, for author review and future diagnostics. */
+  misconceptionRationale?: string;
 }
 
 export interface SingleChoiceQuestion extends BaseQuestion {

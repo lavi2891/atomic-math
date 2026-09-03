@@ -11,6 +11,7 @@ import type { Attempt } from "../src/domain/attempts/types.ts";
 import { isAssignmentComplete } from "../src/domain/studentHome/deriveStudentHome.ts";
 import { createChallengeSignature, challengeSignatureKey } from "../src/domain/personalBests/challengeSignature.ts";
 import { resolveQuickPracticeScope } from "../src/domain/studentHome/quickPractice.ts";
+import { auditFoundationalContent, validateFoundationalContent } from "../src/content/validateContent.ts";
 
 function run(name: string, fn: () => void) { fn(); process.stdout.write(`PASS ${name}\n`); }
 const skill = (id: string) => SKILLS.find((item) => item.id === id)!;
@@ -52,6 +53,55 @@ run("conceptual banks cover equality, fractions, and integers", () => {
 run("every ready definition carries category and meaningful band metadata", () => {
   for (const definition of FOUNDATIONAL_QUESTIONS) { assert.ok(definition.category); assert.ok(definition.difficultyBand); }
   for (const entry of CONTENT_READINESS) assert.deepEqual(readinessIssues(entry, FOUNDATIONAL_QUESTIONS), []);
+});
+
+run("foundational authoring intent and normalized inventory stay explicit", () => {
+  const audit = auditFoundationalContent();
+  assert.deepEqual({ total: audit.total, generated: audit.generated, curatedFixed: audit.curatedFixed, fixedNumeric: audit.fixedNumeric }, { total: 428, generated: 94, curatedFixed: 334, fixedNumeric: 0 });
+  for (const definition of FOUNDATIONAL_QUESTIONS) {
+    assert.ok(definition.contentFamily, definition.id);
+    if (isGeneratedQuestionDefinition(definition)) {
+      assert.equal(definition.authoringMode, "generated", definition.id);
+      assert.deepEqual(definition.answerSemantics, { kind: "exact" }, definition.id);
+    } else {
+      assert.equal(definition.authoringMode, "curated", definition.id);
+      assert.ok(definition.curationReason, definition.id);
+      if (definition.type === "singleChoice") {
+        for (const option of definition.options) {
+          assert.equal(!!option.misconceptionId, option.id !== definition.correctOptionId, `${definition.id}:${option.id}`);
+          assert.equal(!!option.misconceptionRationale, option.id !== definition.correctOptionId, `${definition.id}:${option.id}:rationale`);
+        }
+      }
+    }
+  }
+});
+
+run("foundational generators cover exact edge cases deterministically", () => {
+  const generated = (id: string) => {
+    const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === id);
+    assert.ok(definition && isGeneratedQuestionDefinition(definition), id);
+    return definition;
+  };
+  const sequence = (values: number[]) => { let index = 0; return () => values[index++] ?? values.at(-1) ?? 0; };
+  const addWithZero = buildGeneratedQuestion(generated("MVP_AR_ADD_FACTS_A_A"), { rng: sequence([0, 0]) });
+  assert.deepEqual(addWithZero.sampledParams, { a: "0", b: "1" });
+  assert.equal(addWithZero.correctAnswers[0], "1");
+  const zeroDifference = buildGeneratedQuestion(generated("MVP_INT_SUB_A_A"), { rng: sequence([0.52, 0]) });
+  assert.equal(zeroDifference.correctAnswers[0], "0");
+  const oppositeSigns = buildGeneratedQuestion(generated("MVP_INT_ADD_A_A"), { rng: sequence([0.44, 0]) });
+  assert.equal(oppositeSigns.renderedExpression, "-1+1");
+  assert.equal(oppositeSigns.correctAnswers[0], "0");
+  const negativeOne = buildGeneratedQuestion(generated("MVP_INT_MUL_A_A"), { rng: sequence([0.45, 0]) });
+  assert.equal(negativeOne.correctAnswers[0], "-1");
+  const exactNegativeDivision = buildGeneratedQuestion(generated("MVP_INT_DIV_A_B"), { rng: sequence([0.45, 0]) });
+  assert.equal(exactNegativeDivision.correctAnswers[0], "-1");
+});
+
+run("full content validation checks configured samples and reports review families", () => {
+  const report = validateFoundationalContent(20);
+  assert.deepEqual(report.issues, []);
+  assert.equal(report.generatedSamples, 94 * 20);
+  assert.ok(report.warnings.some((warning) => warning.includes("near-identical curated family")));
 });
 
 run("Evidence Policies validate and assignment completion requires coverage and fluency", () => {

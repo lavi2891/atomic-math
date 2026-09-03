@@ -146,18 +146,20 @@ export function buildGeneratedQuestion(
           difficultyBand: definition.difficultyBand,
           prompt,
           hints,
-        correctAnswers: [correctAnswer],
-        difficulty: computedDifficulty ?? definition.metadata?.difficulty,
-        subtopic: definition.metadata?.subtopic,
-        misconceptions: definition.misconceptions,
-        version: definition.version,
-        tags: [...new Set([...(definition.tags ?? []), "source:generator"])],
-        acceptedInputFormats,
-        answerSemantics,
-        input: {
-          allowMinus: definition.input?.allowMinus ?? true,
-          allowDecimal: shouldAllowDecimal(definition, renderedExpression),
-        },
+          correctAnswers: [correctAnswer],
+          difficulty: computedDifficulty ?? definition.metadata?.difficulty,
+          subtopic: definition.metadata?.subtopic,
+          misconceptions: definition.misconceptions,
+          version: definition.version,
+          tags: [...new Set([...(definition.tags ?? []), "source:generator"])],
+          acceptedInputFormats,
+          answerSemantics,
+          authoringMode: definition.authoringMode,
+          contentFamily: definition.contentFamily,
+          input: {
+            allowMinus: definition.input?.allowMinus ?? true,
+            allowDecimal: shouldAllowDecimal(definition, renderedExpression),
+          },
         };
 
         const generatedQuestion: GeneratedQuestionInstance = {

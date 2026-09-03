@@ -1,4 +1,4 @@
-import type { NumericAnswerSemantics, NumericInputFormat, OptionContent } from "../types.ts";
+import type { NumericAnswerSemantics, NumericInputFormat, OptionContent, QuestionAuthoringMode } from "../types.ts";
 import type { QuestionCategory } from "../categories.ts";
 import type { DifficultyBand } from "../../../content/catalog/types.ts";
 
@@ -70,6 +70,10 @@ export interface GeneratedQuestionDefinition {
   /** New content identity. Optional only while legacy generators are migrated. */
   skillId?: string;
   kind: "generated";
+  /** Explicit for active authored content; optional only for legacy generators. */
+  authoringMode?: Extract<QuestionAuthoringMode, "generated">;
+  /** Stable pedagogical family for audits and future review tooling. */
+  contentFamily?: string;
   /** Optional only for backwards-compatible content; omitted values migrate to calculation. */
   category?: QuestionCategory;
   difficultyBand?: DifficultyBand;
