@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { QuestionView } from "../questions/QuestionView.tsx";
 import { ContentRenderer } from "../../ui/ContentRenderer.tsx";
 import { DOMAINS, SKILLS, SKILL_GROUPS } from "../../content/catalog/index.ts";
@@ -8,17 +8,18 @@ import { isGeneratedQuestionDefinition } from "../../domain/questions/definition
 import type { Question } from "../../domain/questions/types.ts";
 import {
   deterministicRandomIndex,
-  EMPTY_REVIEW_FILTERS,
   expectedAnswer,
   filterReviewDefinitions,
   flaggedCuratedFamilies,
   generatedSampleBatch,
+  initialReviewNavigationState,
   isEditableEventTarget,
   navigationIndex,
   parseReviewDeepLink,
   resolveReviewQuestion,
   reviewDeepLink,
   reviewIndexAfterMark,
+  reviewNavigationReducer,
   reviewProgress,
   type ReviewFilters,
 } from "./reviewModel.ts";
@@ -50,15 +51,9 @@ function ReviewMath({ latex }: { latex: string }) {
 
 export function QuestionReviewScreen() {
   const [repository] = useState(createAuthorReviewRepository);
-  const [filters, setFilters] = useState<ReviewFilters>(() => parseReviewDeepLink(window.location.search));
+  const [navigationState, dispatchNavigation] = useReducer(reviewNavigationReducer, window.location.search, initialReviewNavigationState);
+  const { filters, index, seed, previewDefinitionId, reproduceNonce, randomNonce, showDetails, showExpected, showBatch } = navigationState;
   const [records, setRecords] = useState<Map<string, QuestionReviewRecord>>(new Map());
-  const [index, setIndex] = useState(0);
-  const [seed, setSeed] = useState(1);
-  const [reproduceNonce, setReproduceNonce] = useState(0);
-  const [randomNonce, setRandomNonce] = useState(0);
-  const [showDetails, setShowDetails] = useState(true);
-  const [showExpected, setShowExpected] = useState(false);
-  const [showBatch, setShowBatch] = useState(false);
   const [draftNotes, setDraftNotes] = useState<Map<string, string>>(new Map());
   const [message, setMessage] = useState("");
 
@@ -66,7 +61,9 @@ export function QuestionReviewScreen() {
 
   const filtered = useMemo(() => filterReviewDefinitions(FOUNDATIONAL_QUESTIONS, filters, records, catalog), [filters, records]);
   const currentIndex = Math.min(index, Math.max(0, filtered.length - 1));
-  const currentDefinition = filtered[currentIndex];
+  const scopeDefinition = filtered[currentIndex];
+  const previewDefinition = previewDefinitionId ? FOUNDATIONAL_QUESTIONS.find((definition) => definition.id === previewDefinitionId) : undefined;
+  const currentDefinition = previewDefinition ?? scopeDefinition;
   const currentQuestion = useMemo(() => currentDefinition ? resolveReviewQuestion(currentDefinition, seed) : null, [currentDefinition, seed]);
   const currentRecord = currentDefinition ? records.get(currentDefinition.id) : undefined;
   const note = currentDefinition ? draftNotes.get(currentDefinition.id) ?? currentRecord?.note ?? "" : "";
@@ -76,16 +73,22 @@ export function QuestionReviewScreen() {
 
   useEffect(() => { window.history.replaceState(null, "", reviewDeepLink(filters)); }, [filters]);
 
+  useEffect(() => {
+    const restoreFiltersFromUrl = () => dispatchNavigation({ type: "restore-filters", filters: parseReviewDeepLink(window.location.search) });
+    window.addEventListener("popstate", restoreFiltersFromUrl);
+    return () => window.removeEventListener("popstate", restoreFiltersFromUrl);
+  }, []);
+
   const navigate = useCallback((action: "first" | "previous" | "next" | "last") => {
-    setIndex((current) => navigationIndex(action, current, filtered.length));
-  }, [filtered.length]);
+    dispatchNavigation({ type: "navigate", index: navigationIndex(action, currentIndex, filtered.length) });
+  }, [currentIndex, filtered.length]);
 
   async function mark(status: ReviewStatus) {
     if (!currentDefinition) return;
     const record = await repository.save(currentDefinition.id, status, note);
     setRecords((current) => new Map(current).set(record.definitionId, record));
     setMessage(`${statusLabels[status]} — נשמר מקומית`);
-    setIndex((current) => reviewIndexAfterMark(current, filtered.length, filters.reviewStatus, status));
+    dispatchNavigation({ type: "navigate", index: reviewIndexAfterMark(currentIndex, filtered.length, filters.reviewStatus, status) });
   }
 
   useEffect(() => {
@@ -93,16 +96,16 @@ export function QuestionReviewScreen() {
       if (isEditableEventTarget(event.target) || event.ctrlKey || event.metaKey || event.altKey) return;
       if (event.key === "ArrowLeft") { event.preventDefault(); navigate("previous"); }
       else if (event.key === "ArrowRight") { event.preventDefault(); navigate("next"); }
-      else if (event.key.toLowerCase() === "a" && currentDefinition) { event.preventDefault(); void repository.save(currentDefinition.id, "approved", note).then((record) => { setRecords((current) => new Map(current).set(record.definitionId, record)); setMessage("מאושר — נשמר מקומית"); setIndex((current) => reviewIndexAfterMark(current, filtered.length, filters.reviewStatus, "approved")); }); }
-      else if (event.key.toLowerCase() === "f" && currentDefinition) { event.preventDefault(); void repository.save(currentDefinition.id, "needs-fix", note).then((record) => { setRecords((current) => new Map(current).set(record.definitionId, record)); setMessage("דורש תיקון — נשמר מקומית"); setIndex((current) => reviewIndexAfterMark(current, filtered.length, filters.reviewStatus, "needs-fix")); }); }
-      else if (event.key.toLowerCase() === "r" && currentDefinition) { event.preventDefault(); void repository.save(currentDefinition.id, "rejected", note).then((record) => { setRecords((current) => new Map(current).set(record.definitionId, record)); setMessage("נדחה — נשמר מקומית"); setIndex((current) => reviewIndexAfterMark(current, filtered.length, filters.reviewStatus, "rejected")); }); }
+      else if (event.key.toLowerCase() === "a" && currentDefinition) { event.preventDefault(); void repository.save(currentDefinition.id, "approved", note).then((record) => { setRecords((current) => new Map(current).set(record.definitionId, record)); setMessage("מאושר — נשמר מקומית"); dispatchNavigation({ type: "navigate", index: reviewIndexAfterMark(currentIndex, filtered.length, filters.reviewStatus, "approved") }); }); }
+      else if (event.key.toLowerCase() === "f" && currentDefinition) { event.preventDefault(); void repository.save(currentDefinition.id, "needs-fix", note).then((record) => { setRecords((current) => new Map(current).set(record.definitionId, record)); setMessage("דורש תיקון — נשמר מקומית"); dispatchNavigation({ type: "navigate", index: reviewIndexAfterMark(currentIndex, filtered.length, filters.reviewStatus, "needs-fix") }); }); }
+      else if (event.key.toLowerCase() === "r" && currentDefinition) { event.preventDefault(); void repository.save(currentDefinition.id, "rejected", note).then((record) => { setRecords((current) => new Map(current).set(record.definitionId, record)); setMessage("נדחה — נשמר מקומית"); dispatchNavigation({ type: "navigate", index: reviewIndexAfterMark(currentIndex, filtered.length, filters.reviewStatus, "rejected") }); }); }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [currentDefinition, filtered.length, filters.reviewStatus, navigate, note, repository]);
+  }, [currentDefinition, currentIndex, filtered.length, filters.reviewStatus, navigate, note, repository]);
 
   function updateFilter<K extends keyof ReviewFilters>(key: K, value: ReviewFilters[K]) {
-    setFilters((current) => ({ ...current, [key]: value })); setIndex(0);
+    dispatchNavigation({ type: "set-filter", key, value });
   }
 
   async function saveNote() {
@@ -121,8 +124,8 @@ export function QuestionReviewScreen() {
 
   function chooseGeneratedBand(band: string) {
     if (!currentDefinition?.contentFamily) return;
-    setFilters((current) => ({ ...current, skillId: currentDefinition.skillId, contentFamily: currentDefinition.contentFamily ?? "", difficultyBand: band }));
-    setIndex(0); setSeed(1);
+    const definition = FOUNDATIONAL_QUESTIONS.find((candidate) => candidate.skillId === currentDefinition.skillId && candidate.contentFamily === currentDefinition.contentFamily && candidate.difficultyBand === band);
+    if (definition) dispatchNavigation({ type: "preview-band", definitionId: definition.id });
   }
 
   function exportReviewState() {
@@ -154,7 +157,7 @@ export function QuestionReviewScreen() {
 
   return <main className="question-review" dir="rtl">
     <header className="review-header"><div><p className="review-eyebrow">כלי פיתוח · לא לתלמידים</p><h1>ביקורת שאלות Atomic Math</h1></div><div className="review-progress" aria-live="polite"><strong>{progress.reviewed}/{progress.total}</strong><span>{progress.approved} מאושרות</span><span>{progress["needs-fix"]} לתיקון</span><span>{progress.rejected} נדחו</span><button type="button" onClick={exportReviewState}>ייצוא JSON</button></div></header>
-    <nav className="review-navigation" aria-label="ניווט בין definitions"><button onClick={() => navigate("first")}>ראשון</button><button onClick={() => navigate("previous")}>הקודם</button><strong>Question / Definition {filtered.length ? currentIndex + 1 : 0} מתוך {filtered.length}</strong><button onClick={() => navigate("next")}>הבא</button><button onClick={() => navigate("last")}>אחרון</button><button onClick={() => { setRandomNonce((value) => value + 1); setIndex(deterministicRandomIndex(currentIndex, filtered.length, randomNonce)); }}>אקראי</button><div className="review-view-toggle"><button type="button" aria-pressed={!showDetails} onClick={() => setShowDetails(false)}>Student View</button><button type="button" aria-pressed={showDetails} onClick={() => setShowDetails(true)}>Reviewer Details</button></div></nav>
+    <nav className="review-navigation" aria-label="ניווט בין definitions"><button onClick={() => navigate("first")}>ראשון</button><button onClick={() => navigate("previous")}>הקודם</button><strong>Question / Definition {filtered.length ? currentIndex + 1 : 0} מתוך {filtered.length}</strong><button onClick={() => navigate("next")}>הבא</button><button onClick={() => navigate("last")}>אחרון</button><button onClick={() => { dispatchNavigation({ type: "increment-random-nonce" }); dispatchNavigation({ type: "navigate", index: deterministicRandomIndex(currentIndex, filtered.length, randomNonce) }); }}>אקראי</button><div className="review-view-toggle"><button type="button" aria-pressed={!showDetails} onClick={() => dispatchNavigation({ type: "toggle-details", show: false })}>Student View</button><button type="button" aria-pressed={showDetails} onClick={() => dispatchNavigation({ type: "toggle-details", show: true })}>Reviewer Details</button></div></nav>
 
     <div className="review-workspace">
       <aside className="review-panel review-sidebar review-filters-pane"><h2>מסננים</h2><div className="review-controls" aria-label="מסנני ביקורת">
@@ -168,13 +171,13 @@ export function QuestionReviewScreen() {
         <FilterSelect label="curationReason" value={filters.curationReason} values={uniqueValues(FOUNDATIONAL_QUESTIONS.map((item) => isGeneratedQuestionDefinition(item) ? undefined : item.curationReason))} onChange={(value) => updateFilter("curationReason", value)} />
         <FilterSelect label="contentFamily" value={filters.contentFamily} values={uniqueValues(FOUNDATIONAL_QUESTIONS.map((item) => item.contentFamily))} onChange={(value) => updateFilter("contentFamily", value)} />
         <FilterSelect label="סטטוס ביקורת" value={filters.reviewStatus === "all" ? "" : filters.reviewStatus} values={["unreviewed", "approved", "needs-fix", "rejected"]} labels={reviewLabels} onChange={(value) => updateFilter("reviewStatus", (value || "all") as ReviewFilters["reviewStatus"])} />
-        <button type="button" onClick={() => { setFilters(EMPTY_REVIEW_FILTERS); setIndex(0); }}>ניקוי מסננים</button>
+        <button type="button" onClick={() => dispatchNavigation({ type: "reset-filters" })}>ניקוי מסננים</button>
       </div>{filters.contentFamily ? <div className="review-family"><strong><code>{filters.contentFamily}</code></strong><span>{activeFamilyDefinitions.filter((item) => item.authoringMode === "curated").length} curated</span><span>{activeFamilyDefinitions.filter(isGeneratedQuestionDefinition).length} generators</span>{flaggedFamilies.has(filters.contentFamily) ? <mark>סומנה לביקורת דמיון</mark> : null}</div> : null}</aside>
 
       <section className="review-center-pane">{!currentDefinition || !currentQuestion ? <div className="review-panel"><p>אין definitions שמתאימים למסננים.</p></div> : <>
-        <div className="review-panel review-question-shell"><div className="review-question-card"><QuestionView key={`${currentQuestion.id}:${reproduceNonce}`} question={currentQuestion} onNext={() => navigate("next")} /></div><div className="review-answer-actions"><button type="button" onClick={() => setShowExpected((value) => !value)}>הצג תשובה</button>{showExpected ? <div className="review-expected"><strong>תשובה צפויה:</strong> <ExpectedAnswerView question={currentQuestion} /><small>{answerSemanticsLabel(currentQuestion)} · canonical: <code>{expectedAnswer(currentQuestion)}</code></small></div> : null}</div>
-          {isGeneratedQuestionDefinition(currentDefinition) ? <div className="review-generator-tools"><label>Seed <input type="number" value={seed} onChange={(event) => setSeed(Math.max(0, Number(event.target.value) || 0))} /></label><button type="button" onClick={() => setSeed((value) => value + 1)}>דוגמה חדשה</button><button type="button" onClick={() => setReproduceNonce((value) => value + 1)}>אותה דוגמה שוב</button>{availableBands.length > 1 ? <label>Band <select value={currentDefinition.difficultyBand} onChange={(event) => chooseGeneratedBand(event.target.value)}>{availableBands.map((band) => <option key={band}>{band}</option>)}</select></label> : null}<button type="button" onClick={() => setShowBatch((value) => !value)}>הצג דוגמאות ברמה זו</button></div> : null}</div>
-        {batch.length ? <div className="review-panel review-batch-panel"><h2>דוגמאות ברמה {currentDefinition.difficultyBand} · seeds {seed}–{seed + batch.length - 1}</h2><div className="review-batch">{batch.map((sample) => <button type="button" key={sample.id} onClick={() => { setSeed(sample.generatorSeed ?? seed); setShowBatch(false); }}><small>seed {sample.generatorSeed}</small><ContentRenderer content={sample.prompt} /><strong dir="ltr">{expectedAnswer(sample)}</strong></button>)}</div></div> : null}
+        <div className="review-panel review-question-shell"><div className="review-question-card"><QuestionView key={`${currentQuestion.id}:${reproduceNonce}`} question={currentQuestion} onNext={() => navigate("next")} /></div><div className="review-answer-actions"><button type="button" onClick={() => dispatchNavigation({ type: "toggle-expected" })}>הצג תשובה</button>{showExpected ? <div className="review-expected"><strong>תשובה צפויה:</strong> <ExpectedAnswerView question={currentQuestion} /><small>{answerSemanticsLabel(currentQuestion)} · canonical: <code>{expectedAnswer(currentQuestion)}</code></small></div> : null}</div>
+          {isGeneratedQuestionDefinition(currentDefinition) ? <div className="review-generator-tools"><label>Seed <input type="number" value={seed} onChange={(event) => dispatchNavigation({ type: "set-seed", seed: Math.max(0, Number(event.target.value) || 0) })} /></label><button type="button" onClick={() => dispatchNavigation({ type: "new-sample" })}>דוגמה חדשה</button><button type="button" onClick={() => dispatchNavigation({ type: "reproduce-sample" })}>אותה דוגמה שוב</button>{availableBands.length > 1 ? <label>Band <select value={currentDefinition.difficultyBand} onChange={(event) => chooseGeneratedBand(event.target.value)}>{availableBands.map((band) => <option key={band}>{band}</option>)}</select></label> : null}<button type="button" onClick={() => dispatchNavigation({ type: "toggle-batch" })}>הצג דוגמאות ברמה זו</button></div> : null}</div>
+        {batch.length ? <div className="review-panel review-batch-panel"><h2>דוגמאות ברמה {currentDefinition.difficultyBand} · seeds {seed}–{seed + batch.length - 1}</h2><div className="review-batch">{batch.map((sample) => <button type="button" key={sample.id} onClick={() => dispatchNavigation({ type: "select-batch-sample", seed: sample.generatorSeed ?? seed })}><small>seed {sample.generatorSeed}</small><ContentRenderer content={sample.prompt} /><strong dir="ltr">{expectedAnswer(sample)}</strong></button>)}</div></div> : null}
       </>}</section>
 
       <aside className="review-panel review-sidebar review-details-pane">{currentDefinition && currentQuestion ? <>

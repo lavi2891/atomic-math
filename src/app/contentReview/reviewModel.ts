@@ -24,6 +24,66 @@ export const EMPTY_REVIEW_FILTERS: ReviewFilters = {
   domainId: "", skillGroupId: "", skillId: "", category: "", questionType: "", difficultyBand: "", authoringMode: "", curationReason: "", contentFamily: "", reviewStatus: "all",
 };
 
+export interface ReviewNavigationState {
+  filters: ReviewFilters;
+  index: number;
+  seed: number;
+  previewDefinitionId: string | null;
+  reproduceNonce: number;
+  randomNonce: number;
+  showDetails: boolean;
+  showExpected: boolean;
+  showBatch: boolean;
+}
+
+export type ReviewNavigationAction =
+  | { type: "set-filter"; key: keyof ReviewFilters; value: ReviewFilters[keyof ReviewFilters] }
+  | { type: "restore-filters"; filters: ReviewFilters }
+  | { type: "reset-filters" }
+  | { type: "navigate"; index: number }
+  | { type: "preview-band"; definitionId: string }
+  | { type: "set-seed"; seed: number }
+  | { type: "new-sample" }
+  | { type: "reproduce-sample" }
+  | { type: "toggle-batch" }
+  | { type: "select-batch-sample"; seed: number }
+  | { type: "toggle-details"; show: boolean }
+  | { type: "toggle-expected" }
+  | { type: "increment-random-nonce" };
+
+export function initialReviewNavigationState(search: string): ReviewNavigationState {
+  return {
+    filters: parseReviewDeepLink(search),
+    index: 0,
+    seed: 1,
+    previewDefinitionId: null,
+    reproduceNonce: 0,
+    randomNonce: 0,
+    showDetails: true,
+    showExpected: false,
+    showBatch: false,
+  };
+}
+
+/** Internal navigation deliberately retains the exact filter object. */
+export function reviewNavigationReducer(state: ReviewNavigationState, action: ReviewNavigationAction): ReviewNavigationState {
+  if (action.type === "set-filter") {
+    return { ...state, filters: { ...state.filters, [action.key]: action.value }, index: 0, previewDefinitionId: null };
+  }
+  if (action.type === "restore-filters") return { ...state, filters: action.filters, index: 0, previewDefinitionId: null };
+  if (action.type === "reset-filters") return { ...state, filters: EMPTY_REVIEW_FILTERS, index: 0, previewDefinitionId: null };
+  if (action.type === "navigate") return { ...state, index: action.index, previewDefinitionId: null };
+  if (action.type === "preview-band") return { ...state, previewDefinitionId: action.definitionId, seed: 1 };
+  if (action.type === "set-seed") return { ...state, seed: action.seed };
+  if (action.type === "new-sample") return { ...state, seed: state.seed + 1 };
+  if (action.type === "reproduce-sample") return { ...state, reproduceNonce: state.reproduceNonce + 1 };
+  if (action.type === "toggle-batch") return { ...state, showBatch: !state.showBatch };
+  if (action.type === "select-batch-sample") return { ...state, seed: action.seed, showBatch: false };
+  if (action.type === "toggle-details") return { ...state, showDetails: action.show };
+  if (action.type === "toggle-expected") return { ...state, showExpected: !state.showExpected };
+  return { ...state, randomNonce: state.randomNonce + 1 };
+}
+
 export interface ReviewCatalog {
   domains: readonly Domain[];
   skills: readonly Skill[];

@@ -10,11 +10,13 @@ import {
   filterReviewDefinitions,
   flaggedCuratedFamilies,
   generatedSampleBatch,
+  initialReviewNavigationState,
   navigationIndex,
   parseReviewDeepLink,
   resolveReviewQuestion,
   reviewDeepLink,
   reviewIndexAfterMark,
+  reviewNavigationReducer,
   reviewProgress,
   type ReviewFilters,
 } from "../src/app/contentReview/reviewModel.ts";
@@ -137,6 +139,89 @@ await run("deep links parse and serialize Skill, category, family, and status", 
   assert.equal(parsed.contentFamily, "INT_ADD:conceptual");
   assert.equal(parsed.reviewStatus, "needs-fix");
   assert.match(reviewDeepLink(parsed), /skill=INT_ADD/);
+});
+
+await run("deep link initializes filter ownership once", () => {
+  const state = initialReviewNavigationState("?review=questions&skill=INT_ADD&category=conceptual");
+  assert.equal(state.filters.skillId, "INT_ADD");
+  assert.equal(state.filters.category, "conceptual");
+  assert.equal(state.index, 0);
+  assert.equal(state.previewDefinitionId, null);
+});
+
+await run("first, previous, next, last, and random navigation preserve filters", () => {
+  const initial = initialReviewNavigationState("?review=questions&skill=AR_ADD_FACTS&category=calculation&contentFamily=AR_ADD_FACTS%3Arelated-three-addend-sum");
+  const filters = initial.filters;
+  let state = reviewNavigationReducer(initial, { type: "navigate", index: 3 });
+  assert.strictEqual(state.filters, filters);
+  state = reviewNavigationReducer(state, { type: "navigate", index: 2 });
+  assert.strictEqual(state.filters, filters);
+  state = reviewNavigationReducer(state, { type: "navigate", index: 0 });
+  assert.strictEqual(state.filters, filters);
+  state = reviewNavigationReducer(state, { type: "navigate", index: 8 });
+  assert.strictEqual(state.filters, filters);
+  state = reviewNavigationReducer(state, { type: "increment-random-nonce" });
+  assert.strictEqual(state.filters, filters);
+});
+
+await run("Band A and Band B previews preserve filters and do not set difficulty scope", () => {
+  const initial = initialReviewNavigationState("?review=questions&skill=AR_ADD_FACTS&category=calculation");
+  const filters = initial.filters;
+  const bandA = reviewNavigationReducer(initial, { type: "preview-band", definitionId: "MVP_AR_ADD_FACTS_A_B" });
+  assert.strictEqual(bandA.filters, filters);
+  assert.equal(bandA.filters.difficultyBand, "");
+  assert.equal(bandA.previewDefinitionId, "MVP_AR_ADD_FACTS_A_B");
+  const bandB = reviewNavigationReducer(bandA, { type: "preview-band", definitionId: "MVP_AR_ADD_FACTS_B_B" });
+  assert.strictEqual(bandB.filters, filters);
+  assert.equal(bandB.filters.difficultyBand, "");
+  assert.equal(bandB.previewDefinitionId, "MVP_AR_ADD_FACTS_B_B");
+});
+
+await run("generated sample and batch actions preserve the active filter scope", () => {
+  const initial = initialReviewNavigationState("?review=questions&skill=INT_ADD&authoringMode=generated");
+  const filters = initial.filters;
+  let state = reviewNavigationReducer(initial, { type: "new-sample" });
+  state = reviewNavigationReducer(state, { type: "reproduce-sample" });
+  state = reviewNavigationReducer(state, { type: "toggle-batch" });
+  state = reviewNavigationReducer(state, { type: "select-batch-sample", seed: 17 });
+  state = reviewNavigationReducer(state, { type: "toggle-details", show: false });
+  state = reviewNavigationReducer(state, { type: "toggle-expected" });
+  assert.strictEqual(state.filters, filters);
+  assert.equal(state.seed, 17);
+  assert.equal(state.showBatch, false);
+});
+
+await run("review status navigation preserves filters and cannot create a new scope", () => {
+  const initial = initialReviewNavigationState("?review=questions&skill=INT_ADD&category=calculation&status=unreviewed");
+  const filters = initial.filters;
+  const url = reviewDeepLink(filters);
+  const afterApproval = reviewNavigationReducer(initial, { type: "navigate", index: reviewIndexAfterMark(0, 5, filters.reviewStatus, "approved") });
+  const afterNeedsFix = reviewNavigationReducer(afterApproval, { type: "navigate", index: reviewIndexAfterMark(0, 5, filters.reviewStatus, "needs-fix") });
+  const afterReject = reviewNavigationReducer(afterNeedsFix, { type: "navigate", index: reviewIndexAfterMark(0, 5, filters.reviewStatus, "rejected") });
+  assert.strictEqual(afterReject.filters, filters);
+  assert.equal(reviewDeepLink(afterReject.filters), url);
+});
+
+await run("only explicit Skill and category changes update filter state and URL", () => {
+  const initial = initialReviewNavigationState("?review=questions&skill=INT_ADD");
+  const skillChanged = reviewNavigationReducer(initial, { type: "set-filter", key: "skillId", value: "AR_ADD_FACTS" });
+  assert.notStrictEqual(skillChanged.filters, initial.filters);
+  assert.match(reviewDeepLink(skillChanged.filters), /skill=AR_ADD_FACTS/);
+  const categoryChanged = reviewNavigationReducer(skillChanged, { type: "set-filter", key: "category", value: "calculation" });
+  assert.match(reviewDeepLink(categoryChanged.filters), /category=calculation/);
+});
+
+await run("normal navigation never reparses or replaces URL-derived filters", () => {
+  const initial = initialReviewNavigationState("?review=questions&skill=INT_ADD&category=conceptual");
+  const filters = initial.filters;
+  const navigated = [
+    { type: "navigate", index: 1 },
+    { type: "preview-band", definitionId: "MVP_INT_ADD_B_A" },
+    { type: "new-sample" },
+    { type: "toggle-batch" },
+  ].reduce(reviewNavigationReducer, initial);
+  assert.strictEqual(navigated.filters, filters);
+  assert.equal(reviewDeepLink(navigated.filters), "?review=questions&skill=INT_ADD&category=conceptual");
 });
 
 await run("normalized near-identical content families are first-class", () => {
