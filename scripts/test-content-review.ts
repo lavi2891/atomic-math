@@ -66,7 +66,7 @@ await run("Skill Group filter uses atomic group membership", () => {
 await run("atomic Skill, category, difficulty, family, and authoring filters compose", () => {
   const generated = filter({ skillId: "INT_ADD", category: "calculation", difficultyBand: "B", authoringMode: "generated" });
   assert.ok(generated.length > 0 && generated.every((item) => item.skillId === "INT_ADD" && item.category === "calculation" && item.difficultyBand === "B" && item.authoringMode === "generated"));
-  const family = FOUNDATIONAL_QUESTIONS.find((item) => item.skillId === "INT_ADD" && item.authoringMode === "curated")?.contentFamily;
+  const family = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_ALG_VARIABLE_MEANING_CURATED")?.contentFamily;
   assert.ok(family);
   const curated = filter({ contentFamily: family, authoringMode: "curated" });
   assert.ok(curated.length > 0 && curated.every((item) => item.contentFamily === family && item.authoringMode === "curated"));
@@ -74,17 +74,17 @@ await run("atomic Skill, category, difficulty, family, and authoring filters com
 
 await run("question type and curationReason filters use definition metadata", () => {
   assert.ok(filter({ questionType: "numeric" }).every(isGeneratedQuestionDefinition));
-  const reasoning = filter({ questionType: "singleChoice", curationReason: "reasoning-evidence" });
-  assert.ok(reasoning.length > 0 && reasoning.every((item) => !isGeneratedQuestionDefinition(item) && item.curationReason === "reasoning-evidence"));
+  const deliberate = filter({ questionType: "singleChoice", curationReason: "deliberate-example" });
+  assert.ok(deliberate.length > 0 && deliberate.every((item) => !isGeneratedQuestionDefinition(item) && item.curationReason === "deliberate-example"));
 });
 
 await run("curated navigation is deterministic and bounded", () => {
   const curated = filter({ authoringMode: "curated" });
   assert.equal(navigationIndex("first", 12, curated.length), 0);
   assert.equal(navigationIndex("previous", 0, curated.length), 0);
-  assert.equal(navigationIndex("next", 0, curated.length), 1);
+  assert.equal(navigationIndex("next", 0, curated.length), 0);
   assert.equal(navigationIndex("last", 0, curated.length), curated.length - 1);
-  assert.equal(reviewIndexAfterMark(0, curated.length, "all", "approved"), 1);
+  assert.equal(reviewIndexAfterMark(0, curated.length, "all", "approved"), 0);
   assert.equal(reviewIndexAfterMark(0, curated.length, "unreviewed", "approved"), 0);
 });
 
@@ -224,9 +224,9 @@ await run("normal navigation never reparses or replaces URL-derived filters", ()
   assert.equal(reviewDeepLink(navigated.filters), "?review=questions&skill=INT_ADD&category=conceptual");
 });
 
-await run("normalized near-identical content families are first-class", () => {
+await run("global conversion leaves no near-identical curated families", () => {
   const flagged = flaggedCuratedFamilies(FOUNDATIONAL_QUESTIONS);
-  assert.ok(flagged.has("INT_COMPARE:reasoning"));
+  assert.equal(flagged.size, 0);
 });
 
 await run("generator parameter types map automatically to Hebrew", () => {
@@ -317,4 +317,6 @@ await run("curated reviewer summaries stay free of generator-only panels", () =>
   if (isGeneratedQuestionDefinition(curated)) throw new Error("Expected curated question");
   assert.equal(generatorStructureSummary(curated, curated), null);
   assert.equal(answerSemanticsLabel(curated), "בחירה יחידה");
+  assert.equal(curated.curationReason, "deliberate-example");
+  assert.ok(curated.curationJustificationHe);
 });

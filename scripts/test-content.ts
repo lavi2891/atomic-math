@@ -11,9 +11,10 @@ import type { Attempt } from "../src/domain/attempts/types.ts";
 import { isAssignmentComplete } from "../src/domain/studentHome/deriveStudentHome.ts";
 import { createChallengeSignature, challengeSignatureKey } from "../src/domain/personalBests/challengeSignature.ts";
 import { resolveQuickPracticeScope } from "../src/domain/studentHome/quickPractice.ts";
-import { auditFoundationalContent, magnitudeBandProgressionIssues, validateFoundationalContent } from "../src/content/validateContent.ts";
+import { auditFoundationalContent, curatedNumericLiteralIssues, curatedNumericLiteralItems, magnitudeBandProgressionIssues, validateFoundationalContent } from "../src/content/validateContent.ts";
 import type { GeneratedQuestionInstance, OptionContent } from "../src/domain/questions/types.ts";
 import type { GeneratedQuestionDefinition } from "../src/domain/questions/generator/types.ts";
+import type { SkillQuestionDefinition } from "../src/domain/session/skillQuestionSelector.ts";
 
 function run(name: string, fn: () => void) { fn(); process.stdout.write(`PASS ${name}\n`); }
 const skill = (id: string) => SKILLS.find((item) => item.id === id)!;
@@ -72,7 +73,7 @@ run("every ready definition carries category and meaningful band metadata", () =
 
 run("foundational authoring intent and normalized inventory stay explicit", () => {
   const audit = auditFoundationalContent();
-  assert.deepEqual({ total: audit.total, generated: audit.generated, curatedFixed: audit.curatedFixed, fixedNumeric: audit.fixedNumeric }, { total: 289, generated: 147, curatedFixed: 142, fixedNumeric: 0 });
+  assert.deepEqual({ total: audit.total, generated: audit.generated, curatedFixed: audit.curatedFixed, fixedNumeric: audit.fixedNumeric }, { total: 184, generated: 183, curatedFixed: 1, fixedNumeric: 0 });
   for (const definition of FOUNDATIONAL_QUESTIONS) {
     assert.ok(definition.contentFamily, definition.id);
     if (isGeneratedQuestionDefinition(definition)) {
@@ -120,8 +121,34 @@ run("foundational generators cover exact edge cases deterministically", () => {
 run("full content validation checks configured samples and reports review families", () => {
   const report = validateFoundationalContent(20);
   assert.deepEqual(report.issues, []);
-  assert.equal(report.generatedSamples, 147 * 20);
-  assert.ok(report.warnings.some((warning) => warning.includes("near-identical curated family")));
+  assert.equal(report.generatedSamples, 183 * 20);
+  assert.deepEqual(report.warnings, []);
+});
+
+run("fixed numeric literals are exceptional and require explicit pedagogical justification", () => {
+  assert.deepEqual(curatedNumericLiteralItems(FOUNDATIONAL_QUESTIONS), []);
+  const base: SkillQuestionDefinition = {
+    id: "TEST_FIXED_7", topicId: "FOUNDATIONS", skillId: "INT_COMPARE", type: "singleChoice", authoringMode: "curated", contentFamily: "test:fixed", category: "conceptual", difficultyBand: "A", difficulty: 0.1,
+    prompt: [{ kind: "text", value: "איזה מספר גדול מ־7?" }], options: [{ id: "o0", content: [{ kind: "text", value: "8" }] }, { id: "o1", content: [{ kind: "text", value: "6" }] }], correctOptionId: "o0",
+  };
+  assert.match(curatedNumericLiteralIssues([base])[0]!, /curationReason/);
+  assert.match(curatedNumericLiteralIssues([{ ...base, curationReason: "edge-case" }])[0]!, /curationJustificationHe/);
+  assert.deepEqual(curatedNumericLiteralIssues([{ ...base, curationReason: "edge-case", curationJustificationHe: "הערך המדויק מפעיל מקרה קצה שנבדק במפורש." }]), []);
+  assert.ok(curatedNumericLiteralIssues([{ ...base, curationReason: "deliberate-example", curationJustificationHe: "דוגמה נוחה" }]).length > 0);
+});
+
+run("all globally audited routine numeric concept families are generated", () => {
+  const convertedSkills = ["INT_COMPARE", "INT_NEGATION", "INT_ADD", "INT_SUB", "INT_MUL", "INT_DIV", "ALG_EQUALITY", "ALG_VARIABLE", "ALG_SUBSTITUTE", "EQ_ADD", "EQ_MUL"];
+  for (const skillId of convertedSkills) {
+    assert.ok(FOUNDATIONAL_QUESTIONS.some((item) => item.skillId === skillId && isGeneratedQuestionDefinition(item) && !!item.choiceBuilder), skillId);
+    assert.equal(FOUNDATIONAL_QUESTIONS.some((item) => item.skillId === skillId && item.id.startsWith(`MVP_${skillId}_CONCEPT_`)), false, skillId);
+  }
+  const retained = FOUNDATIONAL_QUESTIONS.filter((item) => !isGeneratedQuestionDefinition(item));
+  assert.deepEqual(retained.map((item) => item.id), ["MVP_ALG_VARIABLE_MEANING_CURATED"]);
+  const retainedItem = retained[0]!;
+  if (isGeneratedQuestionDefinition(retainedItem)) throw new Error("Expected curated wording item");
+  assert.equal(retainedItem.curationReason, "deliberate-example");
+  assert.ok(retainedItem.curationJustificationHe);
 });
 
 run("reviewed place-value and fraction-meaning repetitions are generated", () => {

@@ -129,3 +129,49 @@ The approved definitions `MVP_INT_ADD_B_A`, `MVP_INT_ADD_C_A`, and `MVP_OPS_ORDE
 | Fixed numeric definitions | 0 | 0 |
 
 This removes 192 repeated fixed definitions and adds 53 reusable conceptual generators. The broad validator now samples 14,700 deterministic generated instances per run and checks generated choice option uniqueness, answer presence, distractor metadata, reproducibility, and semantic Band progression for magnitude-driven families.
+
+## Global authoring-rule audit — 2026-09-03
+
+The first human review established a bank-wide rule: routine numeric structure is generated; an exact fixed value is exceptional and must be justified. The entire active foundational bank was therefore audited, including Skills absent from the review export.
+
+### Whole-bank result
+
+| Measure | Before this audit | After this audit |
+|---|---:|---:|
+| Active definitions | 289 | 184 |
+| Generated definitions | 147 | 183 |
+| Curated definitions | 142 | 1 |
+| Curated definitions containing numeric literals | 142 | 0 |
+| Fixed numeric-answer definitions | 0 | 0 |
+
+All 142 curated definitions containing literals were routine instantiations of reusable structures. They were replaced by 36 structural generator definitions. No fixed numeric item qualified for retention.
+
+### Global ID migration
+
+| Removed active IDs | Structural generator replacement |
+|---|---|
+| `MVP_INT_COMPARE_CONCEPT_1..18` | `MVP_INT_COMPARE_ADJACENT_NEGATIVES_A/B/C` |
+| `MVP_INT_NEGATION_CONCEPT_1..18` | `MVP_INT_NEGATION_POSITIVE_A/B/C`, `MVP_INT_NEGATION_NEGATIVE_A/B/C` |
+| active `MVP_INT_ADD_CONCEPT_*` | `MVP_INT_ADD_SIGN_CANCELLATION_A/B/C` |
+| active `MVP_INT_SUB_CONCEPT_*` | `MVP_INT_SUB_NEGATIVE_REWRITE_A/B/C` |
+| active `MVP_INT_MUL_CONCEPT_*` | `MVP_INT_MUL_SIGN_A/B/C` |
+| active `MVP_INT_DIV_CONCEPT_*` | `MVP_INT_DIV_SIGN_A/B/C` |
+| `MVP_ALG_EQUALITY_CONCEPT_1..18` | `MVP_ALG_EQUALITY_COMMUTATIVE_A/B/C` |
+| numeric `MVP_ALG_VARIABLE_CONCEPT_1..18` variants | `MVP_ALG_VARIABLE_COEFFICIENT_A/B/C` |
+| active `MVP_ALG_SUBSTITUTE_CONCEPT_*` | `MVP_ALG_SUBSTITUTE_LINEAR_A/B/C` |
+| active `MVP_EQ_ADD_CONCEPT_*` | `MVP_EQ_ADD_MISSING_A/B/C` |
+| active `MVP_EQ_MUL_CONCEPT_*` | `MVP_EQ_MUL_MISSING_A/B/C` |
+
+The one retained curated definition is non-numeric:
+
+| definitionId | curationReason | Justification |
+|---|---|---|
+| `MVP_ALG_VARIABLE_MEANING_CURATED` | `deliberate-example` | The wording itself tests the meaning of a variable in context; no arbitrary numeric value is embedded. |
+
+There are no retained fixed numeric items and no remaining questionable curated numeric cases.
+
+### Enforced authoring contract
+
+`QuestionCurationReason` now uses the explicit values `misconception`, `edge-case`, `representation`, `regression`, `deliberate-example`, and `other`. `curationJustificationHe` records why fixed values or wording are essential. `validate-content` treats any curated numeric literal without both an approved reason and a substantive justification as a blocking error; generic explanations such as “convenient example” are rejected.
+
+Constants that define a mathematical structure remain valid inside generators—for example zero in identity/sign distractors or one in a near-cancellation family. Fact values such as 2, 5, and 10 are part of the corresponding atomic Skill scope, not arbitrary fixed examples. The calculation generators for `OPS_ORDER_BASIC` and linear `ALG_SUBSTITUTE` were also parameterized so their former constant coefficients no longer function as magic numbers. The approved seed-42 `MVP_OPS_ORDER_BASIC_A_A` rendered expression remains `4+2*2`.

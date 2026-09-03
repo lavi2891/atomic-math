@@ -8,6 +8,7 @@ import { buildGeneratedQuestion } from "../domain/questions/generator/buildGener
 import { evaluateExpression } from "../domain/questions/generator/evaluateExpression.ts";
 import type { GeneratedQuestionDefinition, ParamSpec } from "../domain/questions/generator/types.ts";
 import type { SkillQuestionDefinition } from "../domain/session/skillQuestionSelector.ts";
+import type { OptionContent, QuestionCurationReason } from "../domain/questions/types.ts";
 
 export interface SkillContentAudit {
   skillId: string;
@@ -40,6 +41,49 @@ function optionText(value: unknown): string { return JSON.stringify(value); }
 function rationalKey(value: { num: bigint; den: bigint }): string { return `${value.num}/${value.den}`; }
 function normalizedNumericSurface(value: unknown): string {
   return optionText(value).replace(/[−-]?\d+(?:[.,/]\d+)*/gu, "#").replace(/\s+/gu, " ");
+}
+
+const APPROVED_FIXED_NUMERIC_REASONS = new Set<QuestionCurationReason>([
+  "misconception",
+  "edge-case",
+  "representation",
+  "regression",
+  "deliberate-example",
+  "other",
+]);
+const NUMERIC_LITERAL_PATTERN = /(?:^|[^\p{L}\p{N}_])[-−–]?\d+(?:[.,/]\d+)?/gu;
+const GENERIC_JUSTIFICATION_PATTERN = /(?:convenient|arbitrary|magic number|דוגמה נוחה|מספר שרירותי)/iu;
+
+function contentSurface(content: readonly OptionContent[]): string {
+  return content.map((part) => part.kind === "text" ? part.value : part.latex).join(" ");
+}
+
+export interface CuratedNumericLiteralItem {
+  definitionId: string;
+  curationReason?: QuestionCurationReason;
+  justification?: string;
+  literals: string[];
+}
+
+export function curatedNumericLiteralItems(definitions: readonly SkillQuestionDefinition[]): CuratedNumericLiteralItem[] {
+  return definitions.flatMap((definition) => {
+    if (isGeneratedQuestionDefinition(definition)) return [];
+    const answerSurface = definition.type === "numeric"
+      ? definition.correctAnswers.join(" ")
+      : definition.options.map((option) => contentSurface(option.content)).join(" ");
+    const surface = `${contentSurface(definition.prompt)} ${answerSurface}`;
+    const literals = [...surface.matchAll(NUMERIC_LITERAL_PATTERN)].map((match) => match[0]!.trim());
+    return literals.length ? [{ definitionId: definition.id, curationReason: definition.curationReason, justification: definition.curationJustificationHe, literals: [...new Set(literals)] }] : [];
+  });
+}
+
+export function curatedNumericLiteralIssues(definitions: readonly SkillQuestionDefinition[]): string[] {
+  return curatedNumericLiteralItems(definitions).flatMap((item) => {
+    if (!item.curationReason || !APPROVED_FIXED_NUMERIC_REASONS.has(item.curationReason)) return [`${item.definitionId}: curated numeric literals require an approved curationReason`];
+    if (!item.justification?.trim()) return [`${item.definitionId}: curated numeric literals require curationJustificationHe explaining why the exact values matter`];
+    if (GENERIC_JUSTIFICATION_PATTERN.test(item.justification)) return [`${item.definitionId}: curationJustificationHe does not establish a pedagogical need for the exact values`];
+    return [];
+  });
 }
 
 export function auditFoundationalContent(): ContentAudit {
@@ -116,6 +160,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
   const fixedSurfaceKeys = new Set<string>();
   const normalizedFamilies = new Map<string, { skillId: string; family: string; ids: string[] }>();
   issues.push(...magnitudeBandProgressionIssues(FOUNDATIONAL_QUESTIONS));
+  issues.push(...curatedNumericLiteralIssues(FOUNDATIONAL_QUESTIONS));
   for (const skill of SKILLS) for (const issue of validateEvidencePolicy(skill.evidencePolicy)) issues.push(`${skill.id}: ${issue}`);
   for (const entry of CONTENT_READINESS) for (const issue of readinessIssues(entry, FOUNDATIONAL_QUESTIONS)) issues.push(`${entry.skillId}: ${issue}`);
   for (const definition of FOUNDATIONAL_QUESTIONS) {
@@ -189,11 +234,13 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
       const existing = normalizedFamilies.get(normalizedKey);
       normalizedFamilies.set(normalizedKey, { skillId: definition.skillId ?? "missing-skill", family: definition.contentFamily ?? "missing-family", ids: [...(existing?.ids ?? []), definition.id] });
     } else if (definition.type === "multiChoice") {
+      if (definition.authoringMode !== "curated" || !definition.curationReason) issues.push(`${definition.id}: curated authoring intent is incomplete`);
       if (!definition.correctOptionIds.length || definition.correctOptionIds.some((id) => !definition.options.some((option) => option.id === id))) issues.push(`${definition.id}: invalid correct options`);
     }
   }
   const positionCounts = [...correctPositions.values()];
-  if (positionCounts.length < 4 || Math.max(...positionCounts) - Math.min(...positionCounts) > 2) issues.push("fixed bank correct-answer positions are unbalanced");
+  const fixedChoiceCount = positionCounts.reduce((sum, count) => sum + count, 0);
+  if (fixedChoiceCount >= 4 && (positionCounts.length < 4 || Math.max(...positionCounts) - Math.min(...positionCounts) > 2)) issues.push("fixed bank correct-answer positions are unbalanced");
   for (const group of normalizedFamilies.values()) if (group.ids.length >= 4) warnings.push(`${group.skillId}/${group.family}: near-identical curated family (${group.ids.length} items: ${group.ids.slice(0, 3).join(", ")}...)`);
   return { issues, warnings, skills: SKILLS.length, definitions: FOUNDATIONAL_QUESTIONS.length, generatedSamples, audit: auditFoundationalContent() };
 }

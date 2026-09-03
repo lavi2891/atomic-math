@@ -5,11 +5,12 @@ export type QuestionType = "numeric" | "singleChoice" | "multiChoice"; // TODO: 
 
 export type QuestionAuthoringMode = "generated" | "curated";
 export type QuestionCurationReason =
-  | "conceptual-evidence"
-  | "reasoning-evidence"
-  | "representation-evidence"
-  | "misconception-diagnostic"
-  | "wording-sensitive";
+  | "misconception"
+  | "edge-case"
+  | "representation"
+  | "regression"
+  | "deliberate-example"
+  | "other";
 
 export type OptionContent =
   | { kind: "text"; value: string; key?: string }
@@ -44,6 +45,8 @@ export interface BaseQuestion {
   contentFamily?: string;
   /** Required by validation for curated foundational content. */
   curationReason?: QuestionCurationReason;
+  /** Explains why fixed values or wording are pedagogically essential. */
+  curationJustificationHe?: string;
 }
 
 export interface NumericQuestion extends BaseQuestion {
