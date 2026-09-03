@@ -9,6 +9,7 @@ import {
 } from "../questions/types.ts";
 import { pickNextQuestion } from "./questionPicker.ts";
 import { createRuntimeSeed, SeedSequence } from "../../shared/seededRandom.ts";
+import { filterByQuestionCategory, type QuestionCategoryFilter } from "../questions/categories.ts";
 
 export type SkillQuestionDefinition = QuestionDefinition & { skillId: string };
 
@@ -18,8 +19,8 @@ export class SkillQuestionSelector {
   private readonly definitions: readonly SkillQuestionDefinition[];
   private readonly seeds: SeedSequence;
 
-  constructor(definitions: readonly SkillQuestionDefinition[], seed = createRuntimeSeed()) {
-    this.definitions = definitions;
+  constructor(definitions: readonly SkillQuestionDefinition[], seed = createRuntimeSeed(), categoryFilter: QuestionCategoryFilter = "all") {
+    this.definitions = filterByQuestionCategory(definitions, categoryFilter);
     this.seeds = new SeedSequence(seed);
   }
 

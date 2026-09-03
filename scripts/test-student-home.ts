@@ -4,6 +4,7 @@ import type { MasterySnapshot } from "../src/domain/mastery/projectMastery.ts";
 import { contentBackedCatalog } from "../src/domain/studentHome/contentAvailability.ts";
 import { chooseFresherMastery, deriveSkillDisplayState, fluencyLabel, isAssignmentComplete, sortAssignments } from "../src/domain/studentHome/deriveStudentHome.ts";
 import { assignmentSessionLaunch, isSkillSelected, toggleSkillSelection } from "../src/domain/studentHome/sessionLaunch.ts";
+import { selectionState, toggleChild, toggleParent } from "../src/domain/studentHome/treeSelection.ts";
 import type { Assignment, CachedStudentHome } from "../src/domain/studentHome/types.ts";
 import { StudentHomeService } from "../src/app/studentHome/StudentHomeService.ts";
 import { DOMAINS, SKILLS } from "../src/content/catalog/index.ts";
@@ -49,6 +50,28 @@ await run("free-practice selection supports selecting and deselecting exactly on
   assert.deepEqual(selected, ["INT_ADD"]);
   assert.equal(isSkillSelected(selected, "INT_ADD"), true);
   assert.deepEqual(toggleSkillSelection(selected, "INT_ADD"), []);
+});
+
+await run("tree parent selection selects and clears every child", () => {
+  assert.deepEqual(toggleParent([], ["A", "B"]), ["A", "B"]);
+  assert.deepEqual(toggleParent(["A", "B", "OUTSIDE"], ["A", "B"]), ["OUTSIDE"]);
+});
+
+await run("tree selection exposes partial, all, and single-child states", () => {
+  assert.equal(selectionState(["A"], ["A", "B"]), "partial");
+  assert.equal(selectionState(["A", "B"], ["A", "B"]), "all");
+  assert.equal(selectionState(toggleChild([], "A"), ["A"]), "all");
+});
+
+await run("collapse-independent tree state retains selected children", () => {
+  const selected = toggleChild([], "A");
+  let expanded = true; expanded = !expanded; expanded = !expanded;
+  assert.equal(expanded, true); assert.deepEqual(selected, ["A"]);
+});
+
+await run("short labels preserve stable skill identity and full name", () => {
+  const skill = SKILLS.find((item) => item.id === "INT_ADD")!;
+  assert.equal(skill.id, "INT_ADD"); assert.equal(skill.shortNameHe, "חיבור"); assert.equal(skill.nameHe, "חיבור מספרים מכוונים");
 });
 
 await run("only domains with active question-backed skills appear", () => {

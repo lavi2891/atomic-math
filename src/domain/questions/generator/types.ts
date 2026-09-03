@@ -1,4 +1,5 @@
 import type { NumericAnswerSemantics, NumericInputFormat, OptionContent } from "../types.ts";
+import type { QuestionCategory } from "../categories.ts";
 
 export type IntegerLikeParamSpec = {
   type: "integer" | "natural";
@@ -68,6 +69,8 @@ export interface GeneratedQuestionDefinition {
   /** New content identity. Optional only while legacy generators are migrated. */
   skillId?: string;
   kind: "generated";
+  /** Optional only for backwards-compatible content; omitted values migrate to calculation. */
+  category?: QuestionCategory;
   exprTemplate: string;
   promptTemplate: OptionContent[];
   params: ParamsSpec;

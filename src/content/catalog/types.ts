@@ -15,6 +15,8 @@ export interface Skill {
   id: SkillId;
   domainId: DomainId;
   nameHe: string;
+  /** Concise student-facing label; nameHe remains the stable pedagogical label. */
+  shortNameHe?: string;
   descriptionHe?: string;
   order: number;
   prerequisites: SkillId[];

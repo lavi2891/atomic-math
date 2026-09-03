@@ -9,6 +9,7 @@ import {
 } from "../src/domain/session/practiceSession.ts";
 import { SkillQuestionSelector, type SkillQuestionDefinition } from "../src/domain/session/skillQuestionSelector.ts";
 import type { AnswerResult } from "../src/domain/results/types.ts";
+import { filterByQuestionCategory, questionCategory } from "../src/domain/questions/categories.ts";
 
 function run(name: string, testFn: () => void): void {
   testFn();
@@ -142,4 +143,24 @@ run("session reducer transitions are deterministic", () => {
   const initial = started({ mode: "fixed", questionCount: 5 });
   const action = { type: "ANSWER_SUBMITTED" as const, result: result("Q0", true, 10) };
   assert.deepEqual(practiceSessionReducer(initial, action), practiceSessionReducer(initial, action));
+});
+
+run("legacy question categories migrate to calculation", () => {
+  const legacy: SkillQuestionDefinition = { id: "L", topicId: "T", skillId: "A", type: "numeric", prompt: [], correctAnswers: ["1"] };
+  assert.equal(questionCategory(legacy), "calculation");
+});
+
+run("category filters preserve all by default and select requested categories", () => {
+  const definitions: SkillQuestionDefinition[] = [
+    { id: "C", topicId: "T", skillId: "A", type: "numeric", category: "calculation", prompt: [], correctAnswers: ["1"] },
+    { id: "R", topicId: "T", skillId: "A", type: "numeric", category: "reasoning", prompt: [], correctAnswers: ["1"] },
+  ];
+  assert.equal(filterByQuestionCategory(definitions).length, 2);
+  assert.deepEqual(filterByQuestionCategory(definitions, "conceptualOrReasoning").map((item) => item.id), ["R"]);
+});
+
+run("a no-match category filter fails gracefully at the selector boundary", () => {
+  const selector = new SkillQuestionSelector([{ id: "C", topicId: "T", skillId: "A", type: "numeric", prompt: [], correctAnswers: ["1"] }], 1, "reasoning");
+  assert.equal(selector.hasQuestions("A"), false);
+  assert.throws(() => selector.pick("A", 0.5), /No questions available/);
 });

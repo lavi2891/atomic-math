@@ -13,6 +13,38 @@ body {
   overflow-x: hidden;
 }
 
+.home-screen, .setup-screen, .home-section { display: grid; gap: 14px; }
+.home-screen > header { display: grid; gap: 4px; }
+.home-screen h1, .home-section h2, .setup-screen h1, .setup-screen h2 { margin: 0; }
+.home-screen small, .domain-tree small, .domain-launch small, .mode-card small, .mastery-row small { display: block; color: #b0b0b0; }
+.section-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.quiet-button, .tree-select, .tree-expand { border: 1px solid #4a4a4a; background: #353535; color: #fff; padding: 8px 12px; }
+.domain-tree { min-width: 0; overflow: hidden; border: 1px solid #424242; border-inline-start: 4px solid var(--domain-accent); border-radius: 12px; background: #353535; }
+.domain-tree__header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 14px; }
+.domain-tree__title { min-width: 0; }
+.domain-icon { width: 42px; height: 42px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 12px; color: var(--domain-accent); background: color-mix(in srgb, var(--domain-accent) 16%, transparent); }
+.tree-select[data-partial="true"] { border-style: dashed; box-shadow: inset 3px 0 var(--domain-accent); }
+.tree-select[aria-pressed="true"], .skill-row[aria-pressed="true"] { border-color: var(--domain-accent); background: color-mix(in srgb, var(--domain-accent) 12%, #353535); }
+.domain-tree__children { display: grid; gap: 1px; padding: 0 10px 10px; }
+.skill-row, .mastery-row { min-width: 0; display: flex; align-items: center; gap: 10px; text-align: start; border: 1px solid #424242; background: #303030; color: #fff; padding: 11px 12px; }
+.skill-row > span:last-child, .mastery-row > span:first-child { min-width: 0; flex: 1; }
+.selection-mark { width: 22px; height: 22px; display: grid; place-items: center; border: 1px solid #686868; border-radius: 6px; color: var(--domain-accent); }
+.mode-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.mode-card { display: flex; align-items: center; gap: 10px; min-width: 0; text-align: start; padding: 14px; border: 1px solid #4a4a4a; background: #353535; color: #fff; }
+.mode-card[aria-pressed="true"] { border: 2px solid #3b82f6; background: #263750; }
+.mode-card__icon { width: 34px; font-size: 25px; text-align: center; color: #79aaf8; }
+.question-count { display: grid; gap: 6px; }
+.question-count select { padding: 10px; background: #353535; color: #fff; border: 1px solid #4a4a4a; }
+.primary-action { padding: 14px; border: 0; background: #3b82f6; color: #fff; font-weight: 700; }
+.primary-action:disabled { opacity: .45; cursor: not-allowed; }
+.domain-launch, .skill-map-summary { width: 100%; min-width: 0; display: flex; align-items: center; gap: 12px; text-align: start; padding: 14px; border: 1px solid #424242; border-inline-start: 4px solid var(--domain-accent); background: #353535; color: #fff; }
+.domain-launch > span:nth-child(2), .skill-map-summary > span:nth-child(2) { flex: 1; min-width: 0; }
+.skill-map-summary { border: 0; border-radius: 0; }
+.mastery-row { justify-content: space-between; }
+.mastery-badge { flex: 0 0 auto; border: 1px solid #555; border-radius: 999px; padding: 3px 8px; color: #d4d4d4; }
+.assignment-card { display: grid; gap: 6px; padding: 14px; border: 1px solid #424242; border-radius: 12px; background: #353535; }
+.assignment-card .quiet-button { justify-self: start; }
+
 .numeric-answer-input::placeholder {
   color: var(--numeric-placeholder-color, rgba(255, 255, 255, 0.6));
 }
@@ -81,4 +113,15 @@ input {
   .responsive-actions > button {
     width: 100%;
   }
+
+  .domain-tree__header { grid-template-columns: auto minmax(0, 1fr) auto; padding: 12px; }
+  .tree-select { grid-column: 1 / 3; justify-self: start; }
+  .tree-expand { grid-column: 3; grid-row: 2; }
+  .mode-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 340px) {
+  .phone { padding-inline: 10px !important; }
+  .domain-icon { width: 36px; height: 36px; }
+  .domain-tree__header, .domain-launch, .skill-map-summary { gap: 8px; padding: 10px; }
 }

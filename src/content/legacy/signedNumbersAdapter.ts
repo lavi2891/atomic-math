@@ -39,7 +39,7 @@ export function adaptSignedNumbersQuestion(definition: QuestionDefinition): Skil
   if (!skillId || !SKILL_IDS.has(skillId)) {
     throw new Error(`Signed-number question ${definition.id} has no valid skill mapping for subtopic ${subtopic ?? "<missing>"}`);
   }
-  return { ...definition, skillId };
+  return { ...definition, skillId, category: definition.category ?? "calculation" };
 }
 
 export function adaptSignedNumbersQuestions(definitions: readonly QuestionDefinition[]): SkillQuestionDefinition[] {

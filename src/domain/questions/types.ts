@@ -1,3 +1,5 @@
+import type { QuestionCategory } from "./categories.ts";
+
 export type QuestionType = "numeric" | "singleChoice" | "multiChoice"; // TODO: expression, drag & drop, desmos?, geometry?
 
 export type OptionContent =
@@ -15,6 +17,8 @@ export interface BaseQuestion {
   /** Required at the normal-practice boundary; optional here only for isolated legacy imports and playground content. */
   skillId?: string;
   type: QuestionType;
+  /** Optional only for backwards-compatible content; omitted values migrate to calculation. */
+  category?: QuestionCategory;
   difficulty?: number;
   prompt: OptionContent[]; // what the student sees
   subtopic?: string;
