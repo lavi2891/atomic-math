@@ -13,6 +13,7 @@ import {
 } from "../src/domain/questions/generator/evaluateExpression.ts";
 import {
   extractTemplatePlaceholders,
+  formatStudentMathExpression,
   renderDisplayTemplate,
   renderExpressionTemplate,
 } from "../src/domain/questions/generator/renderTemplate.ts";
@@ -71,6 +72,17 @@ run("placeholder extraction and replacement", () => {
   );
   assert.equal(renderExpressionTemplate("-{a}-(-{b})", sampledParams), "-7-(-3)");
   assert.equal(renderDisplayTemplate("{frac}+{a}", sampledParams), "-\\frac{5}{2}+7");
+});
+
+run("student math display parenthesizes negative operands without changing executable expressions", () => {
+  assert.equal(formatStudentMathExpression("5 + -3"), "5 + (-3)");
+  assert.equal(formatStudentMathExpression("7 - -2"), "7 - (-2)");
+  assert.equal(formatStudentMathExpression("4 × -5"), "4 × (-5)");
+  assert.equal(formatStudentMathExpression("8 ÷ -2"), "8 ÷ (-2)");
+  assert.equal(formatStudentMathExpression("5 + 3"), "5 + 3");
+  const negative = { ...sampledParams, b: { ...sampledParams.b, expr: "-3", display: "-3", value: { num: -3n, den: 1n } } };
+  assert.equal(renderDisplayTemplate("{a}+{b}", negative), "7+ (-3)");
+  assert.equal(renderExpressionTemplate("{a}+{b}", negative), "7+-3");
 });
 
 run("integer and natural sampling", () => {

@@ -9,6 +9,8 @@ import { evaluateExpression } from "../domain/questions/generator/evaluateExpres
 import type { GeneratedQuestionDefinition, ParamSpec } from "../domain/questions/generator/types.ts";
 import type { SkillQuestionDefinition } from "../domain/session/skillQuestionSelector.ts";
 import type { OptionContent, QuestionCurationReason } from "../domain/questions/types.ts";
+import type { GeneratedQuestionInstance } from "../domain/questions/types.ts";
+import { atomicSkillIdentityIssues } from "./foundations/skillScope.ts";
 
 export interface SkillContentAudit {
   skillId: string;
@@ -56,6 +58,46 @@ const GENERIC_JUSTIFICATION_PATTERN = /(?:convenient|arbitrary|magic number|דו
 
 function contentSurface(content: readonly OptionContent[]): string {
   return content.map((part) => part.kind === "text" ? part.value : part.latex).join(" ");
+}
+
+const CONSECUTIVE_SIGN_PATTERN = /[+−*×/÷-]\s*[-−]\s*\d/u;
+
+function studentFacingNotationIssues(definitionId: string, question: GeneratedQuestionInstance, seed: number): string[] {
+  const surfaces = [contentSurface(question.prompt), ...(question.type === "numeric" ? [] : question.options.map((option) => contentSurface(option.content)))];
+  return surfaces.some((surface) => CONSECUTIVE_SIGN_PATTERN.test(surface))
+    ? [`${definitionId}: seed ${seed} exposes a negative operand without parentheses`]
+    : [];
+}
+
+function numericContentValue(content: readonly OptionContent[]): string | null {
+  const source = contentSurface(content).trim().replaceAll("−", "-").replaceAll("×", "*").replaceAll("÷", "/");
+  if (!source || !/^[\d+\-*/().\s]+$/u.test(source)) return null;
+  try { return rationalKey(evaluateExpression(source)); } catch { return null; }
+}
+
+function mathematicallyDuplicateChoiceIssues(definitionId: string, question: GeneratedQuestionInstance, seed: number): string[] {
+  if (question.type === "numeric") return [];
+  const correctIds = question.type === "singleChoice" ? [question.correctOptionId] : question.correctOptionIds;
+  const correctValues = new Set(question.options.filter((option) => correctIds.includes(option.id)).map((option) => numericContentValue(option.content)).filter((value): value is string => value !== null));
+  if (!correctValues.size) return [];
+  const duplicate = question.options.some((option) => !correctIds.includes(option.id) && correctValues.has(numericContentValue(option.content) ?? ""));
+  return duplicate ? [`${definitionId}: seed ${seed} has a distractor mathematically equal to a correct option`] : [];
+}
+
+export function generatedInstanceMetadataIssues(definition: GeneratedQuestionDefinition, question: GeneratedQuestionInstance): string[] {
+  const issues: string[] = [];
+  if (question.templateId !== definition.id || question.baseId !== definition.id) issues.push(`${definition.id}: generated instance identity does not match its definition`);
+  const reconstructed = definition.exprTemplate.replace(/\{([A-Za-z_]\w*)\}/g, (match, name: string) => question.sampledParams[name] ?? match);
+  if (reconstructed !== question.renderedExpression) issues.push(`${definition.id}: rendered expression does not match template and sampled params`);
+  for (const [name, spec] of Object.entries(definition.params)) {
+    const raw = question.sampledParams[name];
+    if (raw === undefined) { issues.push(`${definition.id}: sampled param ${name} is missing`); continue; }
+    if (spec.type === "rational") continue;
+    const value = Number(raw);
+    const minimum = spec.type === "natural" ? Math.max(1, spec.min) : spec.min;
+    if (!Number.isFinite(value) || value < minimum || value > spec.max || spec.exclude?.includes(value)) issues.push(`${definition.id}: sampled param ${name}=${raw} violates its declared range`);
+  }
+  return issues;
 }
 
 export interface CuratedNumericLiteralItem {
@@ -161,6 +203,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
   const normalizedFamilies = new Map<string, { skillId: string; family: string; ids: string[] }>();
   issues.push(...magnitudeBandProgressionIssues(FOUNDATIONAL_QUESTIONS));
   issues.push(...curatedNumericLiteralIssues(FOUNDATIONAL_QUESTIONS));
+  issues.push(...atomicSkillIdentityIssues(FOUNDATIONAL_QUESTIONS));
   for (const skill of SKILLS) for (const issue of validateEvidencePolicy(skill.evidencePolicy)) issues.push(`${skill.id}: ${issue}`);
   for (const entry of CONTENT_READINESS) for (const issue of readinessIssues(entry, FOUNDATIONAL_QUESTIONS)) issues.push(`${entry.skillId}: ${issue}`);
   for (const definition of FOUNDATIONAL_QUESTIONS) {
@@ -173,12 +216,16 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
       const authoringMode: string | undefined = definition.authoringMode;
       if (authoringMode !== "generated") issues.push("generated definition: authoring mode is missing");
       if (!Object.keys(definition.params).length) issues.push(`${definition.id}: generator has no parameters`);
+      if (!definition.metadata?.difficultyFeature) issues.push(`${definition.id}: difficultyFeature is missing`);
       if (!definition.choiceBuilder && !definition.answerSemantics) issues.push(`${definition.id}: answer semantics are implicit`);
       const rendered = new Set<string>();
       for (let seed = 1; seed <= samplesPerGenerator; seed += 1) {
         try {
           const question = buildGeneratedQuestion(definition, { seed, maxAttempts: 100 });
           const repeat = buildGeneratedQuestion(definition, { seed, maxAttempts: 100 });
+          issues.push(...generatedInstanceMetadataIssues(definition, question));
+          issues.push(...studentFacingNotationIssues(definition.id, question, seed));
+          issues.push(...mathematicallyDuplicateChoiceIssues(definition.id, question, seed));
           if (question.id !== repeat.id || question.renderedExpression !== repeat.renderedExpression) issues.push(`${definition.id}: seed ${seed} is not reproducible`);
           if (question.renderedExpression.includes("undefined") || optionText(question.prompt).includes("undefined")) issues.push(`${definition.id}: seed ${seed} rendered undefined content`);
           if (question.type === "numeric") {

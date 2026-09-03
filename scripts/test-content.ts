@@ -11,7 +11,8 @@ import type { Attempt } from "../src/domain/attempts/types.ts";
 import { isAssignmentComplete } from "../src/domain/studentHome/deriveStudentHome.ts";
 import { createChallengeSignature, challengeSignatureKey } from "../src/domain/personalBests/challengeSignature.ts";
 import { resolveQuickPracticeScope } from "../src/domain/studentHome/quickPractice.ts";
-import { auditFoundationalContent, curatedNumericLiteralIssues, curatedNumericLiteralItems, magnitudeBandProgressionIssues, validateFoundationalContent } from "../src/content/validateContent.ts";
+import { auditFoundationalContent, curatedNumericLiteralIssues, curatedNumericLiteralItems, generatedInstanceMetadataIssues, magnitudeBandProgressionIssues, validateFoundationalContent } from "../src/content/validateContent.ts";
+import { atomicSkillIdentityIssues } from "../src/content/foundations/skillScope.ts";
 import type { GeneratedQuestionInstance, OptionContent } from "../src/domain/questions/types.ts";
 import type { GeneratedQuestionDefinition } from "../src/domain/questions/generator/types.ts";
 import type { SkillQuestionDefinition } from "../src/domain/session/skillQuestionSelector.ts";
@@ -57,6 +58,13 @@ run("multiplication and division fact families remain distinct", () => {
     assert.ok(family && isGeneratedQuestionDefinition(family));
     if (family && isGeneratedQuestionDefinition(family)) for (let seed = 1; seed <= 30; seed += 1) assert.ok([2, 5, 10].includes(Number(buildGeneratedQuestion(family, { seed }).sampledParams.a)));
   }
+});
+
+run("every generated Band preserves its atomic fact-family identity", () => {
+  assert.deepEqual(atomicSkillIdentityIssues(FOUNDATIONAL_QUESTIONS), []);
+  const valid = generatedDefinition("MVP_AR_MUL_F_2_5_10_B_A");
+  const drifted = { ...valid, id: "TEST_DRIFT", params: { ...valid.params, a: { type: "natural" as const, min: 2, max: 10 } } };
+  assert.ok(atomicSkillIdentityIssues([drifted]).some((issue) => issue.includes("drifts outside")));
 });
 
 run("conceptual banks cover equality, fractions, and integers", () => {
@@ -222,6 +230,22 @@ run("magnitude-driven Bands progress monotonically", () => {
   const easier = generatedDefinition("MVP_AR_ADD_FACTS_A_A").params.a;
   const harder = generatedDefinition("MVP_AR_ADD_FACTS_B_A").params.a;
   assert.ok(easier.type !== "rational" && harder.type !== "rational" && harder.min >= easier.max);
+});
+
+run("every generated Band documents its actual difficulty feature", () => {
+  for (const definition of FOUNDATIONAL_QUESTIONS) {
+    if (!isGeneratedQuestionDefinition(definition)) continue;
+    assert.ok(["magnitude", "structure", "mixed"].includes(String(definition.metadata?.difficultyFeature)), definition.id);
+  }
+});
+
+run("INT_ADD Band B instance metadata matches the real sampled values and template", () => {
+  const definition = generatedDefinition("MVP_INT_ADD_B_A");
+  const question = Array.from({ length: 500 }, (_, index) => buildGeneratedQuestion(definition, { seed: index + 1 })).find((item) => item.renderedExpression === "-13+4");
+  assert.ok(question, "expected a deterministic seed that produces -13+4");
+  assert.deepEqual(question?.sampledParams, { a: "-13", b: "4" });
+  assert.deepEqual(question ? generatedInstanceMetadataIssues(definition, question) : ["missing"], []);
+  assert.equal(question?.difficultyBand, "B");
 });
 
 run("reviewed conceptual generators preserve attribution, determinism, and unique options", () => {

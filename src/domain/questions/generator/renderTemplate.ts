@@ -2,6 +2,14 @@ import type { OptionContent } from "../types.ts";
 import type { SampledParams } from "./types.ts";
 
 const PLACEHOLDER_PATTERN = /\{([a-zA-Z_]\w*)\}/g;
+const NEGATIVE_OPERAND_PATTERN = /([+−*×/÷-])\s*([-−]\s*(?:\d+(?:\.\d+)?|\\frac\{[^}]+\}\{[^}]+\}))/gu;
+
+/** Keep a negative operand visually distinct from the binary operation before it. */
+export function formatStudentMathExpression(value: string): string {
+  return value.replace(NEGATIVE_OPERAND_PATTERN, (_match, operator: string, operand: string) =>
+    `${operator} (${operand.replace(/\s+/gu, "")})`,
+  );
+}
 
 export function extractTemplatePlaceholders(
   template: string,
@@ -45,7 +53,7 @@ export function renderDisplayTemplate(
   template: string,
   sampledParams: SampledParams,
 ): string {
-  return replaceTemplatePlaceholders(template, sampledParams, "display");
+  return formatStudentMathExpression(replaceTemplatePlaceholders(template, sampledParams, "display"));
 }
 
 export function renderPromptTemplate(

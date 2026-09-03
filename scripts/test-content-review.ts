@@ -366,6 +366,21 @@ await run("generated structure keeps the executable template separate from its c
   assert.notEqual(structure?.template, structure?.instantiated);
   assert.equal(structure?.structuralLabel, "שלושה מחוברים — שני משתנים וקבוע 1");
   assert.deepEqual(structure?.constraints.humanReadable, []);
+  assert.ok(structure?.sampledValues.some((item) => item.name === "a"));
+  assert.equal(structure?.instanceMatchesDefinition, true);
+});
+
+await run("review summary explains sampled values and authored transformations", () => {
+  const direct = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_INT_ADD_B_A")!;
+  const transformed = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_INT_ADD_B_B")!;
+  assert.ok(isGeneratedQuestionDefinition(direct) && isGeneratedQuestionDefinition(transformed));
+  const directQuestion = resolveReviewQuestion(direct, 42);
+  const directSummary = generatorStructureSummary(direct, directQuestion);
+  assert.deepEqual(directSummary?.sampledValues.map((item) => item.name).sort(), ["a", "b"]);
+  assert.ok(directSummary?.sampledValues.every((item) => directSummary.instantiated.includes(item.value)));
+  assert.deepEqual(directSummary?.transformationNotes, []);
+  const transformedSummary = generatorStructureSummary(transformed, resolveReviewQuestion(transformed, 42));
+  assert.ok(transformedSummary?.transformationNotes.some((note) => note.includes("a")));
 });
 
 await run("review math display is derived from the executable template", () => {

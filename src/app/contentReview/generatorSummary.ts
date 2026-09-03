@@ -3,6 +3,7 @@ import { isGeneratedQuestionDefinition } from "../../domain/questions/definition
 import type { GeneratedQuestionDefinition, ParamSpec } from "../../domain/questions/generator/types.ts";
 import type { SkillQuestionDefinition } from "../../domain/session/skillQuestionSelector.ts";
 import { isGeneratedQuestionInstance, type Question } from "../../domain/questions/types.ts";
+import { formatStudentMathExpression } from "../../domain/questions/generator/renderTemplate.ts";
 
 export interface VariableSummary {
   name: string;
@@ -31,6 +32,9 @@ export interface GeneratorStructureSummary {
   instantiated: string;
   structuralLabel: string | null;
   constraints: ConstraintSummary;
+  sampledValues: Array<{ name: string; value: string }>;
+  transformationNotes: string[];
+  instanceMatchesDefinition: boolean;
 }
 
 export interface FamilyAuthoringNote {
@@ -86,7 +90,7 @@ function structureFeature(definition: GeneratedQuestionDefinition): string | nul
 
 /** Preserve the executable template; only normalize multiplication for clearer KaTeX display. */
 export function generatorTemplateLatex(template: string): string {
-  return template.replaceAll("*", "\\cdot ");
+  return formatStudentMathExpression(template).replaceAll("*", "\\cdot ");
 }
 
 export function generatorStructureSummary(
@@ -95,11 +99,22 @@ export function generatorStructureSummary(
 ): GeneratorStructureSummary | null {
   if (!isGeneratedQuestionDefinition(definition) || !isGeneratedQuestionInstance(question)) return null;
   const feature = structureFeature(definition);
+  const sampledValues = Object.entries(question.sampledParams).map(([name, value]) => ({ name, value }));
+  const transformationNotes = sampledValues.flatMap(({ name, value }) => {
+    if (!definition.exprTemplate.includes(`-{${name}}`)) return [];
+    const numeric = Number(value);
+    return [Number.isFinite(numeric)
+      ? `הערך שנדגם עבור ${name} הוא ${value}; התבנית שוללת אותו ולכן ערכו בביטוי הוא ${-numeric}.`
+      : `התבנית מפעילה שלילה על הערך שנדגם עבור ${name}.`];
+  });
   return {
     template: definition.exprTemplate,
-    instantiated: question.renderedExpression,
+    instantiated: formatStudentMathExpression(question.renderedExpression),
     structuralLabel: feature ? STRUCTURE_LABELS[feature] ?? null : null,
     constraints: summarizeConstraints(definition.constraints),
+    sampledValues,
+    transformationNotes,
+    instanceMatchesDefinition: question.templateId === definition.id && question.baseId === definition.id,
   };
 }
 
