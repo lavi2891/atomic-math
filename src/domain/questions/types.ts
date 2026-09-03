@@ -1,4 +1,5 @@
 import type { QuestionCategory } from "./categories.ts";
+import type { DifficultyBand } from "../../content/catalog/types.ts";
 
 export type QuestionType = "numeric" | "singleChoice" | "multiChoice"; // TODO: expression, drag & drop, desmos?, geometry?
 
@@ -8,6 +9,7 @@ export type OptionContent =
 
 export interface QuestionSeeds {
   difficulty?: number;
+  difficultyBand?: DifficultyBand;
   timeMs?: number;
 }
 
@@ -20,6 +22,7 @@ export interface BaseQuestion {
   /** Optional only for backwards-compatible content; omitted values migrate to calculation. */
   category?: QuestionCategory;
   difficulty?: number;
+  difficultyBand?: DifficultyBand;
   prompt: OptionContent[]; // what the student sees
   subtopic?: string;
   misconceptions?: string[];

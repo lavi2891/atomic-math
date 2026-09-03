@@ -1,5 +1,6 @@
 import type { Attempt } from "../attempts/types.ts";
 import { masteryConfig, validateMasteryConfig } from "./config.ts";
+import type { EvidencePolicy, QuestionCategory, DifficultyBand } from "../../content/catalog/types.ts";
 
 export type EvidenceLevel = "insufficient" | "emerging" | "established";
 
@@ -12,6 +13,8 @@ export interface MasterySnapshot {
   recentAverage: number;
   historyAverage: number;
   evidenceLevel: EvidenceLevel;
+  evidenceCoverage?: { categories: Partial<Record<QuestionCategory, number>>; bands: Partial<Record<DifficultyBand, number>>; sufficient: boolean };
+  fluentAttemptCount?: number;
   fluencyMedianMs?: number;
   lastAttemptAt?: string;
   calculatedAt: string;
@@ -41,6 +44,7 @@ export function projectMastery(input: {
   skillId: string;
   attempts: readonly Attempt[];
   fluencyEnabled?: boolean;
+  evidencePolicy?: EvidencePolicy;
   calculatedAt?: string;
 }): MasterySnapshot {
   validateMasteryConfig();
@@ -59,6 +63,23 @@ export function projectMastery(input: {
   const fluencyAttempts = history
     .filter((attempt) => attempt.correct && attempt.supportLevel === "independent")
     .slice(-masteryConfig.fluencyRecentWindow);
+  const categories: Partial<Record<QuestionCategory, number>> = {};
+  const bands: Partial<Record<DifficultyBand, number>> = {};
+  for (const attempt of history) {
+    const category = attempt.category ?? "calculation";
+    categories[category] = (categories[category] ?? 0) + 1;
+    if (attempt.difficultyBand) bands[attempt.difficultyBand] = (bands[attempt.difficultyBand] ?? 0) + 1;
+  }
+  const policy = input.evidencePolicy;
+  const coverageSufficient = !policy || (
+    attempts.length >= policy.minimumAttempts &&
+    Object.entries(policy.requiredCategoryEvidence).every(([key, count]) => (categories[key as QuestionCategory] ?? 0) >= count) &&
+    Object.entries(policy.requiredBandEvidence).every(([key, count]) => (bands[key as DifficultyBand] ?? 0) >= count) &&
+    (!policy.fluencyEvidence || (
+      fluencyAttempts.length >= policy.fluencyEvidence.minimumFluentAttempts &&
+      (median(fluencyAttempts.map((attempt) => attempt.responseTimeMs)) ?? Infinity) <= policy.fluencyEvidence.maximumMedianMs
+    ))
+  );
 
   return {
     studentId: input.studentId,
@@ -69,6 +90,8 @@ export function projectMastery(input: {
     recentAverage,
     historyAverage,
     evidenceLevel: evidenceLevelForAttemptCount(attempts.length),
+    evidenceCoverage: { categories, bands, sufficient: coverageSufficient },
+    fluentAttemptCount: fluencyAttempts.length,
     fluencyMedianMs: input.fluencyEnabled
       ? median(fluencyAttempts.map((attempt) => attempt.responseTimeMs))
       : undefined,

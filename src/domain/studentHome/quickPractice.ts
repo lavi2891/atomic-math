@@ -1,6 +1,7 @@
 import type { Domain, Skill } from "../../content/catalog/types.ts";
 import type { SkillQuestionDefinition } from "../session/skillQuestionSelector.ts";
 import type { Assignment, StudentHomeData } from "./types.ts";
+import { readySkillIds } from "../../content/readiness.ts";
 
 export type QuickPracticeReason = "assignments" | "learning" | "foundations" | "no_content";
 export type QuickPracticeScope = { skillIds: string[]; reason: QuickPracticeReason };
@@ -12,8 +13,9 @@ export function resolveQuickPracticeScope(input: {
   skills: readonly Skill[];
   definitions: readonly SkillQuestionDefinition[];
 }): QuickPracticeScope {
-  const backed = new Set(input.definitions.map((item) => item.skillId));
-  const available = input.skills.filter((skill) => skill.active && backed.has(skill.id) && input.domains.some((domain) => domain.active && domain.id === skill.domainId)).sort((a, b) => a.order - b.order);
+  const ready = readySkillIds(input.definitions);
+  const backed = new Set(input.definitions.map((item) => item.skillId).filter((id) => ready.has(id)));
+  const available = input.skills.filter((skill) => skill.active && skill.modes.quickPractice && backed.has(skill.id) && input.domains.some((domain) => domain.active && domain.id === skill.domainId)).sort((a, b) => a.order - b.order);
   if (!available.length) return { skillIds: [], reason: "no_content" };
   const availableIds = new Set(available.map((skill) => skill.id));
   const assigned = [...new Set(input.assignments.filter((item) => item.active && availableIds.has(item.skillId)).sort((a, b) => a.priority - b.priority).map((item) => item.skillId))];

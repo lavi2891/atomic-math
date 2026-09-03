@@ -1,5 +1,6 @@
 import type { MasterySnapshot } from "../mastery/projectMastery.ts";
 import type { Assignment, SkillDisplayState } from "./types.ts";
+import { getSkillById } from "../../content/catalog/index.ts";
 
 export function sortAssignments(assignments: readonly Assignment[]): Assignment[] {
   return [...assignments].filter((assignment) => assignment.active).sort(
@@ -8,7 +9,8 @@ export function sortAssignments(assignments: readonly Assignment[]): Assignment[
 }
 
 export function isAssignmentComplete(assignment: Assignment, snapshot: MasterySnapshot | undefined): boolean {
-  return !!snapshot && snapshot.evidenceLevel === "established" && snapshot.mastery >= assignment.targetMastery;
+  const policy = getSkillById(assignment.skillId)?.evidencePolicy;
+  return !!snapshot && snapshot.evidenceLevel === "established" && snapshot.mastery >= assignment.targetMastery && (!policy || snapshot.evidenceCoverage?.sufficient === true);
 }
 
 export function deriveSkillDisplayState(snapshot: MasterySnapshot | undefined): SkillDisplayState {

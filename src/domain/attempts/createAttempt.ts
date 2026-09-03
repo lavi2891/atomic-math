@@ -39,6 +39,8 @@ export function createAttemptFromAnswer(input: {
     generatorSeed: generated?.generatorSeed,
     skillId: question.skillId,
     difficulty: question.difficulty ?? 0.5,
+    difficultyBand: question.difficultyBand,
+    category: question.category ?? "calculation",
     submittedAnswer: result.rawAnswer,
     normalizedAnswer: result.normalizedAnswer,
     correct: result.isCorrect,

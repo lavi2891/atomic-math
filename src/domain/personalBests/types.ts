@@ -4,8 +4,8 @@ export type ChallengeScope =
 
 export type ChallengeSignature =
   | { mode: "fixed"; questionCount: number; scope: ChallengeScope }
-  | { mode: "timed"; durationSeconds: number; scope: ChallengeScope }
-  | { mode: "survival"; maxErrors: number; scope: ChallengeScope };
+  | { mode: "timed"; durationSeconds: number; scope: ChallengeScope; profile: { id: string; version: number } }
+  | { mode: "survival"; maxErrors: number; scope: ChallengeScope; profile: { id: string; version: number } };
 
 export interface PersonalBestMetrics {
   attempted: number;

@@ -143,6 +143,7 @@ export function buildGeneratedQuestion(
           skillId: definition.skillId,
           type: "numeric",
           category: definition.category ?? "calculation",
+          difficultyBand: definition.difficultyBand,
           prompt,
           hints,
         correctAnswers: [correctAnswer],

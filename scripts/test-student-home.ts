@@ -11,9 +11,10 @@ import { DOMAINS, SKILLS } from "../src/content/catalog/index.ts";
 import { MemoryPersistenceDriver } from "../src/infrastructure/persistence/MemoryPersistenceDriver.ts";
 import { AppsScriptClient } from "../src/infrastructure/sync/AppsScriptClient.ts";
 import { resolveQuickPracticeScope } from "../src/domain/studentHome/quickPractice.ts";
+import { FOUNDATIONAL_QUESTIONS } from "../src/content/foundations/questions.ts";
 
 async function run(name: string, testFn: () => void | Promise<void>) { await testFn(); process.stdout.write(`PASS ${name}\n`); }
-const snapshot = (mastery: number, evidenceLevel: MasterySnapshot["evidenceLevel"], attemptCount = 12, lastAttemptAt = "2026-01-01T00:00:00.000Z"): MasterySnapshot => ({ studentId: "student", skillId: "INT_ADD", mastery, accuracy: mastery, attemptCount, recentAverage: mastery / 100, historyAverage: mastery / 100, evidenceLevel, lastAttemptAt, calculatedAt: lastAttemptAt });
+const snapshot = (mastery: number, evidenceLevel: MasterySnapshot["evidenceLevel"], attemptCount = 12, lastAttemptAt = "2026-01-01T00:00:00.000Z"): MasterySnapshot => ({ studentId: "student", skillId: "INT_ADD", mastery, accuracy: mastery, attemptCount, recentAverage: mastery / 100, historyAverage: mastery / 100, evidenceLevel, evidenceCoverage: { categories: {}, bands: {}, sufficient: true }, lastAttemptAt, calculatedAt: lastAttemptAt });
 const assignment = (overrides: Partial<Assignment> = {}): Assignment => ({ assignmentId: "A", studentId: "student", skillId: "INT_ADD", targetMastery: 85, priority: 1, active: true, ...overrides });
 const emptyAttempts = { getAttemptsForSkill: async () => [] } as unknown as AttemptRepository;
 
@@ -70,32 +71,32 @@ await run("collapse-independent tree state retains selected children", () => {
   assert.equal(expanded, true); assert.deepEqual(selected, ["A"]);
 });
 
-await run("short labels preserve stable skill identity and full name", () => {
+await run("student labels preserve stable atomic skill identity", () => {
   const skill = SKILLS.find((item) => item.id === "INT_ADD")!;
-  assert.equal(skill.id, "INT_ADD"); assert.equal(skill.shortNameHe, "חיבור"); assert.equal(skill.nameHe, "חיבור מספרים מכוונים");
+  assert.equal(skill.id, "INT_ADD"); assert.equal(skill.nameHe, "חיבור מספרים מכוונים");
 });
 
 await run("only domains with active question-backed skills appear", () => {
-  const catalog = contentBackedCatalog(DOMAINS, SKILLS, [{ skillId: "INT_ADD" }] as never);
-  assert.equal(catalog.length, 1); assert.deepEqual(catalog[0]?.skills.map((skill) => skill.id), ["INT_ADD"]);
+  const catalog = contentBackedCatalog(DOMAINS, SKILLS, FOUNDATIONAL_QUESTIONS);
+  assert.equal(catalog.length, 6); assert.ok(catalog.some((entry) => entry.skills.some((skill) => skill.id === "INT_ADD")));
   assert.equal(contentBackedCatalog(DOMAINS, SKILLS, [] as never).length, 0);
 });
 
 await run("quick practice prefers usable active assignments", () => {
-  const result = resolveQuickPracticeScope({ assignments: [assignment({ skillId: "INT_SUB" })], masteryBySkill: {}, domains: DOMAINS, skills: SKILLS, definitions: [{ skillId: "INT_ADD" }, { skillId: "INT_SUB" }] as never });
+  const result = resolveQuickPracticeScope({ assignments: [assignment({ skillId: "INT_SUB" })], masteryBySkill: {}, domains: DOMAINS, skills: SKILLS, definitions: FOUNDATIONAL_QUESTIONS });
   assert.deepEqual(result, { skillIds: ["INT_SUB"], reason: "assignments" });
 });
 
 await run("quick practice falls back to non-mastered evidence then foundations", () => {
-  const learning = resolveQuickPracticeScope({ assignments: [], masteryBySkill: { INT_SUB: snapshot(60, "established") }, domains: DOMAINS, skills: SKILLS, definitions: [{ skillId: "INT_ADD" }, { skillId: "INT_SUB" }] as never });
+  const learning = resolveQuickPracticeScope({ assignments: [], masteryBySkill: { INT_SUB: snapshot(60, "established") }, domains: DOMAINS, skills: SKILLS, definitions: FOUNDATIONAL_QUESTIONS });
   assert.deepEqual(learning, { skillIds: ["INT_SUB"], reason: "learning" });
-  const fresh = resolveQuickPracticeScope({ assignments: [], masteryBySkill: {}, domains: DOMAINS, skills: SKILLS, definitions: [{ skillId: "INT_ADD" }] as never });
-  assert.deepEqual(fresh, { skillIds: ["INT_ADD"], reason: "foundations" });
+  const fresh = resolveQuickPracticeScope({ assignments: [], masteryBySkill: {}, domains: DOMAINS, skills: SKILLS, definitions: FOUNDATIONAL_QUESTIONS });
+  assert.equal(fresh.reason, "foundations"); assert.ok(fresh.skillIds.includes("AR_PLACE_VALUE"));
 });
 
 await run("quick practice filters unbacked content and handles no content offline", () => {
-  const result = resolveQuickPracticeScope({ assignments: [assignment({ skillId: "INT_SUB" })], masteryBySkill: {}, domains: DOMAINS, skills: SKILLS, definitions: [{ skillId: "INT_ADD" }] as never });
-  assert.deepEqual(result.skillIds, ["INT_ADD"]);
+  const result = resolveQuickPracticeScope({ assignments: [assignment({ skillId: "NOT_READY" })], masteryBySkill: {}, domains: DOMAINS, skills: SKILLS, definitions: FOUNDATIONAL_QUESTIONS });
+  assert.equal(result.reason, "foundations"); assert.equal(result.skillIds.includes("NOT_READY"), false);
   assert.deepEqual(resolveQuickPracticeScope({ assignments: [], masteryBySkill: {}, domains: DOMAINS, skills: SKILLS, definitions: [] as never }), { skillIds: [], reason: "no_content" });
 });
 

@@ -8,6 +8,7 @@ import type { PersonalBestRepository, PersonalBestUpdate } from "../../domain/pe
 import { createChallengeSignature } from "../../domain/personalBests/challengeSignature.ts";
 import { DOMAINS, SKILLS } from "../../content/catalog/index.ts";
 import { isFixedPersonalBestEligible } from "../../domain/personalBests/eligibility.ts";
+import { modeEligible } from "../../domain/session/challengeContent.ts";
 
 export type SessionStartResult = { session: PracticeSession; masteryBefore: Record<string, MasterySnapshot>; previousBest: import("../../domain/personalBests/types.ts").PersonalBest | null };
 export type SessionFinishResult = { masteryAfter: Record<string, MasterySnapshot>; personalBest: PersonalBestUpdate | null };
@@ -32,11 +33,14 @@ export class StudentPracticeService {
   async snapshot(studentId: string, skillIds: readonly string[]): Promise<Record<string, MasterySnapshot>> {
     return Object.fromEntries(await Promise.all(skillIds.map(async (skillId) => {
       const attempts = await this.attempts.getAttemptsForSkill(studentId, skillId);
-      return [skillId, projectMastery({ studentId, skillId, attempts, fluencyEnabled: getSkillById(skillId)?.fluency?.enabled ?? false })] as const;
+      const skill = getSkillById(skillId);
+      return [skillId, projectMastery({ studentId, skillId, attempts, fluencyEnabled: skill?.fluency?.enabled ?? false, evidencePolicy: skill?.evidencePolicy })] as const;
     })));
   }
 
   async start(input: { studentId: string; skillIds: string[]; settings: SessionSettings; assignmentId?: string }): Promise<SessionStartResult> {
+    const selectedSkills = input.skillIds.map((id) => getSkillById(id));
+    if (selectedSkills.some((skill) => !skill || !skill.active || !modeEligible(skill, input.settings))) throw new Error("One or more skills are not eligible for this session mode");
     const masteryBefore = await this.snapshot(input.studentId, input.skillIds);
     const session = createPracticeSession({ id: createSessionId(), studentId: input.studentId, selectedSkillIds: input.skillIds, settings: input.settings, startedAt: Date.now(), source: input.assignmentId ? "assignment" : "freePractice", assignmentId: input.assignmentId });
     const signature = createChallengeSignature(session.settings, session.selectedSkillIds, DOMAINS, SKILLS);

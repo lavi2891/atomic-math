@@ -12,6 +12,8 @@ import {
   SkillQuestionSelector,
   type SkillQuestionDefinition,
 } from "@domain/session/skillQuestionSelector";
+import { challengeTargetDifficulty, filterChallengeContent } from "@domain/session/challengeContent";
+import { SKILLS } from "../../content/catalog/index.ts";
 
 export type SessionEngine = {
   state: PracticeSessionState & { currentQuestion: Question | null };
@@ -27,7 +29,11 @@ export function useSessionEngine(
   definitions: readonly SkillQuestionDefinition[],
   initialTargetDifficulty = 0,
 ): SessionEngine {
-  const [selector] = useState(() => new SkillQuestionSelector(definitions));
+  const [selector] = useState(() => {
+    const selected = SKILLS.filter((skill) => session.selectedSkillIds.includes(skill.id));
+    return new SkillQuestionSelector(filterChallengeContent(session.settings, selected, definitions));
+  });
+  const selectedSkills = SKILLS.filter((skill) => session.selectedSkillIds.includes(skill.id));
   const [monotonicStartedAt] = useState(() => performance.now());
   const [questionsById] = useState(() => new Map<string, Question>());
   const [fixedPlan] = useState(() =>
@@ -40,7 +46,8 @@ export function useSessionEngine(
     const skillId = fixedPlan
       ? fixedPlan[state.results.length]!
       : pickBalancedSkill(session.selectedSkillIds, state.askedSkillIds);
-    const question = selector.pick(skillId, state.targetDifficulty);
+    const targetDifficulty = challengeTargetDifficulty(session.settings, selectedSkills, state.results.length, state.targetDifficulty);
+    const question = selector.pick(skillId, targetDifficulty);
     questionsById.set(question.id, question);
     return { question, skillId };
   }

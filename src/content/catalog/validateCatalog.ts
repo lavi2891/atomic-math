@@ -1,7 +1,8 @@
 import type { Domain, Skill } from "./types.ts";
+import { validateEvidencePolicy } from "./policies.ts";
 
 export type CatalogValidationIssue = {
-  code: "DUPLICATE_DOMAIN_ID" | "DUPLICATE_SKILL_ID" | "UNKNOWN_DOMAIN" | "UNKNOWN_PREREQUISITE" | "SELF_PREREQUISITE" | "PREREQUISITE_CYCLE" | "INVALID_MASTERY_TARGET";
+  code: "DUPLICATE_DOMAIN_ID" | "DUPLICATE_SKILL_ID" | "UNKNOWN_DOMAIN" | "UNKNOWN_PREREQUISITE" | "SELF_PREREQUISITE" | "PREREQUISITE_CYCLE" | "INVALID_MASTERY_TARGET" | "INVALID_EVIDENCE_POLICY" | "UNKNOWN_SUPPORTING_SKILL";
   message: string;
   entityId: string;
 };
@@ -35,6 +36,7 @@ export function validateCatalog(domains: readonly Domain[], skills: readonly Ski
     if (!Number.isFinite(skill.masteryTarget) || skill.masteryTarget < 0 || skill.masteryTarget > 100) {
       issues.push({ code: "INVALID_MASTERY_TARGET", entityId: skill.id, message: `Skill ${skill.id} has invalid mastery target ${skill.masteryTarget}` });
     }
+    for (const issue of validateEvidencePolicy(skill.evidencePolicy)) issues.push({ code: "INVALID_EVIDENCE_POLICY", entityId: skill.id, message: `Skill ${skill.id}: ${issue}` });
     for (const prerequisiteId of skill.prerequisites) {
       if (prerequisiteId === skill.id) {
         issues.push({ code: "SELF_PREREQUISITE", entityId: skill.id, message: `Skill ${skill.id} requires itself` });
@@ -42,6 +44,7 @@ export function validateCatalog(domains: readonly Domain[], skills: readonly Ski
         issues.push({ code: "UNKNOWN_PREREQUISITE", entityId: skill.id, message: `Skill ${skill.id} references unknown prerequisite ${prerequisiteId}` });
       }
     }
+    for (const supportingId of skill.supportingSkills ?? []) if (!skillIds.has(supportingId)) issues.push({ code: "UNKNOWN_SUPPORTING_SKILL", entityId: skill.id, message: `Skill ${skill.id} references unknown supporting skill ${supportingId}` });
   }
 
   const prerequisites = new Map(skills.map((skill) => [skill.id, skill.prerequisites]));

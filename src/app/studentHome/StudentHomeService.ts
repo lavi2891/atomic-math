@@ -103,7 +103,7 @@ export class StudentHomeService {
       const fluency = "fluency" in skill && typeof skill.fluency === "object" && skill.fluency !== null
         ? skill.fluency as { enabled?: boolean }
         : undefined;
-      const local = projectMastery({ studentId, skillId: skill.id, attempts, fluencyEnabled: fluency?.enabled ?? false });
+      const local = projectMastery({ studentId, skillId: skill.id, attempts, fluencyEnabled: fluency?.enabled ?? false, evidencePolicy: skill.evidencePolicy });
       return [skill.id, chooseFresherMastery(server?.masteryBySkill[skill.id], local)] as const;
     }));
 

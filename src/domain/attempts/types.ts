@@ -1,4 +1,6 @@
 import type { RawAnswer } from "../questions/types.ts";
+import type { DifficultyBand } from "../../content/catalog/types.ts";
+import type { QuestionCategory } from "../questions/categories.ts";
 
 export type SupportLevel = "independent" | "hint" | "guided";
 
@@ -12,6 +14,8 @@ export interface Attempt {
   generatorSeed?: number;
   skillId: string;
   difficulty: number;
+  difficultyBand?: DifficultyBand;
+  category?: QuestionCategory;
   submittedAnswer: RawAnswer;
   normalizedAnswer?: unknown;
   correct: boolean;

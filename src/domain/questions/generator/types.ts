@@ -1,5 +1,6 @@
 import type { NumericAnswerSemantics, NumericInputFormat, OptionContent } from "../types.ts";
 import type { QuestionCategory } from "../categories.ts";
+import type { DifficultyBand } from "../../../content/catalog/types.ts";
 
 export type IntegerLikeParamSpec = {
   type: "integer" | "natural";
@@ -71,6 +72,7 @@ export interface GeneratedQuestionDefinition {
   kind: "generated";
   /** Optional only for backwards-compatible content; omitted values migrate to calculation. */
   category?: QuestionCategory;
+  difficultyBand?: DifficultyBand;
   exprTemplate: string;
   promptTemplate: OptionContent[];
   params: ParamsSpec;
