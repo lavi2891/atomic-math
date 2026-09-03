@@ -19,6 +19,7 @@ import {
   type ReviewFilters,
 } from "../src/app/contentReview/reviewModel.ts";
 import { AuthorReviewRepository, MemoryAuthorReviewStore, type QuestionReviewRecord } from "../src/app/contentReview/reviewState.ts";
+import { answerSemanticsLabel, deriveBandSummaries, describeParameter, familyAuthoringNote, hasGeneratorExplanation, parameterTypeLabel, summarizeConstraints, translateSimpleConstraint } from "../src/app/contentReview/generatorSummary.ts";
 
 async function run(name: string, fn: () => void | Promise<void>) { await fn(); process.stdout.write(`PASS ${name}\n`); }
 const catalog = { domains: DOMAINS, skills: SKILLS, skillGroups: SKILL_GROUPS };
@@ -141,4 +142,59 @@ await run("deep links parse and serialize Skill, category, family, and status", 
 await run("normalized near-identical content families are first-class", () => {
   const flagged = flaggedCuratedFamilies(FOUNDATIONAL_QUESTIONS);
   assert.ok(flagged.has("AR_PLACE_VALUE:representation"));
+});
+
+await run("generator parameter types map automatically to Hebrew", () => {
+  assert.equal(parameterTypeLabel({ type: "integer", min: -2, max: 2 }), "מספר שלם");
+  assert.equal(parameterTypeLabel({ type: "natural", min: 1, max: 9 }), "מספר טבעי / מספר שלם חיובי");
+  assert.equal(parameterTypeLabel({ type: "decimal", min: 0.1, max: 0.9, step: 0.1 }), "מספר עשרוני");
+  assert.equal(parameterTypeLabel({ type: "rational", numerator: { min: -3, max: 3 }, denominator: { min: 2, max: 5 } }), "מספר רציונלי");
+});
+
+await run("range and sparse allowed values are derived from executable specs", () => {
+  assert.match(describeParameter("a", { type: "integer", min: -10, max: 10 }).valuesLabel, /בין -10 ל־10/);
+  const sparse = describeParameter("a", { type: "integer", min: 2, max: 10, exclude: [3, 4, 6, 7, 8, 9] }).valuesLabel;
+  assert.match(sparse, /אחד מהערכים: 2, 5, 10/);
+  assert.match(describeParameter("d", { type: "decimal", min: -1.5, max: 1.5, step: 0.5, exclude: [0] }).valuesLabel, /שונה מאפס/);
+  assert.match(describeParameter("r", { type: "rational", numerator: { min: -4, max: 4 }, denominator: { min: 2, max: 7 }, excludeZero: true }).valuesLabel, /מונה.*מכנה.*שונה מאפס/);
+});
+
+await run("simple constraints translate while unsupported expressions stay technical", () => {
+  assert.equal(translateSimpleConstraint("a > 0"), "a חיובי");
+  assert.equal(translateSimpleConstraint("a != 0"), "a שונה מאפס");
+  assert.equal(translateSimpleConstraint("a < b"), "a קטן מ־b");
+  assert.equal(translateSimpleConstraint("a + 1 >= b"), null);
+  assert.deepEqual(summarizeConstraints(["a > 0", "a + 1 >= b"]), { humanReadable: ["a חיובי"], technicalOnly: ["a + 1 >= b"] });
+});
+
+await run("optional family rationale and difficulty note remain centralized", () => {
+  const note = familyAuthoringNote("FAMILY", { FAMILY: { rationaleHe: "מטרה קצרה", difficultyNoteHe: "הקושי עולה בגלל המבנה" } });
+  assert.equal(note?.rationaleHe, "מטרה קצרה");
+  assert.equal(note?.difficultyNoteHe, "הקושי עולה בגלל המבנה");
+  assert.equal(familyAuthoringNote("MISSING", {}), null);
+});
+
+await run("Band differences derive from actual generator configurations", () => {
+  const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_INT_ADD_A_A")!;
+  const summaries = deriveBandSummaries(FOUNDATIONAL_QUESTIONS, definition);
+  assert.deepEqual(summaries.map((item) => item.band), ["A", "B", "C"]);
+  assert.equal(summaries[0]?.changesFromPrevious.length, 0);
+  assert.ok(summaries[1]?.changesFromPrevious.some((change) => change.startsWith("a:")));
+  assert.ok(summaries[1]?.changesFromPrevious.some((change) => change.startsWith("b:")));
+});
+
+await run("Band sampling remains deterministic and targets the selected definition", () => {
+  const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_INT_ADD_B_A")!;
+  const first = generatedSampleBatch(definition, 70, 6);
+  const second = generatedSampleBatch(definition, 70, 6);
+  assert.deepEqual(first.map((item) => item.id), second.map((item) => item.id));
+  assert.ok(first.every((item) => item.difficultyBand === "B"));
+});
+
+await run("curated reviewer summaries stay free of generator-only panels", () => {
+  const curated = FOUNDATIONAL_QUESTIONS.find((item) => !isGeneratedQuestionDefinition(item))!;
+  assert.equal(hasGeneratorExplanation(curated), false);
+  assert.deepEqual(deriveBandSummaries(FOUNDATIONAL_QUESTIONS, curated), []);
+  if (isGeneratedQuestionDefinition(curated)) throw new Error("Expected curated question");
+  assert.equal(answerSemanticsLabel(curated), "בחירה יחידה");
 });
