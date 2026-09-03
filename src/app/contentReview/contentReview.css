@@ -11,6 +11,7 @@
 .review-progress span, .review-progress strong { padding: 5px 8px; border-radius: 999px; background: #303030; }
 .review-navigation { justify-content: center; min-height: 38px; padding: 4px 8px; border-block: 1px solid #3e3e3e; }
 .review-navigation > strong { min-width: 210px; text-align: center; }
+.review-band-coverage { display: inline-flex; gap: 8px; align-items: center; padding: 4px 8px; border-radius: 8px; background: #252525; }
 .review-view-toggle { margin-inline-start: auto; }
 .review-view-toggle button[aria-pressed="true"] { border-color: #80cbc4; background: #174f4b; }
 .review-workspace { min-height: 0; display: grid; grid-template-columns: minmax(210px, 260px) minmax(440px, 1fr) minmax(330px, 430px); gap: 10px; direction: ltr; }

@@ -40,7 +40,7 @@ export type ReviewNavigationAction =
   | { type: "set-filter"; key: keyof ReviewFilters; value: ReviewFilters[keyof ReviewFilters] }
   | { type: "restore-filters"; filters: ReviewFilters }
   | { type: "reset-filters" }
-  | { type: "navigate"; index: number }
+  | { type: "navigate"; index: number; definitionId?: string | null }
   | { type: "preview-band"; definitionId: string }
   | { type: "set-seed"; seed: number }
   | { type: "new-sample" }
@@ -72,7 +72,7 @@ export function reviewNavigationReducer(state: ReviewNavigationState, action: Re
   }
   if (action.type === "restore-filters") return { ...state, filters: action.filters, index: 0, previewDefinitionId: null };
   if (action.type === "reset-filters") return { ...state, filters: EMPTY_REVIEW_FILTERS, index: 0, previewDefinitionId: null };
-  if (action.type === "navigate") return { ...state, index: action.index, previewDefinitionId: null };
+  if (action.type === "navigate") return { ...state, index: action.index, previewDefinitionId: action.definitionId ?? null, seed: action.definitionId ? 1 : state.seed, showBatch: false };
   if (action.type === "preview-band") return { ...state, previewDefinitionId: action.definitionId, seed: 1 };
   if (action.type === "set-seed") return { ...state, seed: action.seed };
   if (action.type === "new-sample") return { ...state, seed: state.seed + 1 };
@@ -143,6 +143,105 @@ export function filterReviewDefinitions(
       && (!filters.contentFamily || definition.contentFamily === filters.contentFamily)
       && (filters.reviewStatus === "all" || (filters.reviewStatus === "unreviewed" ? !record : record?.status === filters.reviewStatus));
   });
+}
+
+const REVIEW_BAND_ORDER = ["A", "B", "C", "D"];
+
+export interface ReviewUnit {
+  key: string;
+  definitions: SkillQuestionDefinition[];
+  generated: boolean;
+}
+
+function aggregateStatuses(statuses: Array<ReviewStatus | undefined>): ReviewStatus | undefined {
+  if (statuses.includes("rejected")) return "rejected";
+  if (statuses.includes("needs-fix")) return "needs-fix";
+  if (statuses.length > 0 && statuses.every((status) => status === "approved")) return "approved";
+  return undefined;
+}
+
+export function reviewUnitStatus(unit: ReviewUnit, records: ReadonlyMap<string, QuestionReviewRecord>): ReviewStatus | undefined {
+  return aggregateStatuses(unit.definitions.map((definition) => records.get(definition.id)?.status));
+}
+
+export function isReviewUnitFullyApproved(unit: ReviewUnit, records: ReadonlyMap<string, QuestionReviewRecord>): boolean {
+  return reviewUnitStatus(unit, records) === "approved";
+}
+
+export function reviewUnitBandCoverage(unit: ReviewUnit, records: ReadonlyMap<string, QuestionReviewRecord>) {
+  if (!unit.generated) return [];
+  return unit.definitions.map((definition) => ({
+    band: definition.difficultyBand ?? "?",
+    definitionId: definition.id,
+    status: records.get(definition.id)?.status,
+  }));
+}
+
+export function buildReviewUnits(
+  definitions: readonly SkillQuestionDefinition[],
+  filters: ReviewFilters,
+  records: ReadonlyMap<string, QuestionReviewRecord>,
+  catalog: ReviewCatalog,
+): ReviewUnit[] {
+  const scoped = filterReviewDefinitions(definitions, { ...filters, reviewStatus: "all" }, records, catalog);
+  const units = new Map<string, ReviewUnit>();
+  for (const definition of scoped) {
+    const generated = isGeneratedQuestionDefinition(definition);
+    const key = generated ? `generated:${definition.skillId}:${definition.contentFamily}` : `curated:${definition.id}`;
+    if (units.has(key)) continue;
+    const unitDefinitions = generated
+      ? definitions.filter((candidate) => isGeneratedQuestionDefinition(candidate) && candidate.skillId === definition.skillId && candidate.contentFamily === definition.contentFamily)
+      : [definition];
+    units.set(key, { key, definitions: unitDefinitions, generated });
+  }
+  const result = [...units.values()];
+  for (const unit of result) unit.definitions.sort((left, right) => REVIEW_BAND_ORDER.indexOf(left.difficultyBand ?? "") - REVIEW_BAND_ORDER.indexOf(right.difficultyBand ?? ""));
+  return result.filter((unit) => {
+    const status = reviewUnitStatus(unit, records);
+    return filters.reviewStatus === "all"
+      || (filters.reviewStatus === "unreviewed" ? status === undefined : status === filters.reviewStatus);
+  });
+}
+
+export interface ReviewUnitLocation { index: number; definitionId: string | null }
+
+export function reviewUnitNavigation(
+  action: "first" | "previous" | "next" | "last",
+  units: readonly ReviewUnit[],
+  currentUnitIndex: number,
+  currentDefinitionId: string | null,
+): ReviewUnitLocation {
+  if (!units.length) return { index: 0, definitionId: null };
+  if (action === "first") return { index: 0, definitionId: units[0]!.definitions[0]?.id ?? null };
+  if (action === "last") {
+    const index = units.length - 1;
+    return { index, definitionId: units[index]!.definitions.at(-1)?.id ?? null };
+  }
+  const index = Math.min(Math.max(0, currentUnitIndex), units.length - 1);
+  const unit = units[index]!;
+  const definitionIndex = Math.max(0, unit.definitions.findIndex((definition) => definition.id === currentDefinitionId));
+  if (action === "next") {
+    const nextBand = unit.definitions[definitionIndex + 1];
+    if (nextBand) return { index, definitionId: nextBand.id };
+    if (index === units.length - 1) return { index, definitionId: unit.definitions.at(-1)?.id ?? null };
+    const nextIndex = Math.min(units.length - 1, index + 1);
+    return { index: nextIndex, definitionId: units[nextIndex]!.definitions[0]?.id ?? null };
+  }
+  const previousBand = unit.definitions[definitionIndex - 1];
+  if (previousBand) return { index, definitionId: previousBand.id };
+  if (index === 0) return { index, definitionId: unit.definitions[0]?.id ?? null };
+  const previousIndex = Math.max(0, index - 1);
+  return { index: previousIndex, definitionId: units[previousIndex]!.definitions.at(-1)?.id ?? null };
+}
+
+export function reviewUnitProgress(units: readonly ReviewUnit[], records: ReadonlyMap<string, QuestionReviewRecord>) {
+  const statuses: Record<ReviewStatus, number> = { approved: 0, "needs-fix": 0, rejected: 0 };
+  let reviewed = 0;
+  for (const unit of units) {
+    const status = reviewUnitStatus(unit, records);
+    if (status) { reviewed += 1; statuses[status] += 1; }
+  }
+  return { total: units.length, reviewed, ...statuses };
 }
 
 export function navigationIndex(action: "first" | "previous" | "next" | "last", current: number, length: number): number {

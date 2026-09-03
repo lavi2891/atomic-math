@@ -5,20 +5,27 @@ import { FOUNDATIONAL_QUESTIONS } from "../src/content/foundations/questions.ts"
 import { isGeneratedQuestionDefinition } from "../src/domain/questions/definitions.ts";
 import { MemoryPersistenceDriver } from "../src/infrastructure/persistence/MemoryPersistenceDriver.ts";
 import {
+  buildReviewUnits,
   EMPTY_REVIEW_FILTERS,
   expectedAnswer,
   filterReviewDefinitions,
   flaggedCuratedFamilies,
   generatedSampleBatch,
   initialReviewNavigationState,
+  isReviewUnitFullyApproved,
   navigationIndex,
   parseReviewDeepLink,
   resolveReviewQuestion,
   reviewDeepLink,
   reviewIndexAfterMark,
   reviewNavigationReducer,
+  reviewUnitBandCoverage,
+  reviewUnitNavigation,
+  reviewUnitStatus,
   reviewProgress,
   type ReviewFilters,
+  type ReviewNavigationAction,
+  type ReviewUnit,
 } from "../src/app/contentReview/reviewModel.ts";
 import { AuthorReviewRepository, MemoryAuthorReviewStore, type QuestionReviewRecord } from "../src/app/contentReview/reviewState.ts";
 import { answerSemanticsLabel, deriveBandSummaries, describeParameter, familyAuthoringNote, generatorStructureSummary, generatorTemplateLatex, hasGeneratorExplanation, parameterTypeLabel, summarizeConstraints, translateSimpleConstraint } from "../src/app/contentReview/generatorSummary.ts";
@@ -27,6 +34,11 @@ async function run(name: string, fn: () => void | Promise<void>) { await fn(); p
 const catalog = { domains: DOMAINS, skills: SKILLS, skillGroups: SKILL_GROUPS };
 const records = new Map<string, QuestionReviewRecord>();
 const filter = (partial: Partial<ReviewFilters>, state = records) => filterReviewDefinitions(FOUNDATIONAL_QUESTIONS, { ...EMPTY_REVIEW_FILTERS, ...partial }, state, catalog);
+const generatedUnit = (skillId: string, contentFamily: string): ReviewUnit => {
+  const definitions = FOUNDATIONAL_QUESTIONS.filter((item) => item.skillId === skillId && item.contentFamily === contentFamily);
+  assert.ok(definitions.length > 0 && definitions.every(isGeneratedQuestionDefinition));
+  return { key: `generated:${skillId}:${contentFamily}`, definitions, generated: true };
+};
 
 await run("review route is hidden and selected before the student route", () => {
   assert.equal(appRouteFromSearch("?review=questions"), "question-review");
@@ -177,6 +189,83 @@ await run("Band A and Band B previews preserve filters and do not set difficulty
   assert.equal(bandB.previewDefinitionId, "MVP_AR_ADD_FACTS_B_B");
 });
 
+await run("Next walks A, B, C, D before the next definition", () => {
+  const base = generatedUnit("AR_PLACE_VALUE", "AR_PLACE_VALUE:identify-digit-value");
+  const bandD = { ...base.definitions.at(-1)!, id: "TEST_PLACE_VALUE_D", difficultyBand: "D" as const };
+  const fourBands: ReviewUnit = { ...base, definitions: [...base.definitions, bandD] };
+  const next = generatedUnit("INT_COMPARE", "INT_COMPARE:compare-adjacent-negatives");
+  const units = [fourBands, next];
+  let location = reviewUnitNavigation("first", units, 0, null);
+  assert.equal(location.definitionId, fourBands.definitions[0]!.id);
+  location = reviewUnitNavigation("next", units, location.index, location.definitionId);
+  assert.equal(location.definitionId, fourBands.definitions[1]!.id);
+  location = reviewUnitNavigation("next", units, location.index, location.definitionId);
+  assert.equal(location.definitionId, fourBands.definitions[2]!.id);
+  location = reviewUnitNavigation("next", units, location.index, location.definitionId);
+  assert.equal(location.definitionId, "TEST_PLACE_VALUE_D");
+  location = reviewUnitNavigation("next", units, location.index, location.definitionId);
+  assert.deepEqual(location, { index: 1, definitionId: next.definitions[0]!.id });
+});
+
+await run("A/B families advance directly from B to the next definition", () => {
+  const twoBands = generatedUnit("AR_ADD_FACTS", "AR_ADD_FACTS:two-addend-sum");
+  assert.deepEqual(twoBands.definitions.map((item) => item.difficultyBand), ["A", "B"]);
+  const next = generatedUnit("INT_COMPARE", "INT_COMPARE:compare-adjacent-negatives");
+  const afterA = reviewUnitNavigation("next", [twoBands, next], 0, twoBands.definitions[0]!.id);
+  assert.deepEqual(afterA, { index: 0, definitionId: twoBands.definitions[1]!.id });
+  assert.deepEqual(reviewUnitNavigation("next", [twoBands, next], afterA.index, afterA.definitionId), { index: 1, definitionId: next.definitions[0]!.id });
+});
+
+await run("Previous reverses across Band and definition boundaries", () => {
+  const previous = generatedUnit("AR_ADD_FACTS", "AR_ADD_FACTS:two-addend-sum");
+  const current = generatedUnit("INT_COMPARE", "INT_COMPARE:compare-adjacent-negatives");
+  const across = reviewUnitNavigation("previous", [previous, current], 1, current.definitions[0]!.id);
+  assert.deepEqual(across, { index: 0, definitionId: previous.definitions.at(-1)!.id });
+  const within = reviewUnitNavigation("previous", [previous, current], 0, previous.definitions[1]!.id);
+  assert.deepEqual(within, { index: 0, definitionId: previous.definitions[0]!.id });
+  assert.deepEqual(reviewUnitNavigation("previous", [previous], 0, previous.definitions[0]!.id), { index: 0, definitionId: previous.definitions[0]!.id });
+  assert.deepEqual(reviewUnitNavigation("next", [previous], 0, previous.definitions.at(-1)!.id), { index: 0, definitionId: previous.definitions.at(-1)!.id });
+});
+
+await run("curated items behave as one review unit before the next definition", () => {
+  const curated = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_ALG_VARIABLE_MEANING_CURATED")!;
+  const curatedUnit: ReviewUnit = { key: `curated:${curated.id}`, definitions: [curated], generated: false };
+  const next = generatedUnit("INT_COMPARE", "INT_COMPARE:compare-adjacent-negatives");
+  assert.deepEqual(reviewUnitNavigation("next", [curatedUnit, next], 0, curated.id), { index: 1, definitionId: next.definitions[0]!.id });
+});
+
+await run("Band sequence navigation leaves the explicit Difficulty filter unchanged", () => {
+  const state = initialReviewNavigationState("?review=questions&skill=AR_ADD_FACTS&band=B");
+  const location = reviewUnitNavigation("next", [generatedUnit("AR_ADD_FACTS", "AR_ADD_FACTS:two-addend-sum")], 0, "MVP_AR_ADD_FACTS_A_A");
+  const navigated = reviewNavigationReducer(state, { type: "navigate", index: location.index, definitionId: location.definitionId });
+  assert.strictEqual(navigated.filters, state.filters);
+  assert.equal(navigated.filters.difficultyBand, "B");
+});
+
+await run("generated family approval requires every supported Band", () => {
+  const unit = generatedUnit("AR_PLACE_VALUE", "AR_PLACE_VALUE:identify-digit-value");
+  const reviewedAt = "2026-09-04T00:00:00.000Z";
+  const oneBand = new Map([[unit.definitions[0]!.id, { definitionId: unit.definitions[0]!.id, status: "approved", note: "", reviewedAt } satisfies QuestionReviewRecord]]);
+  assert.equal(isReviewUnitFullyApproved(unit, oneBand), false);
+  assert.equal(reviewUnitStatus(unit, oneBand), undefined);
+  assert.deepEqual(reviewUnitBandCoverage(unit, oneBand).map((item) => item.status), ["approved", undefined, undefined]);
+  const allBands = new Map<string, QuestionReviewRecord>(unit.definitions.map((definition) => [definition.id, { definitionId: definition.id, status: "approved", note: "", reviewedAt }]));
+  assert.equal(isReviewUnitFullyApproved(unit, allBands), true);
+  assert.equal(reviewUnitStatus(unit, allBands), "approved");
+  allBands.set(unit.definitions[1]!.id, { definitionId: unit.definitions[1]!.id, status: "needs-fix", note: "", reviewedAt });
+  assert.equal(isReviewUnitFullyApproved(unit, allBands), false);
+  assert.equal(reviewUnitStatus(unit, allBands), "needs-fix");
+});
+
+await run("review-unit construction groups generated Bands but keeps curated items singular", () => {
+  const units = buildReviewUnits(FOUNDATIONAL_QUESTIONS, { ...EMPTY_REVIEW_FILTERS, skillId: "AR_ADD_FACTS" }, new Map(), catalog);
+  const twoAddends = units.find((unit) => unit.key.includes("two-addend-sum"));
+  assert.deepEqual(twoAddends?.definitions.map((item) => item.difficultyBand), ["A", "B"]);
+  assert.ok(units.every((unit) => unit.generated));
+  const bandFiltered = buildReviewUnits(FOUNDATIONAL_QUESTIONS, { ...EMPTY_REVIEW_FILTERS, skillId: "AR_ADD_FACTS", difficultyBand: "B" }, new Map(), catalog);
+  assert.deepEqual(bandFiltered.find((unit) => unit.key.includes("two-addend-sum"))?.definitions.map((item) => item.difficultyBand), ["A", "B"]);
+});
+
 await run("generated sample and batch actions preserve the active filter scope", () => {
   const initial = initialReviewNavigationState("?review=questions&skill=INT_ADD&authoringMode=generated");
   const filters = initial.filters;
@@ -189,6 +278,20 @@ await run("generated sample and batch actions preserve the active filter scope",
   assert.strictEqual(state.filters, filters);
   assert.equal(state.seed, 17);
   assert.equal(state.showBatch, false);
+});
+
+await run("leaving a Band batch resumes normal navigation at the next Band", () => {
+  const unit = generatedUnit("AR_ADD_FACTS", "AR_ADD_FACTS:two-addend-sum");
+  const initial = initialReviewNavigationState("?review=questions&skill=AR_ADD_FACTS");
+  const filters = initial.filters;
+  let state = reviewNavigationReducer(initial, { type: "preview-band", definitionId: unit.definitions[0]!.id });
+  state = reviewNavigationReducer(state, { type: "toggle-batch" });
+  state = reviewNavigationReducer(state, { type: "select-batch-sample", seed: 31 });
+  const next = reviewUnitNavigation("next", [unit], 0, unit.definitions[0]!.id);
+  state = reviewNavigationReducer(state, { type: "navigate", index: next.index, definitionId: next.definitionId });
+  assert.equal(state.previewDefinitionId, unit.definitions[1]!.id);
+  assert.equal(state.showBatch, false);
+  assert.strictEqual(state.filters, filters);
 });
 
 await run("review status navigation preserves filters and cannot create a new scope", () => {
@@ -214,12 +317,13 @@ await run("only explicit Skill and category changes update filter state and URL"
 await run("normal navigation never reparses or replaces URL-derived filters", () => {
   const initial = initialReviewNavigationState("?review=questions&skill=INT_ADD&category=conceptual");
   const filters = initial.filters;
-  const navigated = [
+  const actions: ReviewNavigationAction[] = [
     { type: "navigate", index: 1 },
     { type: "preview-band", definitionId: "MVP_INT_ADD_B_A" },
     { type: "new-sample" },
     { type: "toggle-batch" },
-  ].reduce(reviewNavigationReducer, initial);
+  ];
+  const navigated = actions.reduce(reviewNavigationReducer, initial);
   assert.strictEqual(navigated.filters, filters);
   assert.equal(reviewDeepLink(navigated.filters), "?review=questions&skill=INT_ADD&category=conceptual");
 });

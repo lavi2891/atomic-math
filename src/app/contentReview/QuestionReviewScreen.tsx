@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useReducer, useState } from "react";
 import { QuestionView } from "../questions/QuestionView.tsx";
 import { ContentRenderer } from "../../ui/ContentRenderer.tsx";
 import { DOMAINS, SKILLS, SKILL_GROUPS } from "../../content/catalog/index.ts";
@@ -7,6 +7,7 @@ import { CONTENT_READINESS } from "../../content/readiness.ts";
 import { isGeneratedQuestionDefinition } from "../../domain/questions/definitions.ts";
 import type { Question } from "../../domain/questions/types.ts";
 import {
+  buildReviewUnits,
   deterministicRandomIndex,
   expectedAnswer,
   filterReviewDefinitions,
@@ -14,13 +15,14 @@ import {
   generatedSampleBatch,
   initialReviewNavigationState,
   isEditableEventTarget,
-  navigationIndex,
   parseReviewDeepLink,
   resolveReviewQuestion,
   reviewDeepLink,
-  reviewIndexAfterMark,
   reviewNavigationReducer,
-  reviewProgress,
+  reviewUnitBandCoverage,
+  reviewUnitNavigation,
+  reviewUnitProgress,
+  reviewUnitStatus,
   type ReviewFilters,
 } from "./reviewModel.ts";
 import { createAuthorReviewRepository, type QuestionReviewRecord, type ReviewStatus } from "./reviewState.ts";
@@ -59,17 +61,19 @@ export function QuestionReviewScreen() {
 
   useEffect(() => { void repository.list().then((items) => setRecords(new Map(items.map((item) => [item.definitionId, item])))); }, [repository]);
 
-  const filtered = useMemo(() => filterReviewDefinitions(FOUNDATIONAL_QUESTIONS, filters, records, catalog), [filters, records]);
-  const currentIndex = Math.min(index, Math.max(0, filtered.length - 1));
-  const scopeDefinition = filtered[currentIndex];
-  const previewDefinition = previewDefinitionId ? FOUNDATIONAL_QUESTIONS.find((definition) => definition.id === previewDefinitionId) : undefined;
+  const units = useMemo(() => buildReviewUnits(FOUNDATIONAL_QUESTIONS, filters, records, catalog), [filters, records]);
+  const currentIndex = Math.min(index, Math.max(0, units.length - 1));
+  const currentUnit = units[currentIndex];
+  const scopeDefinition = currentUnit?.definitions[0];
+  const previewDefinition = previewDefinitionId ? currentUnit?.definitions.find((definition) => definition.id === previewDefinitionId) : undefined;
   const currentDefinition = previewDefinition ?? scopeDefinition;
   const currentQuestion = useMemo(() => currentDefinition ? resolveReviewQuestion(currentDefinition, seed) : null, [currentDefinition, seed]);
   const currentRecord = currentDefinition ? records.get(currentDefinition.id) : undefined;
   const note = currentDefinition ? draftNotes.get(currentDefinition.id) ?? currentRecord?.note ?? "" : "";
   const flaggedFamilies = useMemo(() => flaggedCuratedFamilies(FOUNDATIONAL_QUESTIONS), []);
   const scopeDefinitions = useMemo(() => filterReviewDefinitions(FOUNDATIONAL_QUESTIONS, { ...filters, reviewStatus: "all" }, records, catalog), [filters, records]);
-  const progress = useMemo(() => reviewProgress(scopeDefinitions, records), [scopeDefinitions, records]);
+  const scopeUnits = useMemo(() => buildReviewUnits(FOUNDATIONAL_QUESTIONS, { ...filters, reviewStatus: "all" }, records, catalog), [filters, records]);
+  const progress = useMemo(() => reviewUnitProgress(scopeUnits, records), [scopeUnits, records]);
 
   useEffect(() => { window.history.replaceState(null, "", reviewDeepLink(filters)); }, [filters]);
 
@@ -80,29 +84,36 @@ export function QuestionReviewScreen() {
   }, []);
 
   const navigate = useCallback((action: "first" | "previous" | "next" | "last") => {
-    dispatchNavigation({ type: "navigate", index: navigationIndex(action, currentIndex, filtered.length) });
-  }, [currentIndex, filtered.length]);
+    const location = reviewUnitNavigation(action, units, currentIndex, currentDefinition?.id ?? null);
+    dispatchNavigation({ type: "navigate", index: location.index, definitionId: location.definitionId });
+  }, [currentDefinition?.id, currentIndex, units]);
 
   async function mark(status: ReviewStatus) {
     if (!currentDefinition) return;
     const record = await repository.save(currentDefinition.id, status, note);
-    setRecords((current) => new Map(current).set(record.definitionId, record));
-    setMessage(`${statusLabels[status]} — נשמר מקומית`);
-    dispatchNavigation({ type: "navigate", index: reviewIndexAfterMark(currentIndex, filtered.length, filters.reviewStatus, status) });
+    setRecords((current) => {
+      const next = new Map(current).set(record.definitionId, record);
+      const aggregate = currentUnit ? reviewUnitStatus(currentUnit, next) : undefined;
+      setMessage(aggregate === "approved" ? "כל הרמות נבדקו ואושרו" : `רמה ${currentDefinition.difficultyBand ?? "—"}: ${statusLabels[status]} — נשמר מקומית`);
+      return next;
+    });
+    navigate("next");
   }
+
+  const markFromKeyboard = useEffectEvent((status: ReviewStatus) => { void mark(status); });
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (isEditableEventTarget(event.target) || event.ctrlKey || event.metaKey || event.altKey) return;
       if (event.key === "ArrowLeft") { event.preventDefault(); navigate("previous"); }
       else if (event.key === "ArrowRight") { event.preventDefault(); navigate("next"); }
-      else if (event.key.toLowerCase() === "a" && currentDefinition) { event.preventDefault(); void repository.save(currentDefinition.id, "approved", note).then((record) => { setRecords((current) => new Map(current).set(record.definitionId, record)); setMessage("מאושר — נשמר מקומית"); dispatchNavigation({ type: "navigate", index: reviewIndexAfterMark(currentIndex, filtered.length, filters.reviewStatus, "approved") }); }); }
-      else if (event.key.toLowerCase() === "f" && currentDefinition) { event.preventDefault(); void repository.save(currentDefinition.id, "needs-fix", note).then((record) => { setRecords((current) => new Map(current).set(record.definitionId, record)); setMessage("דורש תיקון — נשמר מקומית"); dispatchNavigation({ type: "navigate", index: reviewIndexAfterMark(currentIndex, filtered.length, filters.reviewStatus, "needs-fix") }); }); }
-      else if (event.key.toLowerCase() === "r" && currentDefinition) { event.preventDefault(); void repository.save(currentDefinition.id, "rejected", note).then((record) => { setRecords((current) => new Map(current).set(record.definitionId, record)); setMessage("נדחה — נשמר מקומית"); dispatchNavigation({ type: "navigate", index: reviewIndexAfterMark(currentIndex, filtered.length, filters.reviewStatus, "rejected") }); }); }
+      else if (event.key.toLowerCase() === "a") { event.preventDefault(); markFromKeyboard("approved"); }
+      else if (event.key.toLowerCase() === "f") { event.preventDefault(); markFromKeyboard("needs-fix"); }
+      else if (event.key.toLowerCase() === "r") { event.preventDefault(); markFromKeyboard("rejected"); }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [currentDefinition, currentIndex, filtered.length, filters.reviewStatus, navigate, note, repository]);
+  }, [navigate]);
 
   function updateFilter<K extends keyof ReviewFilters>(key: K, value: ReviewFilters[K]) {
     dispatchNavigation({ type: "set-filter", key, value });
@@ -123,8 +134,8 @@ export function QuestionReviewScreen() {
   }
 
   function chooseGeneratedBand(band: string) {
-    if (!currentDefinition?.contentFamily) return;
-    const definition = FOUNDATIONAL_QUESTIONS.find((candidate) => candidate.skillId === currentDefinition.skillId && candidate.contentFamily === currentDefinition.contentFamily && candidate.difficultyBand === band);
+    if (!currentUnit?.generated) return;
+    const definition = currentUnit.definitions.find((candidate) => candidate.difficultyBand === band);
     if (definition) dispatchNavigation({ type: "preview-band", definitionId: definition.id });
   }
 
@@ -146,9 +157,11 @@ export function QuestionReviewScreen() {
   const currentDomain = currentSkill ? DOMAINS.find((domain) => domain.id === currentSkill.domainId) : undefined;
   const currentGroups = currentSkill ? SKILL_GROUPS.filter((group) => group.skillIds.includes(currentSkill.id as never)) : [];
   const readiness = currentSkill ? CONTENT_READINESS.find((entry) => entry.skillId === currentSkill.id) : undefined;
-  const availableBands = currentDefinition?.contentFamily ? uniqueValues(FOUNDATIONAL_QUESTIONS.filter((item) => item.skillId === currentDefinition.skillId && item.contentFamily === currentDefinition.contentFamily).map((item) => item.difficultyBand)) : [];
+  const availableBands = currentUnit?.generated ? currentUnit.definitions.flatMap((item) => item.difficultyBand ? [item.difficultyBand] : []) : [];
+  const bandCoverage = currentUnit ? reviewUnitBandCoverage(currentUnit, records) : [];
+  const currentUnitReviewStatus = currentUnit ? reviewUnitStatus(currentUnit, records) : undefined;
   const batch = currentDefinition && showBatch ? generatedSampleBatch(currentDefinition, seed, 10) : [];
-  const activeFamilyDefinitions = filters.contentFamily ? filtered.filter((item) => item.contentFamily === filters.contentFamily) : [];
+  const activeFamilyDefinitions = filters.contentFamily ? scopeDefinitions.filter((item) => item.contentFamily === filters.contentFamily) : [];
   const variables = currentDefinition && isGeneratedQuestionDefinition(currentDefinition) ? generatorVariables(currentDefinition) : [];
   const constraints = currentDefinition && isGeneratedQuestionDefinition(currentDefinition) ? summarizeConstraints(currentDefinition.constraints) : null;
   const bandSummaries = currentDefinition ? deriveBandSummaries(FOUNDATIONAL_QUESTIONS, currentDefinition) : [];
@@ -157,7 +170,7 @@ export function QuestionReviewScreen() {
 
   return <main className="question-review" dir="rtl">
     <header className="review-header"><div><p className="review-eyebrow">כלי פיתוח · לא לתלמידים</p><h1>ביקורת שאלות Atomic Math</h1></div><div className="review-progress" aria-live="polite"><strong>{progress.reviewed}/{progress.total}</strong><span>{progress.approved} מאושרות</span><span>{progress["needs-fix"]} לתיקון</span><span>{progress.rejected} נדחו</span><button type="button" onClick={exportReviewState}>ייצוא JSON</button></div></header>
-    <nav className="review-navigation" aria-label="ניווט בין definitions"><button onClick={() => navigate("first")}>ראשון</button><button onClick={() => navigate("previous")}>הקודם</button><strong>Question / Definition {filtered.length ? currentIndex + 1 : 0} מתוך {filtered.length}</strong><button onClick={() => navigate("next")}>הבא</button><button onClick={() => navigate("last")}>אחרון</button><button onClick={() => { dispatchNavigation({ type: "increment-random-nonce" }); dispatchNavigation({ type: "navigate", index: deterministicRandomIndex(currentIndex, filtered.length, randomNonce) }); }}>אקראי</button><div className="review-view-toggle"><button type="button" aria-pressed={!showDetails} onClick={() => dispatchNavigation({ type: "toggle-details", show: false })}>Student View</button><button type="button" aria-pressed={showDetails} onClick={() => dispatchNavigation({ type: "toggle-details", show: true })}>Reviewer Details</button></div></nav>
+    <nav className="review-navigation" aria-label="ניווט בין definitions"><button onClick={() => navigate("first")}>ראשון</button><button onClick={() => navigate("previous")}>הקודם</button><strong>Question / Definition {units.length ? currentIndex + 1 : 0} מתוך {units.length}</strong>{bandCoverage.length ? <span className="review-band-coverage" aria-label="כיסוי רמות">רמות: {bandCoverage.map((item) => <span key={item.band} title={item.status ? statusLabels[item.status] : "טרם נבדקה"}>{item.status === "approved" ? "✓" : item.status ? "!" : "○"} {item.band}</span>)}</span> : null}<button onClick={() => navigate("next")}>הבא</button><button onClick={() => navigate("last")}>אחרון</button><button onClick={() => { const randomIndex = deterministicRandomIndex(currentIndex, units.length, randomNonce); dispatchNavigation({ type: "increment-random-nonce" }); dispatchNavigation({ type: "navigate", index: randomIndex, definitionId: units[randomIndex]?.definitions[0]?.id ?? null }); }}>אקראי</button><div className="review-view-toggle"><button type="button" aria-pressed={!showDetails} onClick={() => dispatchNavigation({ type: "toggle-details", show: false })}>Student View</button><button type="button" aria-pressed={showDetails} onClick={() => dispatchNavigation({ type: "toggle-details", show: true })}>Reviewer Details</button></div></nav>
 
     <div className="review-workspace">
       <aside className="review-panel review-sidebar review-filters-pane"><h2>מסננים</h2><div className="review-controls" aria-label="מסנני ביקורת">
@@ -194,7 +207,7 @@ export function QuestionReviewScreen() {
             {familyNote?.difficultyNoteHe ? <p><strong>הערת קושי:</strong> {familyNote.difficultyNoteHe}</p> : null}
           </> : <><p><strong>contentFamily:</strong> <code>{currentDefinition.contentFamily}</code></p><p><strong>סיבת curation:</strong> {currentDefinition.curationReason}</p>{currentDefinition.curationJustificationHe ? <p><strong>הצדקת curation:</strong> {currentDefinition.curationJustificationHe}</p> : null}{currentQuestion.type !== "numeric" ? <><h3>מסיחים ומיסקונספציות</h3><table><thead><tr><th>אפשרות</th><th>מיסקונספציה</th></tr></thead><tbody>{currentQuestion.options.filter((option) => option.id !== (currentQuestion.type === "singleChoice" ? currentQuestion.correctOptionId : "") && option.misconceptionId).map((option) => <tr key={option.id}><td><ContentRenderer content={option.content} /></td><td><code>{option.misconceptionId}</code>{option.misconceptionRationale ? <small>{option.misconceptionRationale}</small> : null}</td></tr>)}</tbody></table></> : null}</>}
         </section><details className="review-technical"><summary>פרטים טכניים</summary><dl><dt>definition ID</dt><dd><code>{currentDefinition.id}</code></dd><dt>instance ID</dt><dd><code>{currentQuestion.id}</code></dd><dt>contentFamily</dt><dd><code>{currentDefinition.contentFamily}</code>{currentDefinition.contentFamily && flaggedFamilies.has(currentDefinition.contentFamily) ? <mark>משפחה שסומנה</mark> : null}</dd><dt>authoringMode</dt><dd>{currentDefinition.authoringMode}</dd><dt>Domain / Skill Group</dt><dd>{currentDomain?.id} / {currentGroups.map((group) => group.id).join(", ") || "—"}</dd><dt>difficulty</dt><dd>{currentQuestion.difficulty ?? "—"} · Band {currentDefinition.difficultyBand}</dd><dt>tags</dt><dd>{currentDefinition.tags?.join(", ") ?? "—"}</dd><dt>raw exprTemplate</dt><dd><pre>{isGeneratedQuestionDefinition(currentDefinition) ? currentDefinition.exprTemplate : "—"}</pre></dd><dt>raw promptTemplate</dt><dd><pre>{isGeneratedQuestionDefinition(currentDefinition) ? JSON.stringify(currentDefinition.promptTemplate, null, 2) : "—"}</pre></dd><dt>raw params</dt><dd><pre>{isGeneratedQuestionDefinition(currentDefinition) ? JSON.stringify(currentDefinition.params, null, 2) : "—"}</pre></dd><dt>raw constraints</dt><dd><pre>{isGeneratedQuestionDefinition(currentDefinition) ? JSON.stringify(currentDefinition.constraints ?? [], null, 2) : "—"}</pre></dd><dt>technical-only constraints</dt><dd>{constraints?.technicalOnly.join(" | ") || "—"}</dd><dt>seed / structure</dt><dd>{isGeneratedQuestionDefinition(currentDefinition) ? `${seed} / ${currentDefinition.structureKey}` : "—"}</dd><dt>generator metadata</dt><dd><pre>{isGeneratedQuestionDefinition(currentDefinition) ? JSON.stringify(currentDefinition.metadata ?? {}, null, 2) : "—"}</pre></dd><dt>readiness</dt><dd>{readiness ? `${readiness.strategy}; humanReviewed(source)=${readiness.humanReviewed}` : "—"}</dd></dl></details></div> : <p className="review-student-mode-note">Student View פעיל. התצוגה במרכז נשארת זהה לתלמיד; לחצו Reviewer Details להצגת הסיכום.</p>}
-        <section className="review-state"><div><strong>סטטוס:</strong> {currentRecord ? statusLabels[currentRecord.status] : "לא נבדק"}{currentRecord ? <small> · {new Date(currentRecord.reviewedAt).toLocaleString("he-IL")}</small> : null}</div><textarea value={note} onChange={(event) => setDraftNotes((current) => new Map(current).set(currentDefinition.id, event.target.value))} placeholder="הערת מבקר קצרה…" rows={2} /><div><button className="approve" type="button" onClick={() => void mark("approved")}>A · אישור והבא</button><button className="fix" type="button" onClick={() => void mark("needs-fix")}>F · לתיקון</button><button className="reject" type="button" onClick={() => void mark("rejected")}>R · דחייה</button><button type="button" onClick={() => void saveNote()}>שמירת הערה</button>{currentRecord ? <button type="button" onClick={() => void clearReview()}>איפוס</button> : null}</div>{message ? <p role="status">{message}</p> : null}<small>←/→ ניווט · A אישור · F תיקון · R דחייה</small></section>
+        <section className="review-state"><div><strong>סטטוס {currentUnit?.generated ? `רמה ${currentDefinition.difficultyBand}` : ""}:</strong> {currentRecord ? statusLabels[currentRecord.status] : "לא נבדק"}{currentRecord ? <small> · {new Date(currentRecord.reviewedAt).toLocaleString("he-IL")}</small> : null}{currentUnit?.generated ? <small> · סטטוס משפחה: {currentUnitReviewStatus ? statusLabels[currentUnitReviewStatus] : "עדיין לא נבדקה במלואה"}</small> : null}</div><textarea value={note} onChange={(event) => setDraftNotes((current) => new Map(current).set(currentDefinition.id, event.target.value))} placeholder="הערת מבקר קצרה…" rows={2} /><div><button className="approve" type="button" onClick={() => void mark("approved")}>A · אישור והבא</button><button className="fix" type="button" onClick={() => void mark("needs-fix")}>F · לתיקון</button><button className="reject" type="button" onClick={() => void mark("rejected")}>R · דחייה</button><button type="button" onClick={() => void saveNote()}>שמירת הערה</button>{currentRecord ? <button type="button" onClick={() => void clearReview()}>איפוס</button> : null}</div>{message ? <p role="status">{message}</p> : null}<small>←/→ ניווט · A אישור · F תיקון · R דחייה</small></section>
       </> : null}</aside>
     </div>
   </main>;
