@@ -42,6 +42,11 @@
 .review-human-summary p, .review-human-summary ul { margin: 0; }
 .review-human-summary h2 { font-size: 18px; }
 .review-human-summary h3 { font-size: 14px; color: #d6d6d6; margin-top: 4px; }
+.review-structure { display: grid; gap: 9px; padding: 12px; border: 1px solid #80cbc4; border-radius: 10px; background: #223735; }
+.review-structure > div { min-width: 0; }
+.review-structure .math { margin-block: 4px !important; padding: 7px; border-radius: 7px; background: #192a29; font-size: 1.15em; overflow-x: auto; }
+.review-structure-constraints { padding-top: 7px; border-top: 1px solid #416865; }
+.review-structure-constraints ul { margin-top: 5px; }
 .review-human-summary table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .review-human-summary th, .review-human-summary td { border-bottom: 1px solid #484848; padding: 6px; text-align: right; vertical-align: top; }
 .review-human-summary td small { display: block; margin-top: 3px; color: #c8c8c8; }
@@ -49,6 +54,8 @@
 .review-band-summaries article { display: grid; gap: 4px; padding: 8px; border: 1px solid #484848; border-radius: 8px; }
 .review-band-summaries article[data-current="true"] { border-color: #80cbc4; background: #263d3b; }
 .review-band-summaries ul { padding-inline-start: 18px; font-size: 11px; }
+.review-band-template { display: grid; gap: 2px; padding-top: 4px; border-top: 1px solid #484848; }
+.review-band-template .math { margin-block: 2px !important; overflow-x: auto; }
 .review-technical { border-top: 1px solid #484848; padding-top: 10px; }
 .review-technical summary { cursor: pointer; font-weight: 700; }
 .review-technical dl { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 6px 9px; font-size: 11px; }

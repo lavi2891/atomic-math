@@ -19,7 +19,7 @@ import {
   type ReviewFilters,
 } from "../src/app/contentReview/reviewModel.ts";
 import { AuthorReviewRepository, MemoryAuthorReviewStore, type QuestionReviewRecord } from "../src/app/contentReview/reviewState.ts";
-import { answerSemanticsLabel, deriveBandSummaries, describeParameter, familyAuthoringNote, hasGeneratorExplanation, parameterTypeLabel, summarizeConstraints, translateSimpleConstraint } from "../src/app/contentReview/generatorSummary.ts";
+import { answerSemanticsLabel, deriveBandSummaries, describeParameter, familyAuthoringNote, generatorStructureSummary, generatorTemplateLatex, hasGeneratorExplanation, parameterTypeLabel, summarizeConstraints, translateSimpleConstraint } from "../src/app/contentReview/generatorSummary.ts";
 
 async function run(name: string, fn: () => void | Promise<void>) { await fn(); process.stdout.write(`PASS ${name}\n`); }
 const catalog = { domains: DOMAINS, skills: SKILLS, skillGroups: SKILL_GROUPS };
@@ -163,8 +163,40 @@ await run("simple constraints translate while unsupported expressions stay techn
   assert.equal(translateSimpleConstraint("a > 0"), "a חיובי");
   assert.equal(translateSimpleConstraint("a != 0"), "a שונה מאפס");
   assert.equal(translateSimpleConstraint("a < b"), "a קטן מ־b");
-  assert.equal(translateSimpleConstraint("a + 1 >= b"), null);
-  assert.deepEqual(summarizeConstraints(["a > 0", "a + 1 >= b"]), { humanReadable: ["a חיובי"], technicalOnly: ["a + 1 >= b"] });
+  assert.equal(translateSimpleConstraint("a + 1 >= b"), "a ועוד 1 גדול או שווה ל־b");
+  assert.deepEqual(summarizeConstraints(["a > 0", "a + 1 >= b", "Math.abs(a) > b"]), { humanReadable: ["a חיובי", "a ועוד 1 גדול או שווה ל־b"], technicalOnly: ["Math.abs(a) > b"] });
+});
+
+await run("generated structure keeps the executable template separate from its current instance", () => {
+  const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_AR_ADD_FACTS_A_B")!;
+  assert.ok(isGeneratedQuestionDefinition(definition));
+  const question = resolveReviewQuestion(definition, 19);
+  const structure = generatorStructureSummary(definition, question);
+  assert.equal(structure?.template, "{a}+{b}+1");
+  assert.ok(structure?.instantiated && !structure.instantiated.includes("{a}"));
+  assert.notEqual(structure?.template, structure?.instantiated);
+  assert.equal(structure?.structuralLabel, "שלושה מחוברים — שני משתנים וקבוע 1");
+  assert.deepEqual(structure?.constraints.humanReadable, []);
+});
+
+await run("review math display is derived from the executable template", () => {
+  assert.equal(generatorTemplateLatex("{a}*{b}"), "{a}\\cdot {b}");
+  assert.equal(generatorTemplateLatex("\\frac{-{a}}{{b}}+{c}"), "\\frac{-{a}}{{b}}+{c}");
+});
+
+await run("generated structure exposes simple definition constraints alongside the template", () => {
+  const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_AR_SUB_FACTS_A_B")!;
+  assert.ok(isGeneratedQuestionDefinition(definition));
+  const structure = generatorStructureSummary(definition, resolveReviewQuestion(definition, 4));
+  assert.equal(structure?.template, "{a}+1-{b}");
+  assert.deepEqual(structure?.constraints.humanReadable, ["a ועוד 1 גדול או שווה ל־b"]);
+});
+
+await run("every foundational generated family has a recoverable executable structure", () => {
+  const generatedCount = FOUNDATIONAL_QUESTIONS.filter(isGeneratedQuestionDefinition).length;
+  const missing = FOUNDATIONAL_QUESTIONS.flatMap((definition) => isGeneratedQuestionDefinition(definition) && !definition.exprTemplate.trim() ? [definition.id] : []);
+  assert.ok(generatedCount > 0);
+  assert.deepEqual(missing, []);
 });
 
 await run("optional family rationale and difficulty note remain centralized", () => {
@@ -181,6 +213,8 @@ await run("Band differences derive from actual generator configurations", () => 
   assert.equal(summaries[0]?.changesFromPrevious.length, 0);
   assert.ok(summaries[1]?.changesFromPrevious.some((change) => change.startsWith("a:")));
   assert.ok(summaries[1]?.changesFromPrevious.some((change) => change.startsWith("b:")));
+  assert.equal(summaries[0]?.template, "{a}+{b}");
+  assert.equal(summaries[1]?.templateChangedFromPrevious, false);
 });
 
 await run("Band sampling remains deterministic and targets the selected definition", () => {
@@ -196,5 +230,6 @@ await run("curated reviewer summaries stay free of generator-only panels", () =>
   assert.equal(hasGeneratorExplanation(curated), false);
   assert.deepEqual(deriveBandSummaries(FOUNDATIONAL_QUESTIONS, curated), []);
   if (isGeneratedQuestionDefinition(curated)) throw new Error("Expected curated question");
+  assert.equal(generatorStructureSummary(curated, curated), null);
   assert.equal(answerSemanticsLabel(curated), "בחירה יחידה");
 });

@@ -2,7 +2,7 @@ import type { DifficultyBand } from "../../content/catalog/types.ts";
 import { isGeneratedQuestionDefinition } from "../../domain/questions/definitions.ts";
 import type { GeneratedQuestionDefinition, ParamSpec } from "../../domain/questions/generator/types.ts";
 import type { SkillQuestionDefinition } from "../../domain/session/skillQuestionSelector.ts";
-import type { Question } from "../../domain/questions/types.ts";
+import { isGeneratedQuestionInstance, type Question } from "../../domain/questions/types.ts";
 
 export interface VariableSummary {
   name: string;
@@ -17,9 +17,20 @@ export interface ConstraintSummary {
 
 export interface BandSummary {
   band: DifficultyBand;
+  template: string;
+  templateChangedFromPrevious: boolean;
   variables: VariableSummary[];
   constraints: ConstraintSummary;
   changesFromPrevious: string[];
+}
+
+export interface GeneratorStructureSummary {
+  /** The executable expression source, before parameter substitution. */
+  template: string;
+  /** The expression produced for the currently selected seed. */
+  instantiated: string;
+  structuralLabel: string | null;
+  constraints: ConstraintSummary;
 }
 
 export interface FamilyAuthoringNote {
@@ -36,6 +47,61 @@ export const FAMILY_AUTHORING_NOTES: Readonly<Record<string, FamilyAuthoringNote
     rationaleHe: "תרגול פירוש נכון של סימן שלילה לפני האיבר הראשון בתוך פעולת חיבור.",
   },
 };
+
+const STRUCTURE_LABELS: Readonly<Record<string, string>> = {
+  "two-addend-sum": "סכום של שני מחוברים משתנים",
+  "related-three-addend-sum": "שלושה מחוברים — שני משתנים וקבוע 1",
+  "nonnegative-difference": "הפרש שאינו שלילי",
+  "adjusted-minuend-difference": "הפרש עם הגדלת המחוסר בקבוע 1",
+  "fact-family-product": "מכפלה ממשפחת עובדות",
+  "commuted-product": "מכפלה בחילוף סדר הגורמים",
+  "exact-fact-family-quotient": "מנה מדויקת ממשפחת עובדות",
+  "grouping-preserving-quotient": "מנה מדויקת עם קיבוץ מפורש",
+  "multiple-as-product": "כפולה המיוצגת כמכפלה",
+  "next-multiple-as-product": "הכפולה הבאה באמצעות הגדלת גורם ב־1",
+  "multiplication-before-leading-addition": "חיבור וכפל — הכפל קודם",
+  "multiplication-before-trailing-addition": "כפל וחיבור — הכפל קודם",
+  "signed-sum": "חיבור מספרים מכוונים",
+  "negated-first-addend": "חיבור עם שלילת המחובר הראשון",
+  "signed-difference": "חיסור מספרים מכוונים",
+  "negative-minuend-difference": "חיסור עם מחוסר שלילי",
+  "signed-product": "כפל מספרים מכוונים",
+  "negated-first-factor": "כפל עם שלילת הגורם הראשון",
+  "exact-signed-quotient": "מנה מדויקת של מספרים מכוונים",
+  "negated-dividend-quotient": "מנה מדויקת עם שלילת המחולק",
+  "linear-substitution": "הצבה בביטוי ליניארי",
+  "quadratic-substitution": "הצבה בביטוי ריבועי",
+  "inverse-addition-equation": "מציאת נעלם באמצעות פעולה הפוכה לחיבור",
+  "direct-addition-equation": "מציאת נעלם במשוואת חיבור",
+  "solve-factor-by-first-quotient": "מציאת גורם באמצעות חילוק בגורם הראשון",
+  "solve-factor-by-second-quotient": "מציאת גורם באמצעות חילוק בגורם השני",
+};
+
+function structureFeature(definition: GeneratedQuestionDefinition): string | null {
+  const feature = definition.metadata?.feature;
+  if (typeof feature === "string") return feature;
+  const familyFeature = definition.contentFamily?.split(":").at(-1);
+  return familyFeature || null;
+}
+
+/** Preserve the executable template; only normalize multiplication for clearer KaTeX display. */
+export function generatorTemplateLatex(template: string): string {
+  return template.replaceAll("*", "\\cdot ");
+}
+
+export function generatorStructureSummary(
+  definition: SkillQuestionDefinition,
+  question: Question,
+): GeneratorStructureSummary | null {
+  if (!isGeneratedQuestionDefinition(definition) || !isGeneratedQuestionInstance(question)) return null;
+  const feature = structureFeature(definition);
+  return {
+    template: definition.exprTemplate,
+    instantiated: question.renderedExpression,
+    structuralLabel: feature ? STRUCTURE_LABELS[feature] ?? null : null,
+    constraints: summarizeConstraints(definition.constraints),
+  };
+}
 
 export function parameterTypeLabel(spec: ParamSpec): string {
   if (spec.type === "integer") return "מספר שלם";
@@ -81,8 +147,19 @@ export function describeParameter(name: string, spec: ParamSpec): VariableSummar
 }
 
 const SIMPLE_CONSTRAINT = /^([A-Za-z_]\w*)\s*(===|!==|==|!=|>=|<=|>|<)\s*(-?\d+(?:\.\d+)?|[A-Za-z_]\w*)$/;
+const OFFSET_CONSTRAINT = /^([A-Za-z_]\w*)\s*([+-])\s*(\d+(?:\.\d+)?)\s*(>=|<=|>|<|===|==|!==|!=)\s*(-?\d+(?:\.\d+)?|[A-Za-z_]\w*)$/;
+
+function relationLabel(operator: string): string {
+  return operator === ">" ? "גדול מ־" : operator === ">=" ? "גדול או שווה ל־" : operator === "<" ? "קטן מ־" : operator === "<=" ? "קטן או שווה ל־" : operator === "==" || operator === "===" ? "שווה ל־" : "שונה מ־";
+}
 
 export function translateSimpleConstraint(constraint: string): string | null {
+  const offsetMatch = OFFSET_CONSTRAINT.exec(constraint.trim());
+  if (offsetMatch) {
+    const [, left, sign, offset, operator, right] = offsetMatch;
+    if (!left || !sign || !offset || !operator || !right) return null;
+    return `${left} ${sign === "+" ? "ועוד" : "פחות"} ${offset} ${relationLabel(operator)}${right}`;
+  }
   const match = SIMPLE_CONSTRAINT.exec(constraint.trim());
   if (!match) return null;
   const [, left, operator, right] = match;
@@ -90,8 +167,7 @@ export function translateSimpleConstraint(constraint: string): string | null {
   if ((operator === "!=" || operator === "!==") && right === "0") return `${left} שונה מאפס`;
   if (operator === ">" && right === "0") return `${left} חיובי`;
   if (operator === "<" && right === "0") return `${left} שלילי`;
-  const relation = operator === ">" ? "גדול מ־" : operator === ">=" ? "גדול או שווה ל־" : operator === "<" ? "קטן מ־" : operator === "<=" ? "קטן או שווה ל־" : operator === "==" || operator === "===" ? "שווה ל־" : "שונה מ־";
-  return `${left} ${relation}${right}`;
+  return `${left} ${relationLabel(operator)}${right}`;
 }
 
 export function summarizeConstraints(constraints: readonly string[] = []): ConstraintSummary {
@@ -127,15 +203,21 @@ export function deriveBandSummaries(definitions: readonly SkillQuestionDefinitio
   const family = definitions
     .filter((item): item is GeneratedQuestionDefinition & { skillId: string; difficultyBand: DifficultyBand } => isGeneratedQuestionDefinition(item) && item.skillId === current.skillId && item.contentFamily === current.contentFamily && !!item.difficultyBand)
     .sort((left, right) => bandRank(left.difficultyBand) - bandRank(right.difficultyBand));
-  let previous: VariableSummary[] | null = null;
+  let previous: { variables: VariableSummary[]; constraints: ConstraintSummary; template: string } | null = null;
   return family.map((definition) => {
     const variables = generatorVariables(definition);
+    const constraints = summarizeConstraints(definition.constraints);
     const changesFromPrevious = previous === null ? [] : variables.flatMap((variable) => {
-      const earlier = previous?.find((item) => item.name === variable.name);
+      const earlier = previous?.variables.find((item) => item.name === variable.name);
       return earlier?.valuesLabel === variable.valuesLabel ? [] : [`${variable.name}: ${earlier?.valuesLabel ?? "לא הוגדר"} ← ${variable.valuesLabel}`];
     });
-    previous = variables;
-    return { band: definition.difficultyBand, variables, constraints: summarizeConstraints(definition.constraints), changesFromPrevious };
+    if (previous && JSON.stringify(previous.constraints) !== JSON.stringify(constraints)) {
+      const readable = constraints.humanReadable.length ? constraints.humanReadable.join("; ") : "אין תנאים פשוטים ברמה זו";
+      changesFromPrevious.push(`תנאים: ${readable}`);
+    }
+    const templateChangedFromPrevious = previous !== null && previous.template !== definition.exprTemplate;
+    previous = { variables, constraints, template: definition.exprTemplate };
+    return { band: definition.difficultyBand, template: definition.exprTemplate, templateChangedFromPrevious, variables, constraints, changesFromPrevious };
   });
 }
 
