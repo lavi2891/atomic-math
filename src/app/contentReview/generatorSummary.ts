@@ -35,6 +35,9 @@ export interface GeneratorStructureSummary {
   sampledValues: Array<{ name: string; value: string }>;
   transformationNotes: string[];
   instanceMatchesDefinition: boolean;
+  signPattern: string | null;
+  signPatternLabel: string | null;
+  skillInvariant: string | null;
 }
 
 export interface FamilyAuthoringNote {
@@ -79,6 +82,35 @@ const STRUCTURE_LABELS: Readonly<Record<string, string>> = {
   "direct-addition-equation": "מציאת נעלם במשוואת חיבור",
   "solve-factor-by-first-quotient": "מציאת גורם באמצעות חילוק בגורם הראשון",
   "solve-factor-by-second-quotient": "מציאת גורם באמצעות חילוק בגורם השני",
+  "negative-plus-positive-positive-result": "שלילי ועוד חיובי — הגודל החיובי גדול יותר",
+  "negative-plus-positive-negative-result": "שלילי ועוד חיובי — הגודל השלילי גדול יותר",
+  "negative-plus-negative": "חיבור שני מספרים שליליים",
+  "opposites-result-zero": "חיבור מספרים נגדיים — התוצאה אפס",
+  "positive-minus-negative": "מספר חיובי פחות מספר שלילי",
+  "negative-minus-positive": "מספר שלילי פחות מספר חיובי",
+  "negative-minus-negative": "מספר שלילי פחות מספר שלילי",
+  "negative-times-positive": "מספר שלילי כפול מספר חיובי",
+  "positive-times-negative": "מספר חיובי כפול מספר שלילי",
+  "negative-times-negative": "מספר שלילי כפול מספר שלילי",
+  "negative-divided-by-positive": "מספר שלילי חלקי מספר חיובי",
+  "positive-divided-by-negative": "מספר חיובי חלקי מספר שלילי",
+  "negative-divided-by-negative": "מספר שלילי חלקי מספר שלילי",
+};
+
+const SIGN_PATTERN_LABELS: Readonly<Record<string, string>> = {
+  "negative+positive; positive magnitude larger": "שלילי + חיובי; הגודל החיובי גדול יותר",
+  "negative+positive; negative magnitude larger": "שלילי + חיובי; הגודל השלילי גדול יותר",
+  "negative+negative": "שלילי + שלילי",
+  "opposites; result zero": "מספרים נגדיים; התוצאה אפס",
+  "positive-negative operand": "חיובי פחות שלילי",
+  "negative-positive operand": "שלילי פחות חיובי",
+  "negative-negative operand": "שלילי פחות שלילי",
+  "negative×positive": "שלילי × חיובי",
+  "positive×negative": "חיובי × שלילי",
+  "negative×negative": "שלילי × שלילי",
+  "negative÷positive": "שלילי ÷ חיובי",
+  "positive÷negative": "חיובי ÷ שלילי",
+  "negative÷negative": "שלילי ÷ שלילי",
 };
 
 function structureFeature(definition: GeneratedQuestionDefinition): string | null {
@@ -99,6 +131,7 @@ export function generatorStructureSummary(
 ): GeneratorStructureSummary | null {
   if (!isGeneratedQuestionDefinition(definition) || !isGeneratedQuestionInstance(question)) return null;
   const feature = structureFeature(definition);
+  const signPattern = typeof definition.metadata?.signPattern === "string" ? definition.metadata.signPattern : null;
   const sampledValues = Object.entries(question.sampledParams).map(([name, value]) => ({ name, value }));
   const transformationNotes = sampledValues.flatMap(({ name, value }) => {
     if (!definition.exprTemplate.includes(`-{${name}}`)) return [];
@@ -115,6 +148,9 @@ export function generatorStructureSummary(
     sampledValues,
     transformationNotes,
     instanceMatchesDefinition: question.templateId === definition.id && question.baseId === definition.id,
+    signPattern,
+    signPatternLabel: signPattern ? SIGN_PATTERN_LABELS[signPattern] ?? STRUCTURE_LABELS[feature ?? ""] ?? signPattern : null,
+    skillInvariant: typeof definition.metadata?.skillInvariant === "string" ? definition.metadata.skillInvariant : null,
   };
 }
 

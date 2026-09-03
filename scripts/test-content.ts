@@ -13,6 +13,7 @@ import { createChallengeSignature, challengeSignatureKey } from "../src/domain/p
 import { resolveQuickPracticeScope } from "../src/domain/studentHome/quickPractice.ts";
 import { auditFoundationalContent, curatedNumericLiteralIssues, curatedNumericLiteralItems, generatedInstanceMetadataIssues, magnitudeBandProgressionIssues, validateFoundationalContent } from "../src/content/validateContent.ts";
 import { atomicSkillIdentityIssues } from "../src/content/foundations/skillScope.ts";
+import { signedGeneratedInstanceIssues, signedSkillDefinitionIssues } from "../src/content/foundations/skillScope.ts";
 import type { GeneratedQuestionInstance, OptionContent } from "../src/domain/questions/types.ts";
 import type { GeneratedQuestionDefinition } from "../src/domain/questions/generator/types.ts";
 import type { SkillQuestionDefinition } from "../src/domain/session/skillQuestionSelector.ts";
@@ -81,7 +82,7 @@ run("every ready definition carries category and meaningful band metadata", () =
 
 run("foundational authoring intent and normalized inventory stay explicit", () => {
   const audit = auditFoundationalContent();
-  assert.deepEqual({ total: audit.total, generated: audit.generated, curatedFixed: audit.curatedFixed, fixedNumeric: audit.fixedNumeric }, { total: 184, generated: 183, curatedFixed: 1, fixedNumeric: 0 });
+  assert.deepEqual({ total: audit.total, generated: audit.generated, curatedFixed: audit.curatedFixed, fixedNumeric: audit.fixedNumeric }, { total: 196, generated: 195, curatedFixed: 1, fixedNumeric: 0 });
   for (const definition of FOUNDATIONAL_QUESTIONS) {
     assert.ok(definition.contentFamily, definition.id);
     if (isGeneratedQuestionDefinition(definition)) {
@@ -111,17 +112,14 @@ run("foundational generators cover exact edge cases deterministically", () => {
   assert.equal(addWithZero.type, "numeric");
   assert.deepEqual(addWithZero.sampledParams, { a: "0", b: "1" });
   assert.equal(addWithZero.correctAnswers[0], "1");
-  const zeroDifference = buildGeneratedQuestion(generated("MVP_INT_SUB_A_A"), { rng: sequence([0.52, 0]) });
-  assert.equal(zeroDifference.type, "numeric");
-  assert.equal(zeroDifference.correctAnswers[0], "0");
-  const oppositeSigns = buildGeneratedQuestion(generated("MVP_INT_ADD_A_A"), { rng: sequence([0.44, 0]) });
-  assert.equal(oppositeSigns.type, "numeric");
-  assert.equal(oppositeSigns.renderedExpression, "-1+1");
-  assert.equal(oppositeSigns.correctAnswers[0], "0");
-  const negativeOne = buildGeneratedQuestion(generated("MVP_INT_MUL_A_A"), { rng: sequence([0.45, 0]) });
+  const oppositeSigns = buildGeneratedQuestion(generated("MVP_INT_ADD_OPPOSITES_A"), { rng: sequence([0, 0]) });
+  assert.equal(oppositeSigns.type, "singleChoice");
+  assert.equal(oppositeSigns.renderedExpression, "(-2)+2");
+  assert.deepEqual(correctOptionTexts(oppositeSigns), ["0"]);
+  const negativeOne = buildGeneratedQuestion(generated("MVP_INT_MUL_NEG_POS_A"), { rng: sequence([0, 0]) });
   assert.equal(negativeOne.type, "numeric");
   assert.equal(negativeOne.correctAnswers[0], "-1");
-  const exactNegativeDivision = buildGeneratedQuestion(generated("MVP_INT_DIV_A_B"), { rng: sequence([0.45, 0]) });
+  const exactNegativeDivision = buildGeneratedQuestion(generated("MVP_INT_DIV_NEG_POS_A"), { rng: sequence([0, 0]) });
   assert.equal(exactNegativeDivision.type, "numeric");
   assert.equal(exactNegativeDivision.correctAnswers[0], "-1");
 });
@@ -129,7 +127,7 @@ run("foundational generators cover exact edge cases deterministically", () => {
 run("full content validation checks configured samples and reports review families", () => {
   const report = validateFoundationalContent(20);
   assert.deepEqual(report.issues, []);
-  assert.equal(report.generatedSamples, 183 * 20);
+  assert.equal(report.generatedSamples, 195 * 20);
   assert.deepEqual(report.warnings, []);
 });
 
@@ -239,13 +237,65 @@ run("every generated Band documents its actual difficulty feature", () => {
   }
 });
 
-run("INT_ADD Band B instance metadata matches the real sampled values and template", () => {
-  const definition = generatedDefinition("MVP_INT_ADD_B_A");
-  const question = Array.from({ length: 500 }, (_, index) => buildGeneratedQuestion(definition, { seed: index + 1 })).find((item) => item.renderedExpression === "-13+4");
-  assert.ok(question, "expected a deterministic seed that produces -13+4");
-  assert.deepEqual(question?.sampledParams, { a: "-13", b: "4" });
-  assert.deepEqual(question ? generatedInstanceMetadataIssues(definition, question) : ["missing"], []);
-  assert.equal(question?.difficultyBand, "B");
+run("signed-operation families use explicit positive magnitudes and stable sign metadata", () => {
+  assert.deepEqual(signedSkillDefinitionIssues(FOUNDATIONAL_QUESTIONS), []);
+  for (const definition of FOUNDATIONAL_QUESTIONS) {
+    if (!isGeneratedQuestionDefinition(definition) || !["INT_ADD", "INT_SUB", "INT_MUL", "INT_DIV"].includes(definition.skillId ?? "")) continue;
+    for (let seed = 1; seed <= 100; seed += 1) {
+      const question = buildGeneratedQuestion(definition, { seed });
+      assert.deepEqual(signedGeneratedInstanceIssues(definition, question), [], `${definition.id}:${seed}`);
+      assert.deepEqual(generatedInstanceMetadataIssues(definition, question), [], `${definition.id}:${seed}`);
+    }
+    if (definition.category === "calculation") {
+      assert.ok(Object.values(definition.params).every((spec) => spec.type === "natural"), definition.id);
+      assert.equal(typeof definition.metadata?.signPattern, "string", definition.id);
+    }
+  }
+});
+
+run("signed multiplication and division never produce ordinary positive-only operands", () => {
+  for (const skillId of ["INT_MUL", "INT_DIV"]) {
+    const definitions = FOUNDATIONAL_QUESTIONS.filter((item): item is GeneratedQuestionDefinition & { skillId: string } => isGeneratedQuestionDefinition(item) && item.skillId === skillId && item.category === "calculation");
+    assert.ok(definitions.some((item) => String(item.metadata?.signPattern).startsWith("negative")));
+    assert.ok(definitions.some((item) => String(item.metadata?.signPattern).includes("negative×negative") || String(item.metadata?.signPattern).includes("negative÷negative")));
+    for (const definition of definitions) for (let seed = 1; seed <= 50; seed += 1) {
+      assert.match(buildGeneratedQuestion(definition, { seed }).renderedExpression, /\(-/u, `${definition.id}:${seed}`);
+    }
+  }
+});
+
+run("signed Skill invariants reject positive-only ordinary arithmetic", () => {
+  const cases = [
+    ["MVP_INT_ADD_NEG_NEG_A", "{m}+{n}"],
+    ["MVP_INT_SUB_NEG_MINUS_POS_A", "{m}-{n}"],
+    ["MVP_INT_MUL_NEG_POS_A", "{m}*{n}"],
+    ["MVP_INT_DIV_NEG_POS_A", "({m}*{n})/{m}"],
+  ] as const;
+  for (const [id, exprTemplate] of cases) {
+    const valid = generatedDefinition(id);
+    const invalid = { ...valid, id: `TEST_UNSIGNED_${valid.skillId}`, exprTemplate };
+    const question = buildGeneratedQuestion(invalid, { seed: 9 });
+    assert.ok(signedGeneratedInstanceIssues(invalid, question).some((issue) => issue.includes("does not contain")), id);
+  }
+});
+
+run("explicit signed families include negative-positive and negative-negative structures", () => {
+  for (const id of ["MVP_INT_MUL_NEG_POS_A", "MVP_INT_MUL_NEG_NEG_A", "MVP_INT_DIV_NEG_POS_A", "MVP_INT_DIV_NEG_NEG_A"]) {
+    const definition = generatedDefinition(id);
+    const first = buildGeneratedQuestion(definition, { seed: 73 });
+    const repeat = buildGeneratedQuestion(definition, { seed: 73 });
+    assert.equal(first.id, repeat.id, id);
+    assert.equal(first.renderedExpression, repeat.renderedExpression, id);
+    assert.match(String(definition.metadata?.signPattern), /negative/u, id);
+  }
+});
+
+run("zero signed-operation results occur only in an explicit family", () => {
+  const definitions = FOUNDATIONAL_QUESTIONS.filter((item): item is GeneratedQuestionDefinition & { skillId: string } => isGeneratedQuestionDefinition(item) && ["INT_ADD", "INT_SUB", "INT_MUL", "INT_DIV"].includes(item.skillId ?? "") && item.category === "calculation");
+  for (const definition of definitions) for (let seed = 1; seed <= 50; seed += 1) {
+    const question = buildGeneratedQuestion(definition, { seed });
+    if (question.type === "numeric" && question.correctAnswers.includes("0")) assert.match(String(definition.metadata?.signPattern), /zero/u, definition.id);
+  }
 });
 
 run("reviewed conceptual generators preserve attribution, determinism, and unique options", () => {
@@ -262,13 +312,14 @@ run("reviewed conceptual generators preserve attribution, determinism, and uniqu
   }
 });
 
-run("previously approved generated definitions remain stable", () => {
-  const snapshots = { MVP_INT_ADD_B_A: ["-12+4", "-8"], MVP_INT_ADD_C_A: ["-24+4", "-20"], MVP_OPS_ORDER_BASIC_A_A: ["4+2*2", "8"] } as const;
+run("approved non-signed content remains stable while invalid signed definitions are retired", () => {
+  const snapshots = { MVP_OPS_ORDER_BASIC_A_A: ["4+2*2", "8"] } as const;
   for (const [id, expected] of Object.entries(snapshots)) {
     const question = buildGeneratedQuestion(generatedDefinition(id), { seed: 42 });
     assert.equal(question.type, "numeric");
     assert.deepEqual([question.renderedExpression, question.correctAnswers[0]], expected, id);
   }
+  assert.equal(FOUNDATIONAL_QUESTIONS.some((item) => ["MVP_INT_ADD_B_A", "MVP_INT_ADD_C_A", "MVP_INT_MUL_A_A", "MVP_INT_MUL_A_B"].includes(item.id)), false);
 });
 
 run("Evidence Policies validate and assignment completion requires coverage and fluency", () => {

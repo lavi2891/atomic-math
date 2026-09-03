@@ -199,6 +199,9 @@ export function QuestionReviewScreen() {
             {structure ? <section className="review-structure" aria-label="מבנה השאלה שנוצרת">
               <div><strong>תבנית:</strong><ReviewMath latex={structure.template} /></div>
               <div><strong>דוגמה נוכחית:</strong><ReviewMath latex={structure.instantiated} /></div>
+              <p><strong>משפחת תוכן:</strong> <code>{currentDefinition.contentFamily}</code></p>
+              {structure.signPatternLabel ? <p><strong>דפוס סימנים:</strong> {structure.signPatternLabel}</p> : null}
+              {structure.skillInvariant ? <p><strong>יעד Skill קבוע:</strong> <code>{structure.skillInvariant}</code></p> : null}
               <div><strong>ערכים שנדגמו:</strong> {structure.sampledValues.map((item) => <span key={item.name}><code>{item.name}</code> = <bdi>{item.value}</bdi>{" "}</span>)}</div>
               {structure.transformationNotes.map((note) => <p key={note}><strong>טרנספורמציה:</strong> {note}</p>)}
               {!structure.instanceMatchesDefinition ? <p role="alert"><strong>שגיאת שיוך:</strong> הדוגמה הנוכחית לא נוצרה מן ה־definition המוצג.</p> : null}

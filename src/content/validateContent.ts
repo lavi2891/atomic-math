@@ -10,7 +10,7 @@ import type { GeneratedQuestionDefinition, ParamSpec } from "../domain/questions
 import type { SkillQuestionDefinition } from "../domain/session/skillQuestionSelector.ts";
 import type { OptionContent, QuestionCurationReason } from "../domain/questions/types.ts";
 import type { GeneratedQuestionInstance } from "../domain/questions/types.ts";
-import { atomicSkillIdentityIssues } from "./foundations/skillScope.ts";
+import { atomicSkillIdentityIssues, signedGeneratedInstanceIssues, signedSkillDefinitionIssues } from "./foundations/skillScope.ts";
 
 export interface SkillContentAudit {
   skillId: string;
@@ -204,6 +204,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
   issues.push(...magnitudeBandProgressionIssues(FOUNDATIONAL_QUESTIONS));
   issues.push(...curatedNumericLiteralIssues(FOUNDATIONAL_QUESTIONS));
   issues.push(...atomicSkillIdentityIssues(FOUNDATIONAL_QUESTIONS));
+  issues.push(...signedSkillDefinitionIssues(FOUNDATIONAL_QUESTIONS));
   for (const skill of SKILLS) for (const issue of validateEvidencePolicy(skill.evidencePolicy)) issues.push(`${skill.id}: ${issue}`);
   for (const entry of CONTENT_READINESS) for (const issue of readinessIssues(entry, FOUNDATIONAL_QUESTIONS)) issues.push(`${entry.skillId}: ${issue}`);
   for (const definition of FOUNDATIONAL_QUESTIONS) {
@@ -224,6 +225,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
           const question = buildGeneratedQuestion(definition, { seed, maxAttempts: 100 });
           const repeat = buildGeneratedQuestion(definition, { seed, maxAttempts: 100 });
           issues.push(...generatedInstanceMetadataIssues(definition, question));
+          issues.push(...signedGeneratedInstanceIssues(definition, question));
           issues.push(...studentFacingNotationIssues(definition.id, question, seed));
           issues.push(...mathematicallyDuplicateChoiceIssues(definition.id, question, seed));
           if (question.id !== repeat.id || question.renderedExpression !== repeat.renderedExpression) issues.push(`${definition.id}: seed ${seed} is not reproducible`);

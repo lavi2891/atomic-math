@@ -101,7 +101,7 @@ await run("curated navigation is deterministic and bounded", () => {
 });
 
 await run("generated review samples are seeded, reproducible, valid, and batchable", () => {
-  const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_INT_ADD_A_A")!;
+  const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_INT_ADD_NEG_NEG_A")!;
   assert.ok(isGeneratedQuestionDefinition(definition));
   const first = resolveReviewQuestion(definition, 41);
   const reproduced = resolveReviewQuestion(definition, 41);
@@ -319,7 +319,7 @@ await run("normal navigation never reparses or replaces URL-derived filters", ()
   const filters = initial.filters;
   const actions: ReviewNavigationAction[] = [
     { type: "navigate", index: 1 },
-    { type: "preview-band", definitionId: "MVP_INT_ADD_B_A" },
+    { type: "preview-band", definitionId: "MVP_INT_ADD_NEG_NEG_B" },
     { type: "new-sample" },
     { type: "toggle-batch" },
   ];
@@ -370,17 +370,16 @@ await run("generated structure keeps the executable template separate from its c
   assert.equal(structure?.instanceMatchesDefinition, true);
 });
 
-await run("review summary explains sampled values and authored transformations", () => {
-  const direct = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_INT_ADD_B_A")!;
-  const transformed = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_INT_ADD_B_B")!;
-  assert.ok(isGeneratedQuestionDefinition(direct) && isGeneratedQuestionDefinition(transformed));
-  const directQuestion = resolveReviewQuestion(direct, 42);
-  const directSummary = generatorStructureSummary(direct, directQuestion);
-  assert.deepEqual(directSummary?.sampledValues.map((item) => item.name).sort(), ["a", "b"]);
-  assert.ok(directSummary?.sampledValues.every((item) => directSummary.instantiated.includes(item.value)));
-  assert.deepEqual(directSummary?.transformationNotes, []);
-  const transformedSummary = generatorStructureSummary(transformed, resolveReviewQuestion(transformed, 42));
-  assert.ok(transformedSummary?.transformationNotes.some((note) => note.includes("a")));
+await run("review summary explains the signed family, magnitudes, and fixed sign structure", () => {
+  const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_INT_ADD_NEG_POS_POSITIVE_B")!;
+  assert.ok(isGeneratedQuestionDefinition(definition));
+  const summary = generatorStructureSummary(definition, resolveReviewQuestion(definition, 42));
+  assert.equal(summary?.template, "(-{m})+{n}");
+  assert.deepEqual(summary?.sampledValues.map((item) => item.name).sort(), ["m", "n"]);
+  assert.equal(summary?.signPattern, "negative+positive; positive magnitude larger");
+  assert.equal(summary?.signPatternLabel, "שלילי + חיובי; הגודל החיובי גדול יותר");
+  assert.equal(summary?.skillInvariant, "signed-addition");
+  assert.equal(summary?.instanceMatchesDefinition, true);
 });
 
 await run("review math display is derived from the executable template", () => {
@@ -411,18 +410,18 @@ await run("optional family rationale and difficulty note remain centralized", ()
 });
 
 await run("Band differences derive from actual generator configurations", () => {
-  const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_INT_ADD_A_A")!;
+  const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_INT_ADD_NEG_POS_POSITIVE_A")!;
   const summaries = deriveBandSummaries(FOUNDATIONAL_QUESTIONS, definition);
   assert.deepEqual(summaries.map((item) => item.band), ["A", "B", "C"]);
   assert.equal(summaries[0]?.changesFromPrevious.length, 0);
-  assert.ok(summaries[1]?.changesFromPrevious.some((change) => change.startsWith("a:")));
-  assert.ok(summaries[1]?.changesFromPrevious.some((change) => change.startsWith("b:")));
-  assert.equal(summaries[0]?.template, "{a}+{b}");
+  assert.ok(summaries[1]?.changesFromPrevious.some((change) => change.startsWith("m:")));
+  assert.ok(summaries[1]?.changesFromPrevious.some((change) => change.startsWith("n:")));
+  assert.equal(summaries[0]?.template, "(-{m})+{n}");
   assert.equal(summaries[1]?.templateChangedFromPrevious, false);
 });
 
 await run("Band sampling remains deterministic and targets the selected definition", () => {
-  const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_INT_ADD_B_A")!;
+  const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_INT_ADD_NEG_POS_POSITIVE_B")!;
   const first = generatedSampleBatch(definition, 70, 6);
   const second = generatedSampleBatch(definition, 70, 6);
   assert.deepEqual(first.map((item) => item.id), second.map((item) => item.id));

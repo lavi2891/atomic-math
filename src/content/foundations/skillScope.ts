@@ -1,6 +1,7 @@
 import { isGeneratedQuestionDefinition } from "../../domain/questions/definitions.ts";
 import type { GeneratedQuestionDefinition, ParamSpec } from "../../domain/questions/generator/types.ts";
 import type { SkillQuestionDefinition } from "../../domain/session/skillQuestionSelector.ts";
+import type { GeneratedQuestionInstance } from "../../domain/questions/types.ts";
 
 export const ATOMIC_FACT_SKILL_VALUES = {
   AR_MUL_F_2_5_10: [2, 5, 10],
@@ -43,4 +44,62 @@ export function atomicSkillIdentityIssues(definitions: readonly SkillQuestionDef
     if (!definition.exprTemplate.includes(requiredOperator)) issues.push(`${definition.id}: template does not preserve the ${definition.skillId} operation`);
     return issues;
   });
+}
+
+export const SIGNED_SKILL_INVARIANTS: Readonly<Record<string, string>> = {
+  INT_NUMBER_LINE: "signed-number-position",
+  INT_COMPARE: "signed-number-comparison",
+  INT_NEGATION: "opposite-number-reasoning",
+  INT_ADD: "signed-addition",
+  INT_SUB: "signed-subtraction",
+  INT_MUL: "signed-multiplication",
+  INT_DIV: "signed-division",
+};
+
+const SIGNED_OPERATORS: Readonly<Record<string, string>> = {
+  INT_ADD: "+",
+  INT_SUB: "-",
+  INT_MUL: "*",
+  INT_DIV: "/",
+};
+
+function usesTargetOperation(skillId: string, expression: string): boolean {
+  if (skillId === "INT_SUB") return /(?:\d|\)|\})\s*-\s*(?:\d|\(|\{)/u.test(expression);
+  const operator = SIGNED_OPERATORS[skillId];
+  return !!operator && expression.includes(operator);
+}
+
+export function signedSkillDefinitionIssues(definitions: readonly SkillQuestionDefinition[]): string[] {
+  const issues: string[] = [];
+  const families = new Map<string, GeneratedQuestionDefinition[]>();
+  for (const definition of definitions) {
+    if (!isGeneratedQuestionDefinition(definition) || !definition.skillId?.startsWith("INT_")) continue;
+    const expectedInvariant = SIGNED_SKILL_INVARIANTS[definition.skillId];
+    if (!expectedInvariant) issues.push(`${definition.id}: unknown signed-number Skill invariant`);
+    if (definition.metadata?.skillInvariant !== expectedInvariant) issues.push(`${definition.id}: missing or incorrect signed Skill invariant`);
+    if (typeof definition.metadata?.signPattern !== "string" || !definition.metadata.signPattern.trim()) issues.push(`${definition.id}: explicit signPattern is missing`);
+    const operator = SIGNED_OPERATORS[definition.skillId];
+    if (operator && !usesTargetOperation(definition.skillId, definition.exprTemplate)) issues.push(`${definition.id}: template does not contain the target signed operation`);
+    if (definition.contentFamily) families.set(definition.contentFamily, [...(families.get(definition.contentFamily) ?? []), definition]);
+  }
+  for (const [family, members] of families) {
+    if (members.length < 2) continue;
+    if (new Set(members.map((item) => item.exprTemplate)).size !== 1) issues.push(`${family}: template changes across Bands`);
+    if (new Set(members.map((item) => item.metadata?.signPattern)).size !== 1) issues.push(`${family}: signPattern changes across Bands`);
+    if (new Set(members.map((item) => item.metadata?.skillInvariant)).size !== 1) issues.push(`${family}: Skill invariant changes across Bands`);
+  }
+  return issues;
+}
+
+export function signedGeneratedInstanceIssues(definition: GeneratedQuestionDefinition, question: GeneratedQuestionInstance): string[] {
+  const skillId = definition.skillId;
+  if (!skillId || !SIGNED_OPERATORS[skillId]) return [];
+  const expression = question.renderedExpression;
+  const hasStructuralNegative = /(?:^-\d|\(-(?:\d|\())/u.test(expression);
+  const issues: string[] = [];
+  if (!hasStructuralNegative) issues.push(`${definition.id}: ${skillId} instance does not contain a structurally negative operand`);
+  if (!usesTargetOperation(skillId, expression)) issues.push(`${definition.id}: ${skillId} instance does not use its target operation`);
+  const signPattern = String(definition.metadata?.signPattern ?? "");
+  if (question.type === "numeric" && question.correctAnswers.includes("0") && !signPattern.includes("zero")) issues.push(`${definition.id}: zero result is not attributed to an explicit zero/opposites family`);
+  return issues;
 }

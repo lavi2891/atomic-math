@@ -1,5 +1,5 @@
 import type { SkillQuestionDefinition } from "../../domain/session/skillQuestionSelector.ts";
-import { ATOMIC_FACT_SKILL_VALUES } from "./skillScope.ts";
+import { ATOMIC_FACT_SKILL_VALUES, SIGNED_SKILL_INVARIANTS } from "./skillScope.ts";
 import type { DifficultyBand } from "../catalog/types.ts";
 import type { GeneratedChoiceDraft, GeneratedQuestionDefinition, ParamsSpec, SampledParams } from "../../domain/questions/generator/types.ts";
 import type { QuestionCategory } from "../../domain/questions/categories.ts";
@@ -15,10 +15,6 @@ const recipes: GeneratorRecipe[] = [
   ...Object.entries(factFamilies).map(([skillId, factValues]) => ({ skillId, expr: skillId.includes("_MUL_") ? "{a}*{b}" : "{a}*{b}/{a}", secondExpr: skillId.includes("_MUL_") ? "{b}*{a}" : "({a}*{b})/{a}", structures: skillId.includes("_MUL_") ? ["fact-family-product", "commuted-product"] : ["exact-fact-family-quotient", "grouping-preserving-quotient"], min: Math.min(...factValues), max: Math.max(...factValues), factValues } as GeneratorRecipe)),
   { skillId: "AR_FACTORS_MULTIPLES", expr: "{a}*{b}", secondExpr: "{a}*({b}+1)", structures: ["multiple-as-product", "next-multiple-as-product"], min: 2, max: 12 },
   { skillId: "OPS_ORDER_BASIC", expr: "{a}+{b}*{c}", secondExpr: "{a}*{c}+{b}", structures: ["multiplication-before-leading-addition", "multiplication-before-trailing-addition"], min: 1, max: 12 },
-  { skillId: "INT_ADD", expr: "{a}+{b}", secondExpr: "-{a}+{b}", structures: ["signed-sum", "negated-first-addend"], min: -12, max: 12 },
-  { skillId: "INT_SUB", expr: "{a}-{b}", secondExpr: "-{a}-{b}", structures: ["signed-difference", "negative-minuend-difference"], min: -12, max: 12 },
-  { skillId: "INT_MUL", expr: "{a}*{b}", secondExpr: "-{a}*{b}", structures: ["signed-product", "negated-first-factor"], min: -10, max: 10 },
-  { skillId: "INT_DIV", expr: "{a}*{b}/{a}", secondExpr: "-{a}*{b}/{a}", structures: ["exact-signed-quotient", "negated-dividend-quotient"], min: -10, max: 10 },
   { skillId: "ALG_SUBSTITUTE", expr: "{c}*{a}+{b}", secondExpr: "{a}*{a}-{b}", structures: ["linear-substitution", "quadratic-substitution"], min: 1, max: 10 },
   { skillId: "EQ_ADD", expr: "{a}-{b}", secondExpr: "{a}+{b}", structures: ["inverse-addition-equation", "direct-addition-equation"], min: 1, max: 20 },
   { skillId: "EQ_MUL", expr: "{a}*{b}/{a}", secondExpr: "{a}*{b}/{b}", structures: ["solve-factor-by-first-quotient", "solve-factor-by-second-quotient"], min: 2, max: 10 },
@@ -43,7 +39,7 @@ function generator(recipe: GeneratorRecipe, band: DifficultyBand, alternate: boo
     topicId: "FOUNDATIONS", skillId: recipe.skillId, kind: "generated", authoringMode: "generated", contentFamily: `${recipe.skillId}:${structure}`, category: "calculation", difficultyBand: band,
     exprTemplate: expr, promptTemplate: [{ kind: "text", value: "חשבו:" }, { kind: "math", latex: expr, display: true }],
     params: {
-      a: { type: "integer", min: factFamily ? recipe.min : reviewedBasicFacts && band === "B" ? 10 : recipe.min * scale, max: factFamily ? recipe.max : reviewedBasicFacts ? (band === "A" ? 10 : recipe.max) : recipe.max * scale, exclude: factFamily ? omittedFactValues : ["INT_MUL", "INT_DIV"].includes(recipe.skillId) ? [0] : undefined },
+      a: { type: "integer", min: factFamily ? recipe.min : reviewedBasicFacts && band === "B" ? 10 : recipe.min * scale, max: factFamily ? recipe.max : reviewedBasicFacts ? (band === "A" ? 10 : recipe.max) : recipe.max * scale, exclude: factFamily ? omittedFactValues : undefined },
       ...(orderOfOperations || variableCoefficient ? { c: { type: "natural" as const, min: 2, max: 5 } } : {}),
       b: { type: "natural", min: orderOfOperations ? 1 : factFamily ? factBandRange.min : reviewedBasicFacts && band === "B" ? 10 : band === "A" ? 1 : 4, max: factFamily ? factBandRange.max : orderOfOperations ? 3 : reviewedBasicFacts && band === "A" ? 10 : Math.max(2, recipe.max) },
     },
@@ -58,6 +54,60 @@ const GENERATED = recipes.flatMap((recipe) => {
   const bands: DifficultyBand[] = factLike ? ["A", "B"] : ["A", "B", "C"];
   return bands.flatMap((band) => [generator(recipe, band, false), generator(recipe, band, true)]);
 });
+
+const SIGNED_BANDS: DifficultyBand[] = ["A", "B", "C"];
+const signedBandRange = (band: DifficultyBand) => band === "A" ? { min: 1, max: 10 } : band === "B" ? { min: 11, max: 30 } : { min: 31, max: 100 };
+
+type SignedOperationSkillId = "INT_ADD" | "INT_SUB" | "INT_MUL" | "INT_DIV";
+type SignedCalculationFamily = {
+  skillId: SignedOperationSkillId;
+  idPart: string;
+  family: string;
+  signPattern: string;
+  exprTemplate: string;
+  constraints?: string[];
+};
+
+const SIGNED_CALCULATION_FAMILIES: readonly SignedCalculationFamily[] = [
+  { skillId: "INT_ADD", idPart: "NEG_POS_POSITIVE", family: "negative-plus-positive-positive-result", signPattern: "negative+positive; positive magnitude larger", exprTemplate: "(-{m})+{n}", constraints: ["n > m"] },
+  { skillId: "INT_ADD", idPart: "NEG_POS_NEGATIVE", family: "negative-plus-positive-negative-result", signPattern: "negative+positive; negative magnitude larger", exprTemplate: "(-{m})+{n}", constraints: ["m > n"] },
+  { skillId: "INT_ADD", idPart: "NEG_NEG", family: "negative-plus-negative", signPattern: "negative+negative", exprTemplate: "(-{m})+(-{n})" },
+  { skillId: "INT_SUB", idPart: "POS_MINUS_NEG", family: "positive-minus-negative", signPattern: "positive-negative operand", exprTemplate: "{m}-(-{n})" },
+  { skillId: "INT_SUB", idPart: "NEG_MINUS_POS", family: "negative-minus-positive", signPattern: "negative-positive operand", exprTemplate: "(-{m})-{n}" },
+  { skillId: "INT_SUB", idPart: "NEG_MINUS_NEG", family: "negative-minus-negative", signPattern: "negative-negative operand", exprTemplate: "(-{m})-(-{n})", constraints: ["m != n"] },
+  { skillId: "INT_MUL", idPart: "NEG_POS", family: "negative-times-positive", signPattern: "negative×positive", exprTemplate: "(-{m})*{n}" },
+  { skillId: "INT_MUL", idPart: "POS_NEG", family: "positive-times-negative", signPattern: "positive×negative", exprTemplate: "{m}*(-{n})" },
+  { skillId: "INT_MUL", idPart: "NEG_NEG", family: "negative-times-negative", signPattern: "negative×negative", exprTemplate: "(-{m})*(-{n})" },
+  { skillId: "INT_DIV", idPart: "NEG_POS", family: "negative-divided-by-positive", signPattern: "negative÷positive", exprTemplate: "(-({m}*{n}))/{m}" },
+  { skillId: "INT_DIV", idPart: "POS_NEG", family: "positive-divided-by-negative", signPattern: "positive÷negative", exprTemplate: "({m}*{n})/(-{m})" },
+  { skillId: "INT_DIV", idPart: "NEG_NEG", family: "negative-divided-by-negative", signPattern: "negative÷negative", exprTemplate: "(-({m}*{n}))/(-{m})" },
+];
+
+const SIGNED_CALCULATION_GENERATORS: Array<GeneratedQuestionDefinition & { skillId: string }> = SIGNED_CALCULATION_FAMILIES.flatMap((family) => SIGNED_BANDS.map((band) => {
+  const range = signedBandRange(band);
+  return {
+    id: `MVP_${family.skillId}_${family.idPart}_${band}`,
+    topicId: "FOUNDATIONS",
+    skillId: family.skillId,
+    kind: "generated",
+    authoringMode: "generated",
+    contentFamily: `${family.skillId}:${family.family}`,
+    category: "calculation",
+    difficultyBand: band,
+    exprTemplate: family.exprTemplate,
+    promptTemplate: [{ kind: "text", value: "חשבו:" }, { kind: "math", latex: family.exprTemplate, display: true }],
+    params: { m: { type: "natural", ...range }, n: { type: "natural", ...range } },
+    constraints: family.constraints,
+    acceptedInputFormats: ["integer"],
+    answerSemantics: { kind: "exact" },
+    structureKey: `${family.skillId}:${band}:${family.family}`,
+    variantGroup: `${family.skillId}:${family.family}`,
+    difficultyModel: () => ({ A: 0.12, B: 0.38, C: 0.65, D: 0.9 })[band],
+    metadata: { source: "signed-semantics-pass", band, feature: family.family, difficultyFeature: "magnitude", skillInvariant: SIGNED_SKILL_INVARIANTS[family.skillId], signPattern: family.signPattern },
+    tags: ["mvp", "signed-structure", "requires-rereview", `band:${band}`],
+    version: 3,
+  };
+}));
 
 function sampledInteger(params: SampledParams, name: string): number {
   const sampled = params[name];
@@ -97,6 +147,8 @@ function conceptualGenerator(input: {
   choiceBuilder: (params: SampledParams) => GeneratedChoiceDraft;
   generatedType?: "singleChoice" | "multiChoice";
   difficultyFeature?: "magnitude" | "structure";
+  skillInvariant?: string;
+  signPattern?: string;
 }): GeneratedQuestionDefinition & { skillId: string } {
   return {
     id: input.id,
@@ -116,7 +168,7 @@ function conceptualGenerator(input: {
     structureKey: `${input.skillId}:${input.band}:${input.family}`,
     variantGroup: `${input.skillId}:${input.family}`,
     difficultyModel: () => ({ A: 0.12, B: 0.38, C: 0.65, D: 0.9 })[input.band],
-    metadata: { source: "human-review-pass-1", band: input.band, feature: input.family, difficultyFeature: input.difficultyFeature ?? "structure" },
+    metadata: { source: "human-review-pass-1", band: input.band, feature: input.family, difficultyFeature: input.difficultyFeature ?? "structure", skillInvariant: input.skillInvariant ?? SIGNED_SKILL_INVARIANTS[input.skillId], signPattern: input.signPattern ?? (SIGNED_SKILL_INVARIANTS[input.skillId] ? input.family : undefined) },
     tags: ["mvp", "generated-concept", "requires-rereview", `band:${input.band}`],
     version: 2,
   };
@@ -252,7 +304,7 @@ const GLOBAL_AUTHORING_GENERATORS = GLOBAL_BANDS.flatMap((band) => {
   return [
     conceptualGenerator({ id: `MVP_INT_COMPARE_ADJACENT_NEGATIVES_${band}`, skillId: "INT_COMPARE", family: "compare-adjacent-negatives", category, band, exprTemplate: "-{n}>-({n}+1)", params: singleParams, difficultyFeature: "magnitude", choiceBuilder: (params) => { const n = sampledInteger(params, "n"); return generatedChoiceDraft("INT_COMPARE", "איזה מספר גדול יותר?", [{ value: `${-n}`, correct: true, misconception: "closer-to-zero-is-greater" }, { value: `${-(n + 1)}`, misconception: "larger-absolute-value-is-greater" }, { value: "הם שווים", misconception: "ignores-unit-difference" }, { value: "אי אפשר לדעת", misconception: "avoids-signed-comparison" }], n); } }),
     ...([1, -1] as const).map((sign) => conceptualGenerator({ id: `MVP_INT_NEGATION_${sign === 1 ? "POSITIVE" : "NEGATIVE"}_${band}`, skillId: "INT_NEGATION", family: sign === 1 ? "opposite-of-positive" : "opposite-of-negative", category, band, exprTemplate: sign === 1 ? "-({n})" : "-(-{n})", params: singleParams, difficultyFeature: "magnitude", choiceBuilder: (params) => { const n = sampledInteger(params, "n"); const shown = sign * n; return generatedChoiceDraft("INT_NEGATION", `מהו המספר הנגדי של ${shown}?`, [{ value: `${-shown}`, correct: true, misconception: "changes-sign" }, { value: `${shown}`, misconception: "keeps-original-sign" }, { value: "0", misconception: "confuses-opposite-with-zero" }, { value: `${-shown + sign}`, misconception: "off-by-one-generalization" }], n + sign); } })),
-    conceptualGenerator({ id: `MVP_INT_ADD_SIGN_CANCELLATION_${band}`, skillId: "INT_ADD", family: "sign-after-near-cancellation", category, band, exprTemplate: "-{n}+({n}+1)", params: singleParams, difficultyFeature: "magnitude", choiceBuilder: (params) => { const n = sampledInteger(params, "n"); return generatedChoiceDraft("INT_ADD", `בלי לחשב במדויק: מה הסימן של −${n} + ${n + 1}?`, [{ value: "חיובי", correct: true, misconception: "compares-absolute-values" }, { value: "שלילי", misconception: "follows-first-sign" }, { value: "אפס", misconception: "treats-near-opposites-as-opposites" }, { value: "אי אפשר לדעת", misconception: "avoids-signed-reasoning" }], n); } }),
+    conceptualGenerator({ id: `MVP_INT_ADD_OPPOSITES_${band}`, skillId: "INT_ADD", family: "opposites-result-zero", category, band, exprTemplate: "(-{n})+{n}", params: singleParams, difficultyFeature: "magnitude", signPattern: "opposites; result zero", choiceBuilder: (params) => { const n = sampledInteger(params, "n"); return generatedChoiceDraft("INT_ADD", `מה התוצאה של (−${n}) + ${n}?`, [{ value: "0", correct: true, misconception: "opposites-sum-to-zero" }, { value: `${n}`, misconception: "ignores-negative-addend" }, { value: `${-n}`, misconception: "follows-first-sign" }, { value: `${2 * n}`, misconception: "adds-absolute-values" }], n); } }),
     conceptualGenerator({ id: `MVP_INT_SUB_NEGATIVE_REWRITE_${band}`, skillId: "INT_SUB", family: "subtract-negative-as-addition", category, band, exprTemplate: "{a}-(-{b})={a}+{b}", params: pairParams, constraints: ["a != b"], difficultyFeature: "magnitude", choiceBuilder: (params) => { const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); return generatedChoiceDraft("INT_SUB", `איזה ביטוי שווה ל־${a} − (−${b})?`, [{ value: `${a} + ${b}`, correct: true, misconception: "subtracting-negative-becomes-addition" }, { value: `${a} - ${b}`, misconception: "drops-parenthesized-sign" }, { value: `−${a} - ${b}`, misconception: "negates-minuend" }, { value: `${b} - ${a}`, misconception: "reverses-subtraction" }], a + b); } }),
     conceptualGenerator({ id: `MVP_INT_MUL_SIGN_${band}`, skillId: "INT_MUL", family: "negative-times-positive-sign", category, band, exprTemplate: "(-{a})*{b}", params: pairParams, difficultyFeature: "magnitude", choiceBuilder: (params) => { const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); return generatedChoiceDraft("INT_MUL", `מה הסימן של (−${a}) × ${b}?`, [{ value: "שלילי", correct: true, misconception: "one-negative-factor" }, { value: "חיובי", misconception: "ignores-negative-factor" }, { value: "אפס", misconception: "confuses-sign-with-zero" }, { value: "אי אפשר לדעת", misconception: "avoids-sign-rule" }], a + b); } }),
     conceptualGenerator({ id: `MVP_INT_DIV_SIGN_${band}`, skillId: "INT_DIV", family: "negative-divided-by-negative-sign", category, band, exprTemplate: "(-({a}*{b}))/(-{a})", params: pairParams, constraints: ["a != b"], difficultyFeature: "magnitude", choiceBuilder: (params) => { const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); return generatedChoiceDraft("INT_DIV", `מה הסימן של (−${a * b}) ÷ (−${a})?`, [{ value: "חיובי", correct: true, misconception: "two-negative-signs" }, { value: "שלילי", misconception: "keeps-one-negative-sign" }, { value: "אפס", misconception: "confuses-sign-with-zero" }, { value: "אי אפשר לדעת", misconception: "avoids-sign-rule" }], a + b); } }),
@@ -283,4 +335,4 @@ const CURATED_WORDING_ITEMS: SkillQuestionDefinition[] = [{
   version: 2,
 }];
 
-export const FOUNDATIONAL_QUESTIONS: SkillQuestionDefinition[] = [...GENERATED, ...REVIEWED_CONCEPT_GENERATORS, ...GLOBAL_AUTHORING_GENERATORS, ...CURATED_WORDING_ITEMS];
+export const FOUNDATIONAL_QUESTIONS: SkillQuestionDefinition[] = [...GENERATED, ...SIGNED_CALCULATION_GENERATORS, ...REVIEWED_CONCEPT_GENERATORS, ...GLOBAL_AUTHORING_GENERATORS, ...CURATED_WORDING_ITEMS];
