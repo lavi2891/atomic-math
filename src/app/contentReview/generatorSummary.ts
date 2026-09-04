@@ -113,6 +113,7 @@ const SIGN_PATTERN_LABELS: Readonly<Record<string, string>> = {
   "negative+positive; negative magnitude larger": "שלילי + חיובי; הגודל השלילי גדול יותר",
   "negative+negative": "שלילי + שלילי",
   "opposites; result zero": "מספרים נגדיים; התוצאה אפס",
+  "additive opposites cancel; remaining addend may be positive or negative": "זוג מספרים נגדיים מתבטל; המחובר החתום שנותר יכול להיות חיובי או שלילי",
   "positive-negative operand": "חיובי פחות שלילי",
   "negative-positive operand": "שלילי פחות חיובי",
   "negative-negative operand": "שלילי פחות שלילי",

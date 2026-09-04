@@ -160,6 +160,21 @@ await run("approved content changed under global rules is surfaced for re-review
   assert.equal(effectiveReviewRecord(definition, persisted)?.status, "approved");
 });
 
+await run("final refinement definitions start or return to unreviewed", () => {
+  for (const id of ["MVP_FRAC_EQUIV_FORWARD_C", "MVP_FRAC_EQUIV_REVERSE_C", "MVP_INT_ADD_OPPOSITES_B"]) {
+    const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === id)!;
+    assert.equal(definition.version, 6, id);
+    assert.ok(definition.tags?.includes("requires-rereview"), id);
+    const priorApproval = { definitionId: id, definitionVersion: 5, status: "approved" as const, note: "אישור קודם", reviewedAt: "2026-09-04T00:00:00.000Z" };
+    assert.equal(effectiveReviewRecord(definition, priorApproval), undefined, id);
+  }
+  for (const id of ["MVP_AR_PLACE_VALUE_STANDARD_TO_EXPANDED_C", "MVP_ALG_EQUALITY_EQUALS_RELATION_A"]) {
+    const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === id)!;
+    assert.ok(definition.tags?.includes("requires-rereview"), id);
+    assert.equal(effectiveReviewRecord(definition, undefined), undefined, id);
+  }
+});
+
 await run("approved definitions preserved unchanged keep their versioned approval", () => {
   const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_OPS_ORDER_BASIC_A_A")!;
   assert.equal(definition.version, 1);
@@ -442,6 +457,7 @@ await run("review summaries show when a cleaned target-Skill Band needs no suppo
   const summary = generatorStructureSummary(definition, resolveReviewQuestion(definition, 42));
   assert.deepEqual(summary?.supportingSkills, []);
   assert.deepEqual(summary?.studentFacingSymbols, []);
+  assert.equal(summary?.signPatternLabel, "זוג מספרים נגדיים מתבטל; המחובר החתום שנותר יכול להיות חיובי או שלילי");
   const bands = deriveBandSummaries(FOUNDATIONAL_QUESTIONS, definition);
   assert.deepEqual(bands.map((item) => item.supportingSkills), [[], []]);
 });

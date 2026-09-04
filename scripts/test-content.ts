@@ -144,7 +144,7 @@ run("active distractors contain specific rationales and no author-review fallbac
 
 run("foundational authoring intent and normalized inventory stay explicit", () => {
   const audit = auditFoundationalContent();
-  assert.deepEqual({ total: audit.total, generated: audit.generated, curatedFixed: audit.curatedFixed, fixedNumeric: audit.fixedNumeric }, { total: 177, generated: 174, curatedFixed: 3, fixedNumeric: 0 });
+  assert.deepEqual({ total: audit.total, generated: audit.generated, curatedFixed: audit.curatedFixed, fixedNumeric: audit.fixedNumeric }, { total: 179, generated: 176, curatedFixed: 3, fixedNumeric: 0 });
   for (const definition of FOUNDATIONAL_QUESTIONS) {
     assert.ok(definition.contentFamily, definition.id);
     if (isGeneratedQuestionDefinition(definition)) {
@@ -189,7 +189,7 @@ run("foundational generators cover exact edge cases deterministically", () => {
 run("full content validation checks configured samples and reports review families", () => {
   const report = validateFoundationalContent(20);
   assert.deepEqual(report.issues, []);
-  assert.equal(report.generatedSamples, 174 * 20);
+  assert.equal(report.generatedSamples, 176 * 20);
   assert.deepEqual(report.warnings, []);
 });
 
@@ -251,8 +251,26 @@ run("equivalent-fraction generators cover expansion and reverse simplification",
     assert.deepEqual(answers, [`${expected}`], id);
     assert.match(renderedText(question.prompt), /שוויון|צמצום/u);
   }
-  assert.deepEqual(["A", "B", "C"].map((band) => generatedDefinition(`MVP_FRAC_EQUIV_FORWARD_${band}`).metadata?.structuralStage), ["recognize-simple-scaling", "complete-missing-numerator", "justify-scaling-both-parts"]);
-  assert.deepEqual(["A", "B", "C"].map((band) => generatedDefinition(`MVP_FRAC_EQUIV_REVERSE_${band}`).metadata?.structuralStage), ["recognize-simple-simplification", "complete-missing-denominator", "simplify-by-non-obvious-common-factor"]);
+  assert.deepEqual(["A", "B", "C"].map((band) => generatedDefinition(`MVP_FRAC_EQUIV_FORWARD_${band}`).metadata?.structuralStage), ["recognize-simple-scaling", "complete-missing-numerator", "detect-unstated-common-scale"]);
+  assert.deepEqual(["A", "B", "C"].map((band) => generatedDefinition(`MVP_FRAC_EQUIV_REVERSE_${band}`).metadata?.structuralStage), ["recognize-simple-simplification", "complete-missing-denominator", "fully-simplify-without-supplied-factor"]);
+});
+
+run("fraction-equivalence Band C requires detecting an unstated simplification factor", () => {
+  const forward = generatedDefinition("MVP_FRAC_EQUIV_FORWARD_C");
+  const reverse = generatedDefinition("MVP_FRAC_EQUIV_REVERSE_C");
+  assert.equal(forward.version, 6);
+  assert.equal(reverse.version, 6);
+  for (let seed = 1; seed <= 50; seed += 1) {
+    const forwardQuestion = buildGeneratedQuestion(forward, { seed });
+    const reverseQuestion = buildGeneratedQuestion(reverse, { seed });
+    assert.doesNotMatch(renderedText(forwardQuestion.prompt), /גורם משותף|הוכפלו באותו מספר/u);
+    assert.match(renderedText(reverseQuestion.prompt), /הצמצום המלא ביותר/u);
+    assert.doesNotMatch(renderedText(reverseQuestion.prompt), /גורם משותף|מחלקים.*ב־/u);
+    const a = Number(reverseQuestion.sampledParams.a); const b = Number(reverseQuestion.sampledParams.b);
+    let left = a; let right = b;
+    while (right !== 0) [left, right] = [right, left % right];
+    assert.equal(left, 1, `${reverse.id}:${seed}: fully reduced target`);
+  }
 });
 
 run("multiplication generators use concrete contexts without ambiguous addition", () => {
@@ -323,6 +341,27 @@ run("place-value progression covers repeated digits, zero placeholders, non-left
   assert.equal(composition.category, "representation");
   assert.equal(composition.metadata?.representationKind, "expanded-to-standard-form");
   assert.match(renderedText(composed.prompt), /פירוק/u);
+  const reverse = generatedDefinition("MVP_AR_PLACE_VALUE_STANDARD_TO_EXPANDED_C");
+  const decomposed = buildGeneratedQuestion(reverse, { seed: 41 });
+  assert.equal(reverse.category, "representation");
+  assert.equal(reverse.metadata?.representationKind, "standard-to-expanded-form");
+  assert.match(renderedText(decomposed.prompt), /פירוק מורחב/u);
+  assert.match(correctOptionTexts(decomposed)[0]!, /0 \\times\s+100/u);
+  const expectedNumber = 1010 * Number(decomposed.sampledParams.a) + Number(decomposed.sampledParams.d);
+  assert.match(renderedText(decomposed.prompt), new RegExp(String(expectedNumber)));
+  assert.equal(new Set(optionTexts(decomposed)).size, 4);
+});
+
+run("direct equality misconception item treats equals as a relation", () => {
+  const definition = generatedDefinition("MVP_ALG_EQUALITY_EQUALS_RELATION_A");
+  const question = buildGeneratedQuestion(definition, { seed: 7 });
+  assert.equal(question.type, "singleChoice");
+  assert.equal(definition.category, "conceptual");
+  assert.match(renderedText(question.prompt), /\d+ = \d+ \+ \d+/u);
+  const misconception = question.options.find((option) => option.misconceptionId === "ALG_EQUALITY:treats-equals-as-next-answer");
+  assert.ok(misconception?.misconceptionRationale);
+  assert.ok(definition.tags?.includes("requires-rereview"));
+  assert.equal(definition.version, 5);
 });
 
 run("algebra-dominated symbolic extensions are removed or replaced by clean target-Skill evidence", () => {
@@ -340,6 +379,11 @@ run("algebra-dominated symbolic extensions are removed or replaced by clean targ
     assert.ok(definition.tags?.includes("requires-rereview"), id);
   }
   assert.equal(generatedDefinition("MVP_INT_NUMBER_LINE_LEFT_C").metadata?.structuralStage, "multi-step-crosses-zero");
+  const opposites = generatedDefinition("MVP_INT_ADD_OPPOSITES_B");
+  assert.equal(opposites.version, 6);
+  assert.equal(opposites.metadata?.diagnosticStructure, "cancel-additive-opposites-then-retain-middle-addend");
+  assert.equal(opposites.metadata?.remainingAddendSign, "positive-or-negative");
+  assert.match(String(opposites.metadata?.signPattern), /remaining addend may be positive or negative/u);
 });
 
 run("number-line and subtraction generators use clarified purposeful wording", () => {
@@ -650,7 +694,7 @@ run("zero signed-operation results occur only in an explicit family", () => {
 run("reviewed conceptual generators preserve attribution, determinism, and unique options", () => {
   const reviewedSkills = new Set(["AR_PLACE_VALUE", "AR_ADD_FACTS", "AR_SUB_FACTS", "AR_FACTORS_MULTIPLES", "OPS_ORDER_BASIC", "INT_NUMBER_LINE", "FRAC_MEANING", "FRAC_EQUIV"]);
   const definitions = FOUNDATIONAL_QUESTIONS.filter((item): item is GeneratedQuestionDefinition & { skillId: string } => isGeneratedQuestionDefinition(item) && !!item.choiceBuilder && (reviewedSkills.has(item.skillId) || item.skillId.startsWith("AR_MUL_F_") || item.skillId.startsWith("AR_DIV_F_")));
-  assert.equal(definitions.length, 61);
+  assert.equal(definitions.length, 62);
   for (const definition of definitions) {
     const first = buildGeneratedQuestion(definition, { seed: 73 }); const repeat = buildGeneratedQuestion(definition, { seed: 73 });
     assert.equal(first.id, repeat.id, definition.id);

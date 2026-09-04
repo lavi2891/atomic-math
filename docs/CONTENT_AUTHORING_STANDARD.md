@@ -129,3 +129,5 @@
 ## 11. גבול גל התוכן הבא
 
 ה־audit הנוכחי נשאר בתוך 27 ה־Skills הפעילים. מספרים עשרוניים, פעולות בשברים ותחומי curriculum חדשים הם next-wave recommendations בלבד. לפני הוספתם יש להגדיר taxonomy אטומי, Evidence Policy ומשפחות generator מבניות; אין להכניס שאלות בודדות כתחליף לתכנון התחום.
+
+`AR_FACTORS_MULTIPLES` נשאר Skill משולב ב־MVP. ההפרדה הנוכחית בין `contentFamily` של factors לבין `contentFamily` של multiples מספיקה לייחוס evidence ברמת המשפחה, אך ייתכן שבעתיד נכון יהיה לפצל אותם לשני Skills ולשתי תחזיות Mastery. זו החלטת teacher/taxonomy פתוחה, ולא שינוי שמבצעים אגב תיקון תוכן נקודתי.

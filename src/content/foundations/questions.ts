@@ -169,9 +169,11 @@ function conceptualGenerator(input: {
   studentFacingSymbols?: string[];
   symbolicConditions?: string[];
   supportingSkills?: SkillId[];
-  representationKind?: "context-to-expression" | "number-line-to-number" | "number-line-to-fraction" | "expanded-to-standard-form" | "equivalent-symbolic-form" | "substitution-to-expression";
+  representationKind?: "context-to-expression" | "number-line-to-number" | "number-line-to-fraction" | "expanded-to-standard-form" | "standard-to-expanded-form" | "equivalent-symbolic-form" | "substitution-to-expression";
   skillInvariant?: string;
   signPattern?: string;
+  diagnosticStructure?: string;
+  remainingAddendSign?: string;
   version?: number;
 }): GeneratedQuestionDefinition & { skillId: string } {
   return {
@@ -195,7 +197,7 @@ function conceptualGenerator(input: {
     structureKey: `${input.skillId}:${input.band}:${input.family}`,
     variantGroup: `${input.skillId}:${input.family}`,
     difficultyModel: () => ({ A: 0.12, B: 0.38, C: 0.65, D: 0.9 })[input.band],
-    metadata: { source: "human-review-pass-2", band: input.band, feature: input.family, difficultyFeature: input.difficultyFeature ?? "structure", structuralStage: input.structuralStage, representationKind: input.representationKind, skillInvariant: input.skillInvariant ?? SIGNED_SKILL_INVARIANTS[input.skillId], signPattern: input.signPattern ?? (SIGNED_SKILL_INVARIANTS[input.skillId] ? input.family : undefined) },
+    metadata: { source: "human-review-pass-2", band: input.band, feature: input.family, difficultyFeature: input.difficultyFeature ?? "structure", structuralStage: input.structuralStage, representationKind: input.representationKind, skillInvariant: input.skillInvariant ?? SIGNED_SKILL_INVARIANTS[input.skillId], signPattern: input.signPattern ?? (SIGNED_SKILL_INVARIANTS[input.skillId] ? input.family : undefined), diagnosticStructure: input.diagnosticStructure, remainingAddendSign: input.remainingAddendSign },
     tags: ["mvp", "generated-concept", "requires-rereview", `band:${input.band}`],
     // The 2026-09-04 pedagogical audit replaced fallback misconception metadata
     // across every generated choice family. Floor at v5 so prior family approvals
@@ -251,6 +253,20 @@ const PLACE_VALUE_GENERATORS: Array<GeneratedQuestionDefinition & { skillId: str
       return generatedChoiceDraft("AR_PLACE_VALUE", `איזה מספר מתאים לפירוק [[${a} × 1000 + ${b} × 100 + ${c} × 10 + ${d}]]?`, [
         { value: `${number}`, correct: true, misconception: "composes-expanded-form" },
         ...wrongValues.map((value) => ({ value: `${value}`, misconception: "misplaces-digit-in-composition" })),
+      ], number);
+    },
+  }),
+  conceptualGenerator({
+    id: "MVP_AR_PLACE_VALUE_STANDARD_TO_EXPANDED_C", skillId: "AR_PLACE_VALUE", family: "decompose-standard-number", category: "representation", band: "C",
+    exprTemplate: "{a}*1000+0*100+{a}*10+{d}", params: { a: { type: "natural", min: 1, max: 9 }, d: { type: "integer", min: 0, max: 9 } }, constraints: ["d != a"], difficultyFeature: "structure", structuralStage: "standard-to-expanded-with-zero-and-repeat", representationKind: "standard-to-expanded-form", version: 1,
+    choiceBuilder: (params) => {
+      const a = sampledInteger(params, "a"); const d = sampledInteger(params, "d");
+      const number = 1000 * a + 10 * a + d;
+      return generatedChoiceDraft("AR_PLACE_VALUE", `איזה פירוק מורחב מתאים למספר [[${number}]]?`, [
+        { value: `${a} × 1000 + 0 × 100 + ${a} × 10 + ${d}`, correct: true, misconception: "composes-expanded-form" },
+        { value: `${a} × 1000 + ${a} × 100 + 0 × 10 + ${d}`, misconception: "misplaces-digit-in-composition" },
+        { value: `${a} × 1000 + 0 × 100 + ${d} × 10 + ${a}`, misconception: "misplaces-digit-in-composition" },
+        { value: `${a} × 100 + 0 × 10 + ${a} + ${d}`, misconception: "misplaces-digit-in-composition" },
       ], number);
     },
   }),
@@ -368,26 +384,28 @@ const FRACTION_MEANING_COVERAGE_GENERATORS: Array<GeneratedQuestionDefinition & 
 ];
 
 const FRACTION_EQUIVALENCE_GENERATORS = (["A", "B", "C"] as DifficultyBand[]).flatMap((band) => {
-  const cRange = band === "A" ? { min: 2, max: 3 } : band === "B" ? { min: 2, max: 5 } : { min: 4, max: 9 };
-  const params: ParamsSpec = { a: { type: "natural", min: 1, max: 6 }, b: { type: "natural", min: 3, max: 10 }, c: { type: "natural", ...cRange } };
-  const common = { params, difficultyFeature: "structure" as const, version: 4 };
+  const cRange = band === "A" ? { min: 2, max: 3 } : { min: 2, max: 5 };
+  const params: ParamsSpec = band === "C"
+    ? { a: { type: "natural", min: 2, max: 6 }, b: { type: "natural", min: 5, max: 11, exclude: [6, 8, 9, 10] }, c: { type: "natural", ...cRange } }
+    : { a: { type: "natural", min: 1, max: 6 }, b: { type: "natural", min: 3, max: 10 }, c: { type: "natural", ...cRange } };
+  const common = { params, difficultyFeature: "structure" as const, version: band === "C" ? 6 : 4 };
   const forward = conceptualGenerator({
     id: `MVP_FRAC_EQUIV_FORWARD_${band}`, skillId: "FRAC_EQUIV", family: "expand-equivalent-fraction", category: band === "A" ? "representation" : "reasoning", band, exprTemplate: band === "B" ? "{a}/{b}=\\square/({b}*{c})" : "{a}/{b}=({a}*{c})/({b}*{c})", ...common,
-    constraints: band === "B" ? ["a < b", "a * c != a + c"] : ["a < b"], structuralStage: band === "A" ? "recognize-simple-scaling" : band === "B" ? "complete-missing-numerator" : "justify-scaling-both-parts", representationKind: band === "A" ? "equivalent-symbolic-form" : undefined,
+    constraints: band === "B" ? ["a < b", "a * c != a + c"] : ["a < b"], structuralStage: band === "A" ? "recognize-simple-scaling" : band === "B" ? "complete-missing-numerator" : "detect-unstated-common-scale", representationKind: band === "A" ? "equivalent-symbolic-form" : undefined,
     choiceBuilder: (sampled) => {
       const a = sampledInteger(sampled, "a"); const b = sampledInteger(sampled, "b"); const c = sampledInteger(sampled, "c");
       if (band === "B") return generatedChoiceDraft("FRAC_EQUIV", `איזה מספר משלים את השוויון [[${a}/${b} = □/${b * c}]]?`, [{ value: `${a * c}`, correct: true, misconception: "scales-both-parts" }, { value: `${a + c}`, misconception: "adds-scale-factor" }, { value: `${a}`, misconception: "keeps-numerator-unchanged" }, { value: `${a * c + c}`, misconception: "uses-denominator-scale-in-numerator" }], a + b + c);
-      if (band === "C") return generatedChoiceDraft("FRAC_EQUIV", `מדוע השברים [[${a}/${b}]] ו־[[${a * c}/${b * c}]] שווים?`, [{ value: `המונה והמכנה הוכפלו באותו מספר [[${c}]]`, correct: true, misconception: "scales-both-parts" }, { value: `רק המונה הוכפל ב־[[${c}]]`, misconception: "scales-numerator-only" }, { value: `רק המכנה הוכפל ב־[[${c}]]`, misconception: "scales-denominator-only" }, { value: `הוסיפו [[${c}]] למונה ולמכנה`, misconception: "adds-to-both-parts" }], a + b + c);
+      if (band === "C") return generatedChoiceDraft("FRAC_EQUIV", `מדוע השברים [[${a}/${b}]] ו־[[${a * c}/${b * c}]] שווים?`, [{ value: "המונה והמכנה של השבר השני התקבלו מהכפלה באותו גורם", correct: true, misconception: "scales-both-parts" }, { value: "רק המונה של השבר השני הוכפל", misconception: "scales-numerator-only" }, { value: "רק המכנה של השבר השני הוכפל", misconception: "scales-denominator-only" }, { value: "נוסף אותו מספר למונה ולמכנה", misconception: "adds-to-both-parts" }], a + b + c);
       return generatedChoiceDraft("FRAC_EQUIV", `איזה שבר שווה ל־[[${a}/${b}]]?`, [{ value: `${a * c}/${b * c}`, correct: true, misconception: "scales-both-parts" }, { value: `${a * c}/${b}`, misconception: "scales-numerator-only" }, { value: `${a}/${b * c}`, misconception: "scales-denominator-only" }, { value: `${a + c}/${b + c}`, misconception: "adds-to-both-parts" }], a + b + c);
     },
   });
   const reverse = conceptualGenerator({
     id: `MVP_FRAC_EQUIV_REVERSE_${band}`, skillId: "FRAC_EQUIV", family: "simplify-equivalent-fraction", category: band === "A" ? "representation" : "reasoning", band, exprTemplate: band === "B" ? "({a}*{c})/({b}*{c})={a}/\\square" : "({a}*{c})/({b}*{c})={a}/{b}", ...common,
-    constraints: band === "B" ? ["a < b", "b != c"] : ["a < b"], structuralStage: band === "A" ? "recognize-simple-simplification" : band === "B" ? "complete-missing-denominator" : "simplify-by-non-obvious-common-factor", representationKind: band === "A" ? "equivalent-symbolic-form" : undefined,
+    constraints: band === "B" ? ["a < b", "b != c"] : ["a < b"], structuralStage: band === "A" ? "recognize-simple-simplification" : band === "B" ? "complete-missing-denominator" : "fully-simplify-without-supplied-factor", representationKind: band === "A" ? "equivalent-symbolic-form" : undefined,
     choiceBuilder: (sampled) => {
       const a = sampledInteger(sampled, "a"); const b = sampledInteger(sampled, "b"); const c = sampledInteger(sampled, "c");
       if (band === "B") return generatedChoiceDraft("FRAC_EQUIV", `איזה מספר משלים את השוויון [[${a * c}/${b * c} = ${a}/□]]?`, [{ value: `${b}`, correct: true, misconception: "divides-both-parts" }, { value: `${b * c}`, misconception: "keeps-denominator-unchanged" }, { value: `${c}`, misconception: "uses-common-factor-as-denominator" }, { value: `${b + c}`, misconception: "adds-instead-of-dividing" }], a * b + c);
-      const wording = band === "C" ? `מחלקים את המונה ואת המכנה של [[${a * c}/${b * c}]] בגורם המשותף [[${c}]]. איזה שבר מתקבל?` : `איזה שבר מתקבל מצמצום [[${a * c}/${b * c}]] ב־[[${c}]]?`;
+      const wording = band === "C" ? `מהו הצמצום המלא ביותר של [[${a * c}/${b * c}]]?` : `איזה שבר מתקבל מצמצום [[${a * c}/${b * c}]] ב־[[${c}]]?`;
       return generatedChoiceDraft("FRAC_EQUIV", wording, [{ value: `${a}/${b}`, correct: true, misconception: "divides-both-parts" }, { value: `${a * c}/${b}`, misconception: "simplifies-denominator-only" }, { value: `${a}/${b * c}`, misconception: "simplifies-numerator-only" }, { value: `${a + c}/${b + c}`, misconception: "adds-instead-of-dividing" }], a * b * c);
     },
   });
@@ -604,7 +622,7 @@ const SIGNED_CONCEPT_GENERATORS: Array<GeneratedQuestionDefinition & { skillId: 
   }),
   conceptualGenerator({
     id: "MVP_INT_ADD_OPPOSITES_B", skillId: "INT_ADD", family: "opposites-result-zero", category: "reasoning", band: "B",
-    exprTemplate: "(-{n})+{m}+{n}", params: { wordingVariant: { type: "integer", min: 0, max: 2 }, m: { type: "integer", min: -12, max: 12 }, n: { type: "natural", min: 2, max: 20 } }, constraints: ["m != 0", "m + n != 0", "m + 2 * n != 0"], difficultyFeature: "structure", structuralStage: "opposites-inside-three-addends", signPattern: "opposites within three addends", version: 3,
+    exprTemplate: "(-{n})+{m}+{n}", params: { wordingVariant: { type: "integer", min: 0, max: 2 }, m: { type: "integer", min: -12, max: 12 }, n: { type: "natural", min: 2, max: 20 } }, constraints: ["m != 0", "m + n != 0", "m + 2 * n != 0"], difficultyFeature: "structure", structuralStage: "opposites-inside-three-addends", signPattern: "additive opposites cancel; remaining addend may be positive or negative", diagnosticStructure: "cancel-additive-opposites-then-retain-middle-addend", remainingAddendSign: "positive-or-negative", version: 6,
     choiceBuilder: (params) => { const m = sampledInteger(params, "m"); const n = sampledInteger(params, "n"); return generatedChoiceDraft("INT_ADD", sampledWording(params, [`בלי לחשב כל שלב בנפרד, מה תוצאת הביטוי [[(-${n}) + (${m}) + ${n}]]?`, `בביטוי [[(-${n}) + (${m}) + ${n}]], אילו מחוברים מתבטלים ומה נשאר?`, `חשבו בעזרת זוג מספרים נגדיים: [[(-${n}) + (${m}) + ${n}]].`]), [{ value: `${m}`, correct: true, misconception: "cancels-additive-opposites" }, { value: "0", misconception: "drops-middle-addend" }, { value: `${m + 2 * n}`, misconception: "adds-absolute-values" }, { value: `${-m}`, misconception: "changes-remaining-sign" }], m + n + sampledInteger(params, "wordingVariant")); },
   }),
   conceptualGenerator({
@@ -714,6 +732,19 @@ const GLOBAL_AUTHORING_GENERATORS = GLOBAL_BANDS.flatMap((band) => {
 });
 
 const SEMANTIC_EVIDENCE_GENERATORS: Array<GeneratedQuestionDefinition & { skillId: string }> = [
+  conceptualGenerator({
+    id: "MVP_ALG_EQUALITY_EQUALS_RELATION_A", skillId: "ALG_EQUALITY", family: "equals-as-relation-misconception", category: "conceptual", band: "A", version: 1,
+    exprTemplate: "{total}={a}+{b}", params: { a: { type: "natural", min: 2, max: 5 }, b: { type: "natural", min: 2, max: 5 }, total: { type: "natural", min: 4, max: 10 } }, constraints: ["a != b", "total === a + b"], difficultyFeature: "structure", structuralStage: "judge-noncanonical-equality-as-relation",
+    choiceBuilder: (params) => {
+      const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); const total = sampledInteger(params, "total");
+      return generatedChoiceDraft("ALG_EQUALITY", `האם [[${total} = ${a} + ${b}]] הוא משפט שוויון נכון?`, [
+        { value: "כן. לשני צדי סימן השוויון יש אותו ערך", correct: true, misconception: "equality-relates-equal-values" },
+        { value: "לא. אחרי [[=]] חייבת להופיע רק התשובה", misconception: "treats-equals-as-next-answer" },
+        { value: "לא. בצד שמאל של [[=]] חייב להופיע תרגיל", misconception: "treats-equals-as-next-answer" },
+        { value: "כן. כל משפט שמופיע בו [[=]] הוא נכון", misconception: "accepts-surface-match" },
+      ], total + a);
+    },
+  }),
   conceptualGenerator({
     id: "MVP_ALG_SUBSTITUTE_MEANING_A", skillId: "ALG_SUBSTITUTE", family: "meaning-of-substitution", category: "conceptual", band: "A", version: 1,
     exprTemplate: "x={n};a*x+b", params: { n: { type: "natural", min: 2, max: 12 } }, difficultyFeature: "structure", structuralStage: "replace-variable-with-given-value", studentFacingSymbols: ["x", "a", "b"],
