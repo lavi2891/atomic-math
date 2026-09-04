@@ -2,6 +2,7 @@ import { Fragment } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import type { OptionContent } from "@domain/questions/types";
+import { contentSegmentDirection, DEFAULT_CONTENT_DIRECTION } from "./contentDirection.ts";
 
 type Props = {
   content: OptionContent[];
@@ -16,7 +17,7 @@ function renderMath(latex: string, displayMode: boolean) {
   });
 }
 
-export function ContentRenderer({ content, dir = "rtl" }: Props) {
+export function ContentRenderer({ content, dir = DEFAULT_CONTENT_DIRECTION }: Props) {
   return (
     <span dir={dir} style={{ maxWidth: "100%", minWidth: 0 }}>
       {content.map((seg, i) => {
@@ -32,7 +33,7 @@ export function ContentRenderer({ content, dir = "rtl" }: Props) {
             <span
               key={seg.key ?? i}
               className="math"
-              dir="ltr"
+              dir={contentSegmentDirection(seg)}
               style={{ display: "block", maxWidth: "100%", marginTop: 8, marginBottom: 8 }}
               dangerouslySetInnerHTML={{ __html: html }}
             />
@@ -44,7 +45,7 @@ export function ContentRenderer({ content, dir = "rtl" }: Props) {
           <span
             key={seg.key ?? i}
             className="math"
-            dir="ltr"
+            dir={contentSegmentDirection(seg)}
             style={{
               display: "inline-block",
               maxWidth: "100%",

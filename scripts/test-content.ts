@@ -11,12 +11,14 @@ import type { Attempt } from "../src/domain/attempts/types.ts";
 import { isAssignmentComplete } from "../src/domain/studentHome/deriveStudentHome.ts";
 import { createChallengeSignature, challengeSignatureKey } from "../src/domain/personalBests/challengeSignature.ts";
 import { resolveQuickPracticeScope } from "../src/domain/studentHome/quickPractice.ts";
-import { auditFoundationalContent, curatedNumericLiteralIssues, curatedNumericLiteralItems, generatedInstanceMetadataIssues, magnitudeBandProgressionIssues, structuralBandProgressionIssues, studentMathContentIssues, validateFoundationalContent } from "../src/content/validateContent.ts";
+import { auditFoundationalContent, curatedNumericLiteralIssues, curatedNumericLiteralItems, generatedInstanceMetadataIssues, magnitudeBandProgressionIssues, structuralBandProgressionIssues, studentMathContentIssues, symbolicAuthoringIssues, validateFoundationalContent } from "../src/content/validateContent.ts";
 import { atomicSkillIdentityIssues } from "../src/content/foundations/skillScope.ts";
 import { signedGeneratedInstanceIssues, signedSkillDefinitionIssues } from "../src/content/foundations/skillScope.ts";
 import type { GeneratedQuestionInstance, OptionContent } from "../src/domain/questions/types.ts";
 import type { GeneratedQuestionDefinition } from "../src/domain/questions/generator/types.ts";
 import type { SkillQuestionDefinition } from "../src/domain/session/skillQuestionSelector.ts";
+import { authoredChoiceContent, authoredStudentContent } from "../src/content/foundations/studentMathContent.ts";
+import { contentSegmentDirection, DEFAULT_CONTENT_DIRECTION } from "../src/ui/contentDirection.ts";
 
 function run(name: string, fn: () => void) { fn(); process.stdout.write(`PASS ${name}\n`); }
 const skill = (id: string) => SKILLS.find((item) => item.id === id)!;
@@ -82,7 +84,7 @@ run("every ready definition carries category and meaningful band metadata", () =
 
 run("foundational authoring intent and normalized inventory stay explicit", () => {
   const audit = auditFoundationalContent();
-  assert.deepEqual({ total: audit.total, generated: audit.generated, curatedFixed: audit.curatedFixed, fixedNumeric: audit.fixedNumeric }, { total: 196, generated: 195, curatedFixed: 1, fixedNumeric: 0 });
+  assert.deepEqual({ total: audit.total, generated: audit.generated, curatedFixed: audit.curatedFixed, fixedNumeric: audit.fixedNumeric }, { total: 197, generated: 195, curatedFixed: 2, fixedNumeric: 0 });
   for (const definition of FOUNDATIONAL_QUESTIONS) {
     assert.ok(definition.contentFamily, definition.id);
     if (isGeneratedQuestionDefinition(definition)) {
@@ -132,7 +134,8 @@ run("full content validation checks configured samples and reports review famili
 });
 
 run("fixed numeric literals are exceptional and require explicit pedagogical justification", () => {
-  assert.deepEqual(curatedNumericLiteralItems(FOUNDATIONAL_QUESTIONS), []);
+  assert.deepEqual(curatedNumericLiteralItems(FOUNDATIONAL_QUESTIONS).map((item) => item.definitionId), ["MVP_ALG_VARIABLE_CONTEXT_REASONING_CURATED"]);
+  assert.deepEqual(curatedNumericLiteralIssues(FOUNDATIONAL_QUESTIONS), []);
   const base: SkillQuestionDefinition = {
     id: "TEST_FIXED_7", topicId: "FOUNDATIONS", skillId: "INT_COMPARE", type: "singleChoice", authoringMode: "curated", contentFamily: "test:fixed", category: "conceptual", difficultyBand: "A", difficulty: 0.1,
     prompt: [{ kind: "text", value: "איזה מספר גדול מ־7?" }], options: [{ id: "o0", content: [{ kind: "text", value: "8" }] }, { id: "o1", content: [{ kind: "text", value: "6" }] }], correctOptionId: "o0",
@@ -150,7 +153,7 @@ run("all globally audited routine numeric concept families are generated", () =>
     assert.equal(FOUNDATIONAL_QUESTIONS.some((item) => item.skillId === skillId && item.id.startsWith(`MVP_${skillId}_CONCEPT_`)), false, skillId);
   }
   const retained = FOUNDATIONAL_QUESTIONS.filter((item) => !isGeneratedQuestionDefinition(item));
-  assert.deepEqual(retained.map((item) => item.id), ["MVP_ALG_VARIABLE_MEANING_CURATED"]);
+  assert.deepEqual(retained.map((item) => item.id), ["MVP_ALG_VARIABLE_CONTEXT_BASIC_CURATED", "MVP_ALG_VARIABLE_CONTEXT_REASONING_CURATED"]);
   const retainedItem = retained[0]!;
   if (isGeneratedQuestionDefinition(retainedItem)) throw new Error("Expected curated wording item");
   assert.equal(retainedItem.curationReason, "deliberate-example");
@@ -251,8 +254,9 @@ run("algebra and equation Bands use deterministic structural progression", () =>
   for (const skillId of ["ALG_EQUALITY", "ALG_VARIABLE", "ALG_SUBSTITUTE", "EQ_ADD", "EQ_MUL"]) {
     const definitions = FOUNDATIONAL_QUESTIONS.filter((item): item is GeneratedQuestionDefinition & { skillId: string } => isGeneratedQuestionDefinition(item) && item.skillId === skillId && !!item.choiceBuilder);
     assert.deepEqual(definitions.map((item) => item.difficultyBand).sort(), ["A", "B", "C"]);
-    assert.equal(new Set(definitions.map((item) => item.contentFamily)).size, 3);
+    assert.equal(new Set(definitions.map((item) => item.contentFamily)).size, 1);
     assert.ok(definitions.every((item) => item.metadata?.difficultyFeature === "structure"));
+    assert.equal(new Set(definitions.map((item) => item.metadata?.structuralStage)).size, 3);
   }
   for (const skillId of ["EQ_ADD", "EQ_MUL"]) {
     for (const definition of FOUNDATIONAL_QUESTIONS.filter((item): item is GeneratedQuestionDefinition & { skillId: string } => isGeneratedQuestionDefinition(item) && item.skillId === skillId && !!item.choiceBuilder)) {
@@ -270,6 +274,61 @@ run("algebra terminology distinguishes variable, coefficient, and expression val
   assert.match(renderedText(variableB.prompt), /המקדם של x/u);
   assert.deepEqual(correctOptionTexts(variableB), [variableB.sampledParams.n]);
   assert.deepEqual(correctOptionTexts(variableC), ["ערך הביטוי"]);
+});
+
+run("curated variable meaning uses the two requested contextual questions", () => {
+  const basic = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_ALG_VARIABLE_CONTEXT_BASIC_CURATED");
+  const reasoning = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_ALG_VARIABLE_CONTEXT_REASONING_CURATED");
+  assert.ok(basic && !isGeneratedQuestionDefinition(basic) && basic.type === "singleChoice");
+  assert.ok(reasoning && !isGeneratedQuestionDefinition(reasoning) && reasoning.type === "singleChoice");
+  assert.equal(basic.category, "conceptual");
+  assert.equal(reasoning.category, "reasoning");
+  assert.deepEqual(basic.options.find((option) => option.id === basic.correctOptionId)?.content, [{ kind: "text", value: "מספר התלמידים בקבוצה" }]);
+  assert.match(renderedText(reasoning.prompt), /18.*25/u);
+  assert.ok(reasoning.prompt.filter((part) => part.kind === "math").length >= 4);
+  assert.match(renderedText(reasoning.options.find((option) => option.id === reasoning.correctOptionId)!.content), /יכול להיות שונה/u);
+});
+
+run("algebra and equation difficulty increases symbolic abstraction rather than magnitude", () => {
+  for (const skillId of ["ALG_EQUALITY", "ALG_SUBSTITUTE", "EQ_ADD", "EQ_MUL"]) {
+    const definitions = FOUNDATIONAL_QUESTIONS.filter((item): item is GeneratedQuestionDefinition & { skillId: string } => isGeneratedQuestionDefinition(item) && item.skillId === skillId && !!item.choiceBuilder).sort((left, right) => String(left.difficultyBand).localeCompare(String(right.difficultyBand)));
+    const symbolCounts = definitions.map((item) => item.studentFacingSymbols?.length ?? 0);
+    assert.ok(symbolCounts[0]! < symbolCounts[1]! && symbolCounts[1]! < symbolCounts[2]!, `${skillId}: ${symbolCounts.join(",")}`);
+    assert.ok(definitions.every((item) => item.metadata?.difficultyFeature === "structure"));
+  }
+  const substituteB = buildGeneratedQuestion(generatedDefinition("MVP_ALG_SUBSTITUTE_B"), { seed: 15 });
+  const substituteC = buildGeneratedQuestion(generatedDefinition("MVP_ALG_SUBSTITUTE_C"), { seed: 15 });
+  assert.ok(correctOptionTexts(substituteB)[0]?.includes("a"));
+  assert.ok(correctOptionTexts(substituteC)[0]?.includes("a") && correctOptionTexts(substituteC)[0]?.includes("b"));
+  const symbolic = generatedDefinition("MVP_EQ_MUL_C");
+  assert.deepEqual(symbolicAuthoringIssues(symbolic), []);
+  assert.ok(symbolicAuthoringIssues({ ...symbolic, studentFacingSymbols: ["n"] }).some((issue) => issue.includes("both a sampled parameter")));
+});
+
+run("choice and prompt content preserve mixed math rendering and RTL isolation semantics", () => {
+  const negativeChoice = authoredChoiceContent("-3");
+  const algebraChoice = authoredChoiceContent("a + 2x");
+  const fractionMultiChoice = { id: "fraction", content: authoredChoiceContent("3/4") };
+  const mixedPrompt = authoredStudentContent("השוו בין [[-4]] לבין [[-7]].");
+  assert.equal(DEFAULT_CONTENT_DIRECTION, "rtl");
+  for (const content of [negativeChoice, algebraChoice, fractionMultiChoice.content]) {
+    assert.equal(content.length, 1);
+    assert.equal(content[0]?.kind, "math");
+    assert.equal(contentSegmentDirection(content[0]!), "ltr");
+  }
+  assert.deepEqual(mixedPrompt.map((part) => part.kind), ["text", "math", "text", "math", "text"]);
+  assert.ok(mixedPrompt.filter((part) => part.kind === "math").every((part) => contentSegmentDirection(part) === "ltr"));
+});
+
+run("negative and opposite-number content remains math-rendered in prompts and choices", () => {
+  const positive = buildGeneratedQuestion(generatedDefinition("MVP_INT_NEGATION_POSITIVE_A"), { seed: 11 });
+  const negative = buildGeneratedQuestion(generatedDefinition("MVP_INT_NEGATION_NEGATIVE_A"), { seed: 11 });
+  for (const question of [positive, negative]) {
+    assert.ok(question.prompt.some((part) => part.kind === "math"));
+    assert.ok(question.type !== "numeric" && question.options.some((option) => option.content.some((part) => part.kind === "math" && part.latex.includes("-"))));
+  }
+  assert.match(generatedDefinition("MVP_INT_NEGATION_POSITIVE_A").exprTemplate, /^-\(/u);
+  assert.match(generatedDefinition("MVP_INT_NEGATION_NEGATIVE_A").exprTemplate, /^-\(-/u);
 });
 
 run("every generated Band documents its actual difficulty feature", () => {

@@ -87,6 +87,10 @@ export interface GeneratedQuestionDefinition {
   promptTemplate: OptionContent[];
   params: ParamsSpec;
   constraints?: string[];
+  /** Symbols intentionally shown as symbols to the student; these are not sampled generator parameters. */
+  studentFacingSymbols?: string[];
+  /** Mathematical conditions on intentional student-facing symbols, such as b != 0. */
+  symbolicConditions?: string[];
   hintsTemplate?: OptionContent[][];
   misconceptions?: string[];
   tags?: string[];

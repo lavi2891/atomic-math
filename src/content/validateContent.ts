@@ -124,6 +124,16 @@ export function generatedInstanceMetadataIssues(definition: GeneratedQuestionDef
   return issues;
 }
 
+export function symbolicAuthoringIssues(definition: GeneratedQuestionDefinition): string[] {
+  const issues: string[] = [];
+  for (const symbol of definition.studentFacingSymbols ?? []) {
+    if (!/^[A-Za-z]\w*$/u.test(symbol)) issues.push(`${definition.id}: invalid student-facing symbol ${symbol}`);
+    if (definition.params[symbol]) issues.push(`${definition.id}: ${symbol} cannot be both a sampled parameter and an intentional student-facing symbol`);
+    if (!new RegExp(`\\b${symbol}\\b`, "u").test(definition.exprTemplate)) issues.push(`${definition.id}: declared student-facing symbol ${symbol} is absent from exprTemplate`);
+  }
+  return issues;
+}
+
 export interface CuratedNumericLiteralItem {
   definitionId: string;
   curationReason?: QuestionCurationReason;
@@ -229,9 +239,16 @@ export function structuralBandProgressionIssues(definitions: readonly SkillQuest
     for (const band of ["A", "B", "C"]) if (!bands.has(band as GeneratedQuestionDefinition["difficultyBand"])) issues.push(`${skillId}: missing structural Band ${band}`);
     if (family.some((definition) => definition.metadata?.difficultyFeature !== "structure")) issues.push(`${skillId}: structural Bands must declare difficultyFeature=structure`);
     const contentFamilies = family.map((definition) => definition.contentFamily);
-    if (new Set(contentFamilies).size !== contentFamilies.length) issues.push(`${skillId}: structural Bands must use distinct content families`);
+    if (new Set(contentFamilies).size !== 1) issues.push(`${skillId}: structural Bands must share one pedagogical content family`);
+    const stages = family.map((definition) => definition.metadata?.structuralStage);
+    if (stages.some((stage) => typeof stage !== "string") || new Set(stages).size !== family.length) issues.push(`${skillId}: every structural Band must declare a distinct structuralStage`);
     if ((skillId === "EQ_ADD" || skillId === "EQ_MUL") && family.some((definition) => Object.values(definition.params).some((spec) => spec.type !== "rational" && spec.min < 1))) {
       issues.push(`${skillId}: equation Bands must not introduce signed-number arithmetic`);
+    }
+    if (["ALG_EQUALITY", "ALG_SUBSTITUTE", "EQ_ADD", "EQ_MUL"].includes(skillId)) {
+      const ordered = [...family].sort((left, right) => BAND_ORDER.indexOf(left.difficultyBand ?? "") - BAND_ORDER.indexOf(right.difficultyBand ?? ""));
+      const symbolCounts = ordered.map((definition) => definition.studentFacingSymbols?.length ?? 0);
+      if (symbolCounts.some((count, index) => index > 0 && count <= symbolCounts[index - 1]!)) issues.push(`${skillId}: symbolic abstraction must increase strictly across Bands`);
     }
   }
   return issues;
@@ -264,6 +281,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
       if (!Object.keys(definition.params).length) issues.push(`${definition.id}: generator has no parameters`);
       if (!definition.metadata?.difficultyFeature) issues.push(`${definition.id}: difficultyFeature is missing`);
       if (!definition.choiceBuilder && !definition.answerSemantics) issues.push(`${definition.id}: answer semantics are implicit`);
+      issues.push(...symbolicAuthoringIssues(definition));
       const rendered = new Set<string>();
       for (let seed = 1; seed <= samplesPerGenerator; seed += 1) {
         try {
@@ -295,7 +313,8 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
           generatedSamples += 1;
         } catch { issues.push(`${definition.id}: rejected seed ${seed}`); break; }
       }
-      if (rendered.size < Math.min(3, samplesPerGenerator)) issues.push(`${definition.id}: insufficient generated variety`);
+      const requiredVariety = definition.studentFacingSymbols?.length ? 1 : Math.min(3, samplesPerGenerator);
+      if (rendered.size < requiredVariety) issues.push(`${definition.id}: insufficient generated variety`);
       try {
         const history = createRecentHistory();
         const first = buildGeneratedQuestion(definition, { seed: 1, maxAttempts: 100 });

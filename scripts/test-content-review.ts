@@ -78,7 +78,7 @@ await run("Skill Group filter uses atomic group membership", () => {
 await run("atomic Skill, category, difficulty, family, and authoring filters compose", () => {
   const generated = filter({ skillId: "INT_ADD", category: "calculation", difficultyBand: "B", authoringMode: "generated" });
   assert.ok(generated.length > 0 && generated.every((item) => item.skillId === "INT_ADD" && item.category === "calculation" && item.difficultyBand === "B" && item.authoringMode === "generated"));
-  const family = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_ALG_VARIABLE_MEANING_CURATED")?.contentFamily;
+  const family = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_ALG_VARIABLE_CONTEXT_BASIC_CURATED")?.contentFamily;
   assert.ok(family);
   const curated = filter({ contentFamily: family, authoringMode: "curated" });
   assert.ok(curated.length > 0 && curated.every((item) => item.contentFamily === family && item.authoringMode === "curated"));
@@ -94,9 +94,9 @@ await run("curated navigation is deterministic and bounded", () => {
   const curated = filter({ authoringMode: "curated" });
   assert.equal(navigationIndex("first", 12, curated.length), 0);
   assert.equal(navigationIndex("previous", 0, curated.length), 0);
-  assert.equal(navigationIndex("next", 0, curated.length), 0);
+  assert.equal(navigationIndex("next", 0, curated.length), 1);
   assert.equal(navigationIndex("last", 0, curated.length), curated.length - 1);
-  assert.equal(reviewIndexAfterMark(0, curated.length, "all", "approved"), 0);
+  assert.equal(reviewIndexAfterMark(0, curated.length, "all", "approved"), 1);
   assert.equal(reviewIndexAfterMark(0, curated.length, "unreviewed", "approved"), 0);
 });
 
@@ -228,7 +228,7 @@ await run("Previous reverses across Band and definition boundaries", () => {
 });
 
 await run("curated items behave as one review unit before the next definition", () => {
-  const curated = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_ALG_VARIABLE_MEANING_CURATED")!;
+  const curated = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_ALG_VARIABLE_CONTEXT_BASIC_CURATED")!;
   const curatedUnit: ReviewUnit = { key: `curated:${curated.id}`, definitions: [curated], generated: false };
   const next = generatedUnit("INT_COMPARE", "INT_COMPARE:compare-adjacent-negatives");
   assert.deepEqual(reviewUnitNavigation("next", [curatedUnit, next], 0, curated.id), { index: 1, definitionId: next.definitions[0]!.id });
@@ -380,6 +380,18 @@ await run("review summary explains the signed family, magnitudes, and fixed sign
   assert.equal(summary?.signPatternLabel, "שלילי + חיובי; הגודל החיובי גדול יותר");
   assert.equal(summary?.skillInvariant, "signed-addition");
   assert.equal(summary?.instanceMatchesDefinition, true);
+});
+
+await run("review summary distinguishes sampled parameters from intentional student symbols", () => {
+  const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_EQ_MUL_C")!;
+  assert.ok(isGeneratedQuestionDefinition(definition));
+  const summary = generatorStructureSummary(definition, resolveReviewQuestion(definition, 42));
+  assert.deepEqual(summary?.sampledValues.map((item) => item.name), ["n"]);
+  assert.deepEqual(summary?.studentFacingSymbols, ["a", "b"]);
+  assert.deepEqual(summary?.symbolicConditions.humanReadable, ["b שונה מאפס"]);
+  const bands = deriveBandSummaries(FOUNDATIONAL_QUESTIONS, definition);
+  assert.deepEqual(bands.map((item) => item.studentFacingSymbols), [[], ["x"], ["a", "b"]]);
+  assert.ok(bands[1]?.changesFromPrevious.some((change) => change.includes("סמלים שנשארים")));
 });
 
 await run("review math display is derived from the executable template", () => {
