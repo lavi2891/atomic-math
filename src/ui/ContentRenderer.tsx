@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import type { OptionContent } from "@domain/questions/types";
-import { contentSegmentDirection, DEFAULT_CONTENT_DIRECTION } from "./contentDirection.ts";
+import { contentSegmentDirection, DEFAULT_CONTENT_DIRECTION, groupInlineMath } from "./contentDirection.ts";
 
 type Props = {
   content: OptionContent[];
@@ -20,7 +20,8 @@ function renderMath(latex: string, displayMode: boolean) {
 export function ContentRenderer({ content, dir = DEFAULT_CONTENT_DIRECTION }: Props) {
   return (
     <span dir={dir} style={{ maxWidth: "100%", minWidth: 0 }}>
-      {content.map((seg, i) => {
+      {groupInlineMath(content).map((run, runIndex) => {
+        const rendered = run.map((seg, i) => {
         if (seg.kind === "text") {
           return <Fragment key={seg.key ?? i}>{seg.value}</Fragment>;
         }
@@ -54,6 +55,12 @@ export function ContentRenderer({ content, dir = DEFAULT_CONTENT_DIRECTION }: Pr
             dangerouslySetInnerHTML={{ __html: html }}
           />
         );
+        });
+        return run.length > 1 ? (
+          <span key={runIndex} dir="ltr" className="math-run" style={{ display: "inline-block", unicodeBidi: "isolate", maxWidth: "100%" }}>
+            {rendered}
+          </span>
+        ) : <Fragment key={runIndex}>{rendered}</Fragment>;
       })}
     </span>
   );

@@ -82,6 +82,23 @@ try {
     await unmount(tree);
     console.log(`PASS ${mode} feedback, advancement, and session boundaries`);
   }
+  const { authoredStudentContent } = await server.ssrLoadModule('/src/content/foundations/studentMathContent.ts');
+  const comparison = { ...question, type: 'singleChoice', prompt: authoredStudentContent('השלימו את ההשוואה: [[-2]] [[\\square]] [[0]]'), correctOptionId: 'less', options: [{ id: 'less', content: [{ kind: 'math', latex: '<' }] }, { id: 'greater', content: [{ kind: 'math', latex: '>' }] }] };
+  let comparisonResult;
+  const comparisonTree = await mount(React.createElement('div', { dir: 'rtl' }, React.createElement(QuestionView, { question: comparison, onEvaluated(result) { comparisonResult = result; }, onNext() {} })));
+  const mathRun = comparisonTree.root.findByProps({ className: 'math-run' });
+  assert.equal(mathRun.props.dir, 'ltr');
+  assert.equal(mathRun.props.style.unicodeBidi, 'isolate');
+  const comparisonHtml = mathRun.findAll(n => n.props.dangerouslySetInnerHTML).map(n => n.props.dangerouslySetInnerHTML.__html);
+  assert.equal(comparisonHtml.length, 3);
+  assert.match(comparisonHtml[0], /<annotation[^>]*>-2<\/annotation>/);
+  assert.match(comparisonHtml[2], /<annotation[^>]*>0<\/annotation>/);
+  const lessButton = buttons(comparisonTree).find(b => b.findAll(n => n.props.dangerouslySetInnerHTML?.__html.includes('&lt;')).length);
+  await act(() => lessButton.props.onClick());
+  await act(() => button(comparisonTree, 'אישור').props.onClick());
+  assert.equal(comparisonResult.isCorrect, true);
+  await unmount(comparisonTree);
+  console.log('PASS RTL comparison preserves -2 before 0 and accepts the displayed less-than choice');
   let finished;
   const timedTree = await mount(React.createElement(SessionView, { session: session({ mode: 'timed', durationSeconds: 30 }), definitions: [question], onSessionEnd(state) { finished = state; } }));
   assert.match(text(timedTree.toJSON()), new RegExp(skill.nameHe));

@@ -4,6 +4,7 @@ import { groupAtomicSkillIds, presentationItems } from "../src/content/catalog/s
 import { validateEvidencePolicy } from "../src/content/catalog/policies.ts";
 import { FOUNDATIONAL_QUESTIONS } from "../src/content/foundations/questions.ts";
 import { CONTENT_READINESS, readinessIssues, readySkillIds } from "../src/content/readiness.ts";
+import { resolveQuestionDefinition } from "../src/domain/questions/generator/resolveQuestionDefinition.ts";
 import { buildGeneratedQuestion } from "../src/domain/questions/generator/buildGeneratedQuestion.ts";
 import { isGeneratedQuestionDefinition } from "../src/domain/questions/definitions.ts";
 import { projectMastery } from "../src/domain/mastery/projectMastery.ts";
@@ -18,7 +19,7 @@ import type { GeneratedQuestionInstance, OptionContent } from "../src/domain/que
 import type { GeneratedQuestionDefinition } from "../src/domain/questions/generator/types.ts";
 import type { SkillQuestionDefinition } from "../src/domain/session/skillQuestionSelector.ts";
 import { authoredChoiceContent, authoredStudentContent } from "../src/content/foundations/studentMathContent.ts";
-import { contentSegmentDirection, DEFAULT_CONTENT_DIRECTION } from "../src/ui/contentDirection.ts";
+import { contentSegmentDirection, DEFAULT_CONTENT_DIRECTION, groupInlineMath } from "../src/ui/contentDirection.ts";
 
 function run(name: string, fn: () => void) { fn(); process.stdout.write(`PASS ${name}\n`); }
 const skill = (id: string) => SKILLS.find((item) => item.id === id)!;
@@ -741,3 +742,31 @@ run("Quick Practice excludes incomplete and ineligible content", () => {
 function attempt(skillId: string, sequenceNumber: number, category: Attempt["category"] = "calculation", difficultyBand: Attempt["difficultyBand"] = "A", responseTimeMs = 2_000): Attempt {
   return { attemptId: `${skillId}-${sequenceNumber}`, sessionId: "SESSION", studentId: "S", questionId: `Q${sequenceNumber}`, skillId, difficulty: difficultyBand === "A" ? .1 : .4, difficultyBand, category, submittedAnswer: { questionType: "numeric", data: { value: "1" } }, correct: true, supportLevel: "independent", scoreValue: 1, responseTimeMs, submittedAt: new Date(sequenceNumber * 1000).toISOString(), sequenceNumber };
 }
+
+run("adjacent comparison operands stay in a single LTR run without changing content", () => {
+  const content = authoredStudentContent("השלימו את ההשוואה: [[-2]] [[\\square]] [[0]]");
+  const runs = groupInlineMath(content);
+  assert.equal(runs.length, 2);
+  assert.deepEqual(runs.flat(), content);
+  assert.deepEqual(runs[1]!.filter(item => item.kind === "math").map(item => item.latex), ["-2", "\\square", "0"]);
+  assert.equal(groupInlineMath(authoredStudentContent("נתון [[-2]] וגם [[0]]")).length, 4);
+  assert.equal(groupInlineMath([{ kind: "math", latex: "1", display: true }, { kind: "math", latex: "2" }]).length, 2);
+});
+
+run("all signed comparison variants preserve authored operand order for RTL rendering", () => {
+  for (const definition of FOUNDATIONAL_QUESTIONS.filter(item => item.skillId === "INT_COMPARE" && isGeneratedQuestionDefinition(item))) {
+    for (let seed = 1; seed <= 12; seed++) {
+      const question = resolveQuestionDefinition(definition, { seed });
+      const run = groupInlineMath(question.prompt).find(items => items.some(item => item.kind === "math" && item.latex.includes("square")));
+      if (!run) continue;
+      const math = run.filter(item => item.kind === "math").map(item => item.latex);
+      assert.equal(math.length, 3, `${definition.id}: entire comparison must be isolated together`);
+      const left = Number(math[0]); const right = Number(math[2]);
+      assert.equal(question.type, "singleChoice");
+      if (question.type !== "singleChoice") continue;
+      const correct = question.options.find(option => option.id === question.correctOptionId)!;
+      const expected = left < right ? "<" : left > right ? ">" : "=";
+      assert.equal(renderedText(correct.content), expected);
+    }
+  }
+});
