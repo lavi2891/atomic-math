@@ -2,6 +2,8 @@ export type ReviewStatus = "approved" | "needs-fix" | "rejected";
 
 export interface QuestionReviewRecord {
   definitionId: string;
+  /** Definition version inspected when this status was saved. Legacy records may omit it. */
+  definitionVersion?: number;
   status: ReviewStatus;
   note: string;
   reviewedAt: string;
@@ -73,8 +75,8 @@ export class AuthorReviewRepository {
 
   async list(): Promise<QuestionReviewRecord[]> { return this.store.list(); }
 
-  async save(definitionId: string, status: ReviewStatus, note: string, reviewedAt = new Date().toISOString()): Promise<QuestionReviewRecord> {
-    const record = { definitionId, status, note: note.trim(), reviewedAt } satisfies QuestionReviewRecord;
+  async save(definitionId: string, status: ReviewStatus, note: string, reviewedAt = new Date().toISOString(), definitionVersion?: number): Promise<QuestionReviewRecord> {
+    const record = { definitionId, status, note: note.trim(), reviewedAt, definitionVersion } satisfies QuestionReviewRecord;
     await this.store.put(record);
     return record;
   }

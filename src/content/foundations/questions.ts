@@ -16,9 +16,6 @@ const recipes: GeneratorRecipe[] = [
   ...Object.entries(factFamilies).map(([skillId, factValues]) => ({ skillId, expr: skillId.includes("_MUL_") ? "{a}*{b}" : "{a}*{b}/{a}", secondExpr: skillId.includes("_MUL_") ? "{b}*{a}" : "({a}*{b})/{a}", structures: skillId.includes("_MUL_") ? ["fact-family-product", "commuted-product"] : ["exact-fact-family-quotient", "grouping-preserving-quotient"], min: Math.min(...factValues), max: Math.max(...factValues), factValues } as GeneratorRecipe)),
   { skillId: "AR_FACTORS_MULTIPLES", expr: "{a}*{b}", secondExpr: "{a}*({b}+1)", structures: ["multiple-as-product", "next-multiple-as-product"], min: 2, max: 12 },
   { skillId: "OPS_ORDER_BASIC", expr: "{a}+{b}*{c}", secondExpr: "{a}*{c}+{b}", structures: ["multiplication-before-leading-addition", "multiplication-before-trailing-addition"], min: 1, max: 12 },
-  { skillId: "ALG_SUBSTITUTE", expr: "{c}*{a}+{b}", secondExpr: "{a}*{a}-{b}", structures: ["linear-substitution", "quadratic-substitution"], min: 1, max: 10 },
-  { skillId: "EQ_ADD", expr: "{a}-{b}", secondExpr: "{a}+{b}", structures: ["inverse-addition-equation", "direct-addition-equation"], min: 1, max: 20 },
-  { skillId: "EQ_MUL", expr: "{a}*{b}/{a}", secondExpr: "{a}*{b}/{b}", structures: ["solve-factor-by-first-quotient", "solve-factor-by-second-quotient"], min: 2, max: 10 },
 ];
 
 function generator(recipe: GeneratorRecipe, band: DifficultyBand, alternate: boolean): GeneratedQuestionDefinition & { skillId: string } {
@@ -26,11 +23,12 @@ function generator(recipe: GeneratorRecipe, band: DifficultyBand, alternate: boo
   const factFamily = recipe.skillId.startsWith("AR_MUL_F_") || recipe.skillId.startsWith("AR_DIV_F_");
   const reviewedBasicFacts = recipe.skillId === "AR_ADD_FACTS" || recipe.skillId === "AR_SUB_FACTS";
   const orderOfOperations = recipe.skillId === "OPS_ORDER_BASIC";
-  const variableCoefficient = recipe.skillId === "ALG_SUBSTITUTE" && !alternate;
+  const factorsAndMultiples = recipe.skillId === "AR_FACTORS_MULTIPLES";
   const expr = alternate ? recipe.secondExpr : recipe.expr;
   const structure = recipe.structures[alternate ? 1 : 0];
   const constraints = recipe.constraints?.[alternate ? 1 : 0];
   const factBandRange = band === "A" ? { min: 1, max: 5 } : { min: 6, max: 10 };
+  const multipleBandRange = band === "A" ? { min: 2, max: 5 } : band === "B" ? { min: 6, max: 10 } : { min: 11, max: 16 };
   const omittedFactValues = Array.from(
     { length: recipe.max - recipe.min + 1 },
     (_, index) => recipe.min + index,
@@ -38,15 +36,20 @@ function generator(recipe: GeneratorRecipe, band: DifficultyBand, alternate: boo
   return {
     id: `MVP_${recipe.skillId}_${band}_${alternate ? "B" : "A"}`,
     topicId: "FOUNDATIONS", skillId: recipe.skillId, kind: "generated", authoringMode: "generated", contentFamily: `${recipe.skillId}:${structure}`, category: "calculation", difficultyBand: band,
-    exprTemplate: expr, promptTemplate: [{ kind: "text", value: "חשבו:" }, { kind: "math", latex: expr, display: true }],
+    exprTemplate: expr,
+    promptTemplate: factorsAndMultiples
+      ? alternate
+        ? [{ kind: "text", value: "נתונה הכפולה " }, { kind: "math", latex: "{a}\\times {b}" }, { kind: "text", value: " של " }, { kind: "math", latex: "{a}" }, { kind: "text", value: ". מצאו את הכפולה הבאה." }]
+        : [{ kind: "text", value: "מצאו את הכפולה שמספרה " }, { kind: "math", latex: "{b}" }, { kind: "text", value: " של " }, { kind: "math", latex: "{a}" }, { kind: "text", value: "." }]
+      : [{ kind: "text", value: "חשבו:" }, { kind: "math", latex: expr, display: true }],
     params: {
-      a: { type: "integer", min: factFamily ? recipe.min : reviewedBasicFacts && band === "B" ? 10 : recipe.min * scale, max: factFamily ? recipe.max : reviewedBasicFacts ? (band === "A" ? 10 : recipe.max) : recipe.max * scale, exclude: factFamily ? omittedFactValues : undefined },
-      ...(orderOfOperations || variableCoefficient ? { c: { type: "natural" as const, min: 2, max: 5 } } : {}),
-      b: { type: "natural", min: orderOfOperations ? 1 : factFamily ? factBandRange.min : reviewedBasicFacts && band === "B" ? 10 : band === "A" ? 1 : 4, max: factFamily ? factBandRange.max : orderOfOperations ? 3 : reviewedBasicFacts && band === "A" ? 10 : Math.max(2, recipe.max) },
+      a: { type: "integer", min: factFamily ? recipe.min : factorsAndMultiples ? multipleBandRange.min : reviewedBasicFacts && band === "B" ? 10 : recipe.min * scale, max: factFamily ? recipe.max : factorsAndMultiples ? multipleBandRange.max : reviewedBasicFacts ? (band === "A" ? 10 : recipe.max) : recipe.max * scale, exclude: factFamily ? omittedFactValues : undefined },
+      ...(orderOfOperations ? { c: { type: "natural" as const, min: 2, max: 5 } } : {}),
+      b: { type: "natural", min: factorsAndMultiples ? multipleBandRange.min : orderOfOperations ? 1 : factFamily ? factBandRange.min : reviewedBasicFacts && band === "B" ? 10 : band === "A" ? 1 : 4, max: factorsAndMultiples ? multipleBandRange.max : factFamily ? factBandRange.max : orderOfOperations ? 3 : reviewedBasicFacts && band === "A" ? 10 : Math.max(2, recipe.max) },
     },
     constraints,
     acceptedInputFormats: ["integer"], answerSemantics: { kind: "exact" }, structureKey: `${recipe.skillId}:${band}:${structure}`, variantGroup: recipe.skillId,
-    difficultyModel: () => ({ A: 0.12, B: 0.38, C: 0.65, D: 0.9 })[band], metadata: { source: "foundational-mvp", band, feature: structure, difficultyFeature: reviewedBasicFacts || factFamily ? "magnitude" : "mixed" }, tags: ["mvp", "short-item", `band:${band}`], version: 1,
+    difficultyModel: () => ({ A: 0.12, B: 0.38, C: 0.65, D: 0.9 })[band], metadata: { source: "foundational-mvp", band, feature: structure, difficultyFeature: reviewedBasicFacts || factFamily || factorsAndMultiples ? "magnitude" : "mixed" }, tags: ["mvp", "short-item", ...(factorsAndMultiples ? ["requires-rereview"] : []), `band:${band}`], version: factorsAndMultiples ? 2 : 1,
   };
 }
 
@@ -116,6 +119,10 @@ function sampledInteger(params: SampledParams, name: string): number {
   return Number(sampled.value.num);
 }
 
+function sampledWording(params: SampledParams, variants: readonly string[]): string {
+  return variants[sampledInteger(params, "wordingVariant") % variants.length]!;
+}
+
 type ChoiceSpec = { value: string; correct?: boolean; misconception: string };
 
 function generatedChoiceDraft(skillId: string, prompt: string | OptionContent[], specs: ChoiceSpec[], rotationKey: number, multi = false): GeneratedChoiceDraft {
@@ -154,6 +161,7 @@ function conceptualGenerator(input: {
   symbolicConditions?: string[];
   skillInvariant?: string;
   signPattern?: string;
+  version?: number;
 }): GeneratedQuestionDefinition & { skillId: string } {
   return {
     id: input.id,
@@ -177,7 +185,7 @@ function conceptualGenerator(input: {
     difficultyModel: () => ({ A: 0.12, B: 0.38, C: 0.65, D: 0.9 })[input.band],
     metadata: { source: "human-review-pass-2", band: input.band, feature: input.family, difficultyFeature: input.difficultyFeature ?? "structure", structuralStage: input.structuralStage, skillInvariant: input.skillInvariant ?? SIGNED_SKILL_INVARIANTS[input.skillId], signPattern: input.signPattern ?? (SIGNED_SKILL_INVARIANTS[input.skillId] ? input.family : undefined) },
     tags: ["mvp", "generated-concept", "requires-rereview", `band:${input.band}`],
-    version: 2,
+    version: input.version ?? 3,
   };
 }
 
@@ -188,7 +196,8 @@ const PLACE_VALUE_GENERATORS = ([
 ] as const).map((recipe) => conceptualGenerator({
   id: `MVP_AR_PLACE_VALUE_GEN_${recipe.band}`,
   skillId: "AR_PLACE_VALUE", family: recipe.family, category: recipe.category, band: recipe.band,
-  exprTemplate: recipe.expr, params: recipe.params, constraints: [...recipe.constraints], difficultyFeature: "magnitude",
+  exprTemplate: recipe.expr, params: recipe.params, constraints: [...recipe.constraints], difficultyFeature: "structure",
+  structuralStage: recipe.band === "A" ? "two-digit-place" : recipe.band === "B" ? "three-digit-place" : "four-digit-place",
   choiceBuilder: (params) => {
     const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b");
     const c = params.c ? sampledInteger(params, "c") : 0; const d = params.d ? sampledInteger(params, "d") : 0;
@@ -209,10 +218,18 @@ function basicFactConceptGenerators(skillId: "AR_ADD_FACTS" | "AR_SUB_FACTS"): A
     const common = { a: { type: "natural" as const, ...range }, b: { type: "natural" as const, ...range } };
     if (skillId === "AR_ADD_FACTS") return [
       conceptualGenerator({ id: `MVP_AR_ADD_FACTS_MISSING_${band}`, skillId, family: "missing-addend", category: "conceptual", band, exprTemplate: "{a}+{b}", params: common, constraints: ["a != b"], difficultyFeature: "magnitude", choiceBuilder: (params) => { const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); return generatedChoiceDraft(skillId, `איזה מספר חסר? [[${a} + □ = ${a + b}]]`, [{ value: `${b}`, correct: true, misconception: "inverse-operation" }, { value: `${a}`, misconception: "reuses-visible-value" }, { value: `${-b}`, misconception: "sign-confusion" }, { value: `${a + b}`, misconception: "uses-result-as-missing-value" }], a + b); } }),
-      conceptualGenerator({ id: `MVP_AR_ADD_FACTS_COMMUTE_${band}`, skillId, family: "commutative-equivalence", category: "reasoning", band, exprTemplate: "{a}+{b}={b}+{a}", params: common, constraints: ["a != b"], difficultyFeature: "magnitude", choiceBuilder: (params) => { const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); return generatedChoiceDraft(skillId, `איזה ביטוי שווה ל־[[${a} + ${b}]]?`, [{ value: `${b} + ${a}`, correct: true, misconception: "commutative-relationship" }, { value: `${a} - ${b}`, misconception: "confuses-operation-or-symbol" }, { value: `${b} - ${a}`, misconception: "reverses-logical-direction" }, { value: `${a} + ${a}`, misconception: "reuses-visible-value" }], a); } }),
+      conceptualGenerator({
+        id: `MVP_AR_ADD_FACTS_COMMUTE_${band}`, skillId, family: "commutative-equivalence", category: "reasoning", band, version: 3,
+        exprTemplate: band === "A" ? "{a}+{b}={b}+{a}" : "{a}+{b}=\\square+{a}", params: common, constraints: ["a != b"], difficultyFeature: "structure", structuralStage: band === "A" ? "recognize-commuted-expression" : "complete-commuted-equality",
+        choiceBuilder: (params) => {
+          const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); const total = a + b;
+          if (band === "A") return generatedChoiceDraft(skillId, `איזה ביטוי שווה ל־[[${a} + ${b}]]?`, [{ value: `${b} + ${a}`, correct: true, misconception: "commutative-relationship" }, { value: `${a} - ${b}`, misconception: "confuses-operation-or-symbol" }, { value: `${b} - ${a}`, misconception: "reverses-logical-direction" }, { value: `${a} + ${a}`, misconception: "reuses-visible-value" }], a);
+          return generatedChoiceDraft(skillId, `איזה מספר משלים את השוויון [[${a} + ${b} = □ + ${a}]]?`, [{ value: `${b}`, correct: true, misconception: "commutative-relationship" }, { value: `${a}`, misconception: "reuses-visible-value" }, { value: `${total}`, misconception: "uses-result-as-missing-value" }, { value: `${-b}`, misconception: "sign-confusion" }], total);
+        },
+      }),
     ];
     return [
-      conceptualGenerator({ id: `MVP_AR_SUB_FACTS_REMOVE_${band}`, skillId, family: "subtraction-as-removal", category: "conceptual", band, exprTemplate: "{a}+{b}-{b}", params: common, difficultyFeature: "magnitude", choiceBuilder: (params) => { const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); const total = a + b; return generatedChoiceDraft(skillId, `היו ${total} פריטים והוציאו ${b}. כמה נשארו?`, [{ value: `${a}`, correct: true, misconception: "subtraction-as-removal" }, { value: `${-a}`, misconception: "sign-confusion" }, { value: `${total}`, misconception: "ignores-operation" }, { value: `${total + 1}`, misconception: "off-by-one-generalization" }], total); } }),
+      conceptualGenerator({ id: `MVP_AR_SUB_FACTS_REMOVE_${band}`, skillId, family: "subtraction-as-removal", category: "conceptual", band, exprTemplate: "{a}+{b}-{b}", params: common, difficultyFeature: "magnitude", choiceBuilder: (params) => { const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); const total = a + b; return generatedChoiceDraft(skillId, `היו [[${total}]] פריטים והוציאו [[${b}]]. כמה נשארו?`, [{ value: `${a}`, correct: true, misconception: "subtraction-as-removal" }, { value: `${-a}`, misconception: "sign-confusion" }, { value: `${total}`, misconception: "ignores-operation" }, { value: `${total + 1}`, misconception: "off-by-one-generalization" }], total); } }),
       conceptualGenerator({ id: `MVP_AR_SUB_FACTS_INVERSE_${band}`, skillId, family: "inverse-addition-check", category: "reasoning", band, exprTemplate: "({a}+{b})-{b}={a}", params: common, constraints: ["a != b"], difficultyFeature: "magnitude", choiceBuilder: (params) => { const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); const total = a + b; return generatedChoiceDraft(skillId, `באיזה תרגיל חיבור אפשר לבדוק ש־[[${total} - ${b} = ${a}]]?`, [{ value: `${a} + ${b} = ${total}`, correct: true, misconception: "inverse-operation" }, { value: `${total} + ${b} = ${a}`, misconception: "reverses-logical-direction" }, { value: `${a} + ${total} = ${b}`, misconception: "reorders-roles" }, { value: `${total} - ${a} = ${b}`, misconception: "uses-same-operation" }], total + b); } }),
     ];
   });
@@ -226,11 +243,11 @@ const FACT_CONTEXT_GENERATORS = Object.entries(factFamilies).flatMap(([skillId, 
     const params: ParamsSpec = { a: { type: "integer", min: Math.min(...values), max: Math.max(...values), exclude: omitted }, b: { type: "natural", ...bRange } };
     if (isMultiplication) return [conceptualGenerator({
       id: `MVP_${skillId}_CONTEXT_${band}`, skillId, family: "concrete-equal-groups", category: band === "A" ? "conceptual" : "reasoning", band, exprTemplate: "{a}*{b}", params, constraints: ["a != 2 || b != 2"], difficultyFeature: "magnitude",
-      choiceBuilder: (sampled) => { const a = sampledInteger(sampled, "a"); const b = sampledInteger(sampled, "b"); const product = a * b; const contexts = [["שקיות", "שקית", "כדורים"], ["קופסאות", "קופסה", "פריטים"], ["מדפים", "מדף", "ספרים"]] as const; const [groups, group, items] = contexts[(a + b) % contexts.length]!; return generatedChoiceDraft(skillId, `יש ${a} ${groups}, ובכל ${group} ${b} ${items}. איזה תרגיל מתאים למציאת המספר הכולל?`, [{ value: `${a} × ${b}`, correct: true, misconception: "equal-groups-product" }, { value: `${a} + ${b}`, misconception: "uses-addition-for-equal-groups" }, { value: `${product} ÷ ${a}`, misconception: "uses-inverse-operation" }, { value: `${product} - ${b}`, misconception: "confuses-operation-or-symbol" }], product); },
+      choiceBuilder: (sampled) => { const a = sampledInteger(sampled, "a"); const b = sampledInteger(sampled, "b"); const product = a * b; const contexts = [["שקיות", "שקית", "כדורים"], ["קופסאות", "קופסה", "פריטים"], ["מדפים", "מדף", "ספרים"]] as const; const [groups, group, items] = contexts[(a + b) % contexts.length]!; return generatedChoiceDraft(skillId, `יש [[${a}]] ${groups}, ובכל ${group} [[${b}]] ${items}. איזה תרגיל מתאים למציאת המספר הכולל?`, [{ value: `${a} × ${b}`, correct: true, misconception: "equal-groups-product" }, { value: `${a} + ${b}`, misconception: "uses-addition-for-equal-groups" }, { value: `${product} ÷ ${a}`, misconception: "uses-inverse-operation" }, { value: `${product} - ${b}`, misconception: "confuses-operation-or-symbol" }], product); },
     })];
     return ["equal-sharing", "grouping"].map((meaning) => conceptualGenerator({
       id: `MVP_${skillId}_${meaning === "equal-sharing" ? "SHARING" : "GROUPING"}_${band}`, skillId, family: meaning, category: meaning === "equal-sharing" ? "conceptual" : "reasoning", band, exprTemplate: "({a}*{b})/{a}", params, constraints: ["a != b"], difficultyFeature: "magnitude",
-      choiceBuilder: (sampled) => { const a = sampledInteger(sampled, "a"); const b = sampledInteger(sampled, "b"); const product = a * b; const prompt = meaning === "equal-sharing" ? `${product} כדורים מחלקים שווה בשווה בין ${a} ילדים. כמה יקבל כל ילד?` : `יש ${product} כדורים. מכניסים ${a} כדורים בכל שקית. לכמה שקיות הם יספיקו?`; return generatedChoiceDraft(skillId, prompt, [{ value: `${b}`, correct: true, misconception: meaning }, { value: `${a}`, misconception: "reverses-divisor-and-quotient" }, { value: `${product}`, misconception: "uses-dividend-as-answer" }, { value: `${product - a}`, misconception: "subtracts-once" }], product + (meaning === "equal-sharing" ? 0 : 1)); },
+      choiceBuilder: (sampled) => { const a = sampledInteger(sampled, "a"); const b = sampledInteger(sampled, "b"); const product = a * b; const prompt = meaning === "equal-sharing" ? `[[${product}]] כדורים מחלקים שווה בשווה בין [[${a}]] ילדים. כמה יקבל כל ילד?` : `יש [[${product}]] כדורים. מכניסים [[${a}]] כדורים בכל שקית. לכמה שקיות הם יספיקו?`; return generatedChoiceDraft(skillId, prompt, [{ value: `${b}`, correct: true, misconception: meaning }, { value: `${a}`, misconception: "reverses-divisor-and-quotient" }, { value: `${product}`, misconception: "uses-dividend-as-answer" }, { value: `${product - a}`, misconception: "subtracts-once" }], product + (meaning === "equal-sharing" ? 0 : 1)); },
     }));
   });
 });
@@ -243,12 +260,12 @@ const FACTORS_MULTIPLES_GENERATORS = (["A", "B", "C"] as DifficultyBand[]).map((
 
 const NUMBER_LINE_GENERATORS = (["A", "B", "C"] as DifficultyBand[]).map((band, index) => {
   const ranges = [{ min: 1, max: 6 }, { min: 7, max: 15 }, { min: 16, max: 30 }]; const range = ranges[index]!;
-  return conceptualGenerator({ id: `MVP_INT_NUMBER_LINE_LEFT_${band}`, skillId: "INT_NUMBER_LINE", family: "left-of-zero", category: index % 2 ? "conceptual" : "representation", band, exprTemplate: "-{n}", params: { context: { type: "integer", min: 0, max: 2 }, n: { type: "natural", ...range } }, difficultyFeature: "magnitude", choiceBuilder: (params) => { const n = sampledInteger(params, "n"); return generatedChoiceDraft("INT_NUMBER_LINE", `איזה מספר נמצא ${n} צעדים משמאל לאפס על ציר המספרים?`, [{ value: `${-n}`, correct: true, misconception: "left-is-negative" }, { value: `${n}`, misconception: "reverses-representation" }, { value: "0", misconception: "uses-origin" }, { value: `${-(n + 1)}`, misconception: "off-by-one-generalization" }], n); } });
+  return conceptualGenerator({ id: `MVP_INT_NUMBER_LINE_LEFT_${band}`, skillId: "INT_NUMBER_LINE", family: "left-of-zero", category: index % 2 ? "conceptual" : "representation", band, exprTemplate: "-{n}", params: { context: { type: "integer", min: 0, max: 2 }, n: { type: "natural", ...range } }, difficultyFeature: "magnitude", choiceBuilder: (params) => { const n = sampledInteger(params, "n"); return generatedChoiceDraft("INT_NUMBER_LINE", `איזה מספר נמצא [[${n}]] צעדים משמאל לאפס על ציר המספרים?`, [{ value: `${-n}`, correct: true, misconception: "left-is-negative" }, { value: `${n}`, misconception: "reverses-representation" }, { value: "0", misconception: "uses-origin" }, { value: `${-(n + 1)}`, misconception: "off-by-one-generalization" }], n); } });
 });
 
 const FRACTION_MEANING_GENERATORS = (["A", "B", "C"] as DifficultyBand[]).map((band, index) => {
   const max = [6, 10, 16][index]!;
-  return conceptualGenerator({ id: `MVP_FRAC_MEANING_PARTS_${band}`, skillId: "FRAC_MEANING", family: "selected-equal-parts", category: index % 2 ? "conceptual" : "representation", band, exprTemplate: "{b}/{a}", params: { a: { type: "natural", min: 3 + index * 2, max }, b: { type: "natural", min: 1, max: max - 1 } }, constraints: ["b < a"], difficultyFeature: "magnitude", choiceBuilder: (params) => { const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); const contexts = [["שלם", "חולק"], ["מלבן", "חולק"], ["עוגה", "חולקה"]] as const; const [context, verb] = contexts[(a + b) % contexts.length]!; return generatedChoiceDraft("FRAC_MEANING", `${context} ${verb} ל־${a} חלקים שווים ונבחרו ${b} חלקים. איזה שבר מתאר את החלק שנבחר?`, [{ value: `${b}/${a}`, correct: true, misconception: "part-over-whole" }, { value: `${a}/${b}`, misconception: "reverses-representation" }, { value: `${b}/${a + 1}`, misconception: "changes-whole-size" }, { value: `${b + 1}/${a}`, misconception: "off-by-one-generalization" }], a + b); } });
+  return conceptualGenerator({ id: `MVP_FRAC_MEANING_PARTS_${band}`, skillId: "FRAC_MEANING", family: "selected-equal-parts", category: index % 2 ? "conceptual" : "representation", band, exprTemplate: "{b}/{a}", params: { a: { type: "natural", min: [3, 6, 10][index]!, max }, b: { type: "natural", min: 1, max: max - 1 } }, constraints: ["b < a"], difficultyFeature: "magnitude", choiceBuilder: (params) => { const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); const contexts = [["שלם", "חולק"], ["מלבן", "חולק"], ["עוגה", "חולקה"]] as const; const [context, verb] = contexts[(a + b) % contexts.length]!; return generatedChoiceDraft("FRAC_MEANING", `${context} ${verb} ל־[[${a}]] חלקים שווים ונבחרו [[${b}]] חלקים. איזה שבר מתאר את החלק שנבחר?`, [{ value: `${b}/${a}`, correct: true, misconception: "part-over-whole" }, { value: `${a}/${b}`, misconception: "reverses-representation" }, { value: `${b}/${a + 1}`, misconception: "changes-whole-size" }, { value: `${b + 1}/${a}`, misconception: "off-by-one-generalization" }], a + b); } });
 });
 
 const FRACTION_EQUIVALENCE_GENERATORS = (["A", "B", "C"] as DifficultyBand[]).flatMap((band, index) => {
@@ -259,8 +276,23 @@ const FRACTION_EQUIVALENCE_GENERATORS = (["A", "B", "C"] as DifficultyBand[]).fl
   ];
 });
 
-const ORDER_OF_OPERATIONS_GENERATORS = (["A", "B", "C"] as DifficultyBand[]).map((band, index) => conceptualGenerator({
-  id: `MVP_OPS_ORDER_BASIC_FIRST_${band}`, skillId: "OPS_ORDER_BASIC", family: "identify-first-operation", category: index % 2 ? "reasoning" : "conceptual", band, exprTemplate: "{a}+{b}*{c}", params: { a: { type: "natural", min: [2, 9, 17][index]!, max: [8, 16, 26][index]! }, b: { type: "natural", min: 2, max: 8 }, c: { type: "natural", min: 2, max: 6 } }, difficultyFeature: "magnitude", choiceBuilder: (params) => { const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); const c = sampledInteger(params, "c"); return generatedChoiceDraft("OPS_ORDER_BASIC", `איזו פעולה מבצעים קודם בתרגיל [[${a} + ${b} × ${c}]]?`, [{ value: "כפל", correct: true, misconception: "multiplication-before-addition" }, { value: "חיבור", misconception: "works-left-to-right" }, { value: "את שתי הפעולות יחד", misconception: "no-operation-order" }, { value: "אי אפשר לדעת", misconception: "requires-parentheses" }], a + b + c); } }));
+const ORDER_OF_OPERATIONS_GENERATORS = (["A", "B", "C"] as DifficultyBand[]).map((band) => conceptualGenerator({
+  id: `MVP_OPS_ORDER_BASIC_FIRST_${band}`, skillId: "OPS_ORDER_BASIC", family: "identify-first-operation",
+  category: band === "A" ? "conceptual" : "reasoning", band, version: 3,
+  exprTemplate: band === "A" ? "{a}+{b}*{c}" : band === "B" ? "{a}+{b}*{c}-{d}" : "({a}+{b})*{c}",
+  params: {
+    a: { type: "natural", min: 2, max: 12 }, b: { type: "natural", min: 2, max: 8 }, c: { type: "natural", min: 2, max: 6 },
+    ...(band === "B" ? { d: { type: "natural" as const, min: 2, max: 9 } } : {}),
+  },
+  difficultyFeature: "structure", structuralStage: band === "A" ? "two-operations" : band === "B" ? "three-operations" : "parenthesized-priority",
+  choiceBuilder: (params) => {
+    const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); const c = sampledInteger(params, "c");
+    const d = params.d ? sampledInteger(params, "d") : 0;
+    const expression = band === "A" ? `${a} + ${b} × ${c}` : band === "B" ? `${a} + ${b} × ${c} − ${d}` : `(${a} + ${b}) × ${c}`;
+    const correct = band === "C" ? "החיבור שבסוגריים" : "כפל";
+    return generatedChoiceDraft("OPS_ORDER_BASIC", `איזו פעולה מבצעים קודם בתרגיל [[${expression}]]?`, [{ value: correct, correct: true, misconception: band === "C" ? "parentheses-before-multiplication" : "multiplication-before-addition" }, { value: band === "C" ? "כפל" : "החיבור השמאלי", misconception: band === "C" ? "ignores-parentheses" : "works-left-to-right" }, { value: "את כל הפעולות יחד", misconception: "no-operation-order" }, { value: "אי אפשר לדעת", misconception: "requires-more-marking" }], a + b + c + d);
+  },
+}));
 
 const REVIEWED_CONCEPT_GENERATORS: Array<GeneratedQuestionDefinition & { skillId: string }> = [
   ...PLACE_VALUE_GENERATORS,
@@ -301,27 +333,133 @@ function misconceptionRationale(id: string): string {
 
 const GLOBAL_BANDS: DifficultyBand[] = ["A", "B", "C"];
 const globalBandRange = (band: DifficultyBand) => band === "A" ? { min: 2, max: 6 } : band === "B" ? { min: 7, max: 15 } : { min: 16, max: 30 };
-const globalCategory = (band: DifficultyBand): QuestionCategory => band === "A" ? "conceptual" : "reasoning";
+
+const SIGNED_CONCEPT_GENERATORS: Array<GeneratedQuestionDefinition & { skillId: string }> = [
+  ...GLOBAL_BANDS.map((band) => {
+    const range = globalBandRange(band);
+    const pairParams: ParamsSpec = { a: { type: "natural", ...range }, b: { type: "natural", ...range } };
+    const singleParams: ParamsSpec = { wordingVariant: { type: "integer", min: 0, max: 2 }, n: { type: "natural", ...range } };
+    if (band === "A") return conceptualGenerator({
+      id: "MVP_INT_COMPARE_SIGNED_A", skillId: "INT_COMPARE", family: "signed-comparison", category: "conceptual", band,
+      exprTemplate: "-{n}<0", params: singleParams, difficultyFeature: "structure", structuralStage: "negative-versus-zero", signPattern: "negative compared with zero", version: 3,
+      choiceBuilder: (params) => { const n = sampledInteger(params, "n"); const prompt = sampledWording(params, [`השוו בין [[${-n}]] לבין [[0]].`, `בחרו את סימן ההשוואה המתאים בין [[${-n}]] לבין [[0]].`, `איזה יחס נכון בין [[${-n}]] לבין [[0]]?`]); return generatedChoiceDraft("INT_COMPARE", prompt, [{ value: "<", correct: true, misconception: "negative-is-less-than-zero" }, { value: ">", misconception: "larger-absolute-value-is-greater" }, { value: "=", misconception: "ignores-sign" }, { value: "אי אפשר לדעת", misconception: "avoids-signed-comparison" }], n); },
+    });
+    if (band === "B") return conceptualGenerator({
+      id: "MVP_INT_COMPARE_SIGNED_B", skillId: "INT_COMPARE", family: "signed-comparison", category: "reasoning", band,
+      exprTemplate: "-{n}>-({n}+1)", params: singleParams, difficultyFeature: "structure", structuralStage: "adjacent-negatives", signPattern: "two adjacent negative values", version: 3,
+      choiceBuilder: (params) => { const n = sampledInteger(params, "n"); const prompt = sampledWording(params, [`השוו בין [[${-n}]] לבין [[${-(n + 1)}]].`, `בחרו את סימן ההשוואה המתאים בין [[${-n}]] לבין [[${-(n + 1)}]].`, `איזה יחס נכון בין [[${-n}]] לבין [[${-(n + 1)}]]?`]); return generatedChoiceDraft("INT_COMPARE", prompt, [{ value: ">", correct: true, misconception: "closer-to-zero-is-greater" }, { value: "<", misconception: "larger-absolute-value-is-greater" }, { value: "=", misconception: "ignores-unit-difference" }, { value: "אי אפשר לדעת", misconception: "avoids-signed-comparison" }], n); },
+    });
+    return conceptualGenerator({
+      id: "MVP_INT_COMPARE_SIGNED_C", skillId: "INT_COMPARE", family: "signed-comparison", category: "reasoning", band,
+      exprTemplate: "-{a}>-{b}", params: pairParams, constraints: ["a < b"], difficultyFeature: "structure", structuralStage: "independent-negative-magnitudes", signPattern: "two non-adjacent negative values", version: 3,
+      choiceBuilder: (params) => { const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); return generatedChoiceDraft("INT_COMPARE", `השוו בין [[${-a}]] לבין [[${-b}]].`, [{ value: ">", correct: true, misconception: "closer-to-zero-is-greater" }, { value: "<", misconception: "larger-absolute-value-is-greater" }, { value: "=", misconception: "ignores-magnitude-difference" }, { value: "אי אפשר לדעת", misconception: "avoids-signed-comparison" }], a + b); },
+    });
+  }),
+  conceptualGenerator({
+    id: "MVP_INT_NEGATION_POSITIVE_A", skillId: "INT_NEGATION", family: "opposite-number-structure", category: "conceptual", band: "A",
+    exprTemplate: "-({n})", params: { wordingVariant: { type: "integer", min: 0, max: 2 }, n: { type: "natural", min: 2, max: 15 } }, difficultyFeature: "structure", structuralStage: "opposite-of-positive", signPattern: "opposite of positive", version: 3,
+    choiceBuilder: (params) => { const n = sampledInteger(params, "n"); const prompt = sampledWording(params, [`מהו המספר הנגדי של [[${n}]]?`, `בחרו את המספר הנגדי ל־[[${n}]].`, `איזה מספר נמצא במרחק שווה מאפס ובצד הנגדי ל־[[${n}]]?`]); return generatedChoiceDraft("INT_NEGATION", prompt, [{ value: `${-n}`, correct: true, misconception: "changes-sign" }, { value: `${n}`, misconception: "keeps-original-sign" }, { value: "0", misconception: "confuses-opposite-with-zero" }, { value: `${-(n + 1)}`, misconception: "off-by-one-generalization" }], n); },
+  }),
+  conceptualGenerator({
+    id: "MVP_INT_NEGATION_NEGATIVE_B", skillId: "INT_NEGATION", family: "opposite-number-structure", category: "reasoning", band: "B",
+    exprTemplate: "-(-{n})", params: { wordingVariant: { type: "integer", min: 0, max: 2 }, n: { type: "natural", min: 2, max: 15 } }, difficultyFeature: "structure", structuralStage: "opposite-of-negative", signPattern: "opposite of negative", version: 3,
+    choiceBuilder: (params) => { const n = sampledInteger(params, "n"); const prompt = sampledWording(params, [`מהו המספר הנגדי של [[${-n}]]?`, `בחרו את המספר הנגדי ל־[[${-n}]].`, `איזה מספר נמצא במרחק שווה מאפס ובצד הנגדי ל־[[${-n}]]?`]); return generatedChoiceDraft("INT_NEGATION", prompt, [{ value: `${n}`, correct: true, misconception: "changes-sign" }, { value: `${-n}`, misconception: "keeps-original-sign" }, { value: "0", misconception: "confuses-opposite-with-zero" }, { value: `${n + 1}`, misconception: "off-by-one-generalization" }], n); },
+  }),
+  conceptualGenerator({
+    id: "MVP_INT_ADD_OPPOSITES_A", skillId: "INT_ADD", family: "opposites-result-zero", category: "conceptual", band: "A",
+    exprTemplate: "(-{n})+{n}", params: { wordingVariant: { type: "integer", min: 0, max: 2 }, n: { type: "natural", min: 2, max: 20 } }, difficultyFeature: "structure", structuralStage: "additive-opposites", signPattern: "opposites; result zero", version: 3,
+    choiceBuilder: (params) => { const n = sampledInteger(params, "n"); const prompt = sampledWording(params, [`מה התוצאה של [[(−${n}) + ${n}]]?`, `חשבו את סכום המספרים הנגדיים [[(−${n}) + ${n}]].`, `איזה ערך מתקבל בביטוי [[(−${n}) + ${n}]]?`]); return generatedChoiceDraft("INT_ADD", prompt, [{ value: "0", correct: true, misconception: "opposites-sum-to-zero" }, { value: `${n}`, misconception: "ignores-negative-addend" }, { value: `${-n}`, misconception: "follows-first-sign" }, { value: `${2 * n}`, misconception: "adds-absolute-values" }], n); },
+  }),
+  conceptualGenerator({
+    id: "MVP_INT_SUB_NEGATIVE_REWRITE_A", skillId: "INT_SUB", family: "subtract-negative-as-addition", category: "conceptual", band: "A",
+    exprTemplate: "{a}-(-{b})={a}+{b}", params: { a: { type: "natural", min: 2, max: 15 }, b: { type: "natural", min: 2, max: 15 } }, constraints: ["a != b"], difficultyFeature: "structure", structuralStage: "rewrite-subtracted-negative", signPattern: "positive-negative operand", version: 3,
+    choiceBuilder: (params) => { const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); return generatedChoiceDraft("INT_SUB", `איזה ביטוי שווה ל־[[${a} − (−${b})]]?`, [{ value: `${a} + ${b}`, correct: true, misconception: "subtracting-negative-becomes-addition" }, { value: `${a} - ${b}`, misconception: "drops-parenthesized-sign" }, { value: `−${a} - ${b}`, misconception: "negates-minuend" }, { value: `${b} - ${a}`, misconception: "reverses-subtraction" }], a + b); },
+  }),
+  ...(["A", "B"] as DifficultyBand[]).flatMap((band) => {
+    const range = band === "A" ? { min: 2, max: 12 } : { min: 13, max: 30 };
+    const params: ParamsSpec = { a: { type: "natural", ...range }, b: { type: "natural", ...range } };
+    const twoNegatives = band === "B";
+    return [
+      conceptualGenerator({
+        id: `MVP_INT_MUL_SIGN_${band}`, skillId: "INT_MUL", family: "multiplication-sign-rules", category: band === "A" ? "conceptual" : "reasoning", band,
+        exprTemplate: twoNegatives ? "(-{a})*(-{b})" : "(-{a})*{b}", params, difficultyFeature: "structure", structuralStage: twoNegatives ? "two-negative-factors" : "one-negative-factor", signPattern: twoNegatives ? "negative×negative" : "negative×positive", version: 3,
+        choiceBuilder: (sampled) => { const a = sampledInteger(sampled, "a"); const b = sampledInteger(sampled, "b"); const expression = twoNegatives ? `(−${a}) × (−${b})` : `(−${a}) × ${b}`; return generatedChoiceDraft("INT_MUL", `מה הסימן של [[${expression}]]?`, [{ value: twoNegatives ? "חיובי" : "שלילי", correct: true, misconception: twoNegatives ? "two-negative-signs" : "one-negative-factor" }, { value: twoNegatives ? "שלילי" : "חיובי", misconception: "uses-wrong-sign-rule" }, { value: "אפס", misconception: "confuses-sign-with-zero" }, { value: "אי אפשר לדעת", misconception: "avoids-sign-rule" }], a + b); },
+      }),
+      conceptualGenerator({
+        id: `MVP_INT_DIV_SIGN_${band}`, skillId: "INT_DIV", family: "division-sign-rules", category: band === "A" ? "conceptual" : "reasoning", band,
+        exprTemplate: twoNegatives ? "(-({a}*{b}))/(-{a})" : "(-({a}*{b}))/{a}", params, difficultyFeature: "structure", structuralStage: twoNegatives ? "two-negative-operands" : "one-negative-operand", signPattern: twoNegatives ? "negative÷negative" : "negative÷positive", version: 3,
+        choiceBuilder: (sampled) => { const a = sampledInteger(sampled, "a"); const b = sampledInteger(sampled, "b"); const expression = twoNegatives ? `(−${a * b}) ÷ (−${a})` : `(−${a * b}) ÷ ${a}`; return generatedChoiceDraft("INT_DIV", `מה הסימן של [[${expression}]]?`, [{ value: twoNegatives ? "חיובי" : "שלילי", correct: true, misconception: twoNegatives ? "two-negative-signs" : "one-negative-operand" }, { value: twoNegatives ? "שלילי" : "חיובי", misconception: "uses-wrong-sign-rule" }, { value: "אפס", misconception: "confuses-sign-with-zero" }, { value: "אי אפשר לדעת", misconception: "avoids-sign-rule" }], a + b); },
+      }),
+    ];
+  }),
+];
 
 const GLOBAL_AUTHORING_GENERATORS = GLOBAL_BANDS.flatMap((band) => {
-  const range = globalBandRange(band);
-  const pairParams: ParamsSpec = { a: { type: "natural", ...range }, b: { type: "natural", ...range } };
-  const singleParams: ParamsSpec = { context: { type: "integer", min: 0, max: 2 }, n: { type: "natural", ...range } };
   const algebraPairParams: ParamsSpec = { a: { type: "natural", min: 2, max: 12 }, b: { type: "natural", min: 2, max: 12 } };
   const algebraSingleParams: ParamsSpec = { n: { type: "natural", min: 2, max: 12 } };
-  const category = globalCategory(band);
   return [
-    conceptualGenerator({ id: `MVP_INT_COMPARE_ADJACENT_NEGATIVES_${band}`, skillId: "INT_COMPARE", family: "compare-adjacent-negatives", category, band, exprTemplate: "-{n}>-({n}+1)", params: singleParams, difficultyFeature: "magnitude", choiceBuilder: (params) => { const n = sampledInteger(params, "n"); return generatedChoiceDraft("INT_COMPARE", `השוו בין [[${-n}]] לבין [[${-(n + 1)}]].`, [{ value: ">", correct: true, misconception: "closer-to-zero-is-greater" }, { value: "<", misconception: "larger-absolute-value-is-greater" }, { value: "=", misconception: "ignores-unit-difference" }, { value: "אי אפשר לדעת", misconception: "avoids-signed-comparison" }], n); } }),
-    ...([1, -1] as const).map((sign) => conceptualGenerator({ id: `MVP_INT_NEGATION_${sign === 1 ? "POSITIVE" : "NEGATIVE"}_${band}`, skillId: "INT_NEGATION", family: sign === 1 ? "opposite-of-positive" : "opposite-of-negative", category, band, exprTemplate: sign === 1 ? "-({n})" : "-(-{n})", params: singleParams, difficultyFeature: "magnitude", choiceBuilder: (params) => { const n = sampledInteger(params, "n"); const shown = sign * n; return generatedChoiceDraft("INT_NEGATION", `מהו המספר הנגדי של [[${shown}]]?`, [{ value: `${-shown}`, correct: true, misconception: "changes-sign" }, { value: `${shown}`, misconception: "keeps-original-sign" }, { value: "0", misconception: "confuses-opposite-with-zero" }, { value: `${-shown + sign}`, misconception: "off-by-one-generalization" }], n + sign); } })),
-    conceptualGenerator({ id: `MVP_INT_ADD_OPPOSITES_${band}`, skillId: "INT_ADD", family: "opposites-result-zero", category, band, exprTemplate: "(-{n})+{n}", params: singleParams, difficultyFeature: "magnitude", signPattern: "opposites; result zero", choiceBuilder: (params) => { const n = sampledInteger(params, "n"); return generatedChoiceDraft("INT_ADD", `מה התוצאה של [[(−${n}) + ${n}]]?`, [{ value: "0", correct: true, misconception: "opposites-sum-to-zero" }, { value: `${n}`, misconception: "ignores-negative-addend" }, { value: `${-n}`, misconception: "follows-first-sign" }, { value: `${2 * n}`, misconception: "adds-absolute-values" }], n); } }),
-    conceptualGenerator({ id: `MVP_INT_SUB_NEGATIVE_REWRITE_${band}`, skillId: "INT_SUB", family: "subtract-negative-as-addition", category, band, exprTemplate: "{a}-(-{b})={a}+{b}", params: pairParams, constraints: ["a != b"], difficultyFeature: "magnitude", choiceBuilder: (params) => { const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); return generatedChoiceDraft("INT_SUB", `איזה ביטוי שווה ל־[[${a} − (−${b})]]?`, [{ value: `${a} + ${b}`, correct: true, misconception: "subtracting-negative-becomes-addition" }, { value: `${a} - ${b}`, misconception: "drops-parenthesized-sign" }, { value: `−${a} - ${b}`, misconception: "negates-minuend" }, { value: `${b} - ${a}`, misconception: "reverses-subtraction" }], a + b); } }),
-    conceptualGenerator({ id: `MVP_INT_MUL_SIGN_${band}`, skillId: "INT_MUL", family: "negative-times-positive-sign", category, band, exprTemplate: "(-{a})*{b}", params: pairParams, difficultyFeature: "magnitude", choiceBuilder: (params) => { const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); return generatedChoiceDraft("INT_MUL", `מה הסימן של [[(−${a}) × ${b}]]?`, [{ value: "שלילי", correct: true, misconception: "one-negative-factor" }, { value: "חיובי", misconception: "ignores-negative-factor" }, { value: "אפס", misconception: "confuses-sign-with-zero" }, { value: "אי אפשר לדעת", misconception: "avoids-sign-rule" }], a + b); } }),
-    conceptualGenerator({ id: `MVP_INT_DIV_SIGN_${band}`, skillId: "INT_DIV", family: "negative-divided-by-negative-sign", category, band, exprTemplate: "(-({a}*{b}))/(-{a})", params: pairParams, constraints: ["a != b"], difficultyFeature: "magnitude", choiceBuilder: (params) => { const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); return generatedChoiceDraft("INT_DIV", `מה הסימן של [[(−${a * b}) ÷ (−${a})]]?`, [{ value: "חיובי", correct: true, misconception: "two-negative-signs" }, { value: "שלילי", misconception: "keeps-one-negative-sign" }, { value: "אפס", misconception: "confuses-sign-with-zero" }, { value: "אי אפשר לדעת", misconception: "avoids-sign-rule" }], a + b); } }),
     conceptualGenerator({ id: `MVP_ALG_EQUALITY_${band}`, skillId: "ALG_EQUALITY", family: "equality-abstraction", category: band === "A" ? "conceptual" : "reasoning", band, exprTemplate: band === "A" ? "{a}+{b}={b}+{a}" : band === "B" ? "x+{n}={n}+x" : "(x+y)+{n}=x+(y+{n})", params: band === "A" ? algebraPairParams : algebraSingleParams, constraints: band === "A" ? ["a != b"] : undefined, difficultyFeature: "structure", structuralStage: band === "A" ? "numeric" : band === "B" ? "one-symbol" : "multiple-symbols", studentFacingSymbols: band === "A" ? [] : band === "B" ? ["x"] : ["x", "y"], choiceBuilder: (params) => { const n = band === "A" ? 0 : sampledInteger(params, "n"); const a = band === "A" ? sampledInteger(params, "a") : 0; const b = band === "A" ? sampledInteger(params, "b") : 0; const specs: ChoiceSpec[] = band === "A" ? [{ value: `${a} + ${b} = ${b} + ${a}`, correct: true, misconception: "commutative-equality" }, { value: `${a} + ${b} = ${a + b + 1}`, misconception: "accepts-near-result" }, { value: `${a} - ${b} = ${b} - ${a}`, misconception: "overgeneralizes-commutativity" }, { value: `${a} + 0 = 0`, misconception: "misuses-additive-identity" }] : band === "B" ? [{ value: `x + ${n} = ${n} + x`, correct: true, misconception: "commutative-equality" }, { value: `x + ${n} = x`, misconception: "ignores-added-value" }, { value: `x - ${n} = ${n} - x`, misconception: "overgeneralizes-commutativity" }, { value: `x + 0 = 0`, misconception: "misuses-additive-identity" }] : [{ value: `(x + y) + ${n} = x + (y + ${n})`, correct: true, misconception: "associative-equality" }, { value: `(x + y) + ${n} = x + y`, misconception: "ignores-added-value" }, { value: `(x - y) + ${n} = x - (y + ${n})`, misconception: "overgeneralizes-associativity" }, { value: `x + y + ${n} = ${n}`, misconception: "uses-irrelevant-value" }]; return generatedChoiceDraft("ALG_EQUALITY", band === "A" ? "איזה משפט שוויון נכון?" : "איזה משפט שוויון נכון לכל ערך של המשתנים?", specs, a + b + n); } }),
     conceptualGenerator({ id: `MVP_ALG_VARIABLE_${band}`, skillId: "ALG_VARIABLE", family: "variable-concepts", category: band === "A" ? "conceptual" : "reasoning", band, exprTemplate: band === "C" ? "{n}x+1" : "{n}x", params: algebraSingleParams, difficultyFeature: "structure", structuralStage: band === "A" ? "identify-variable" : band === "B" ? "identify-coefficient" : "reason-about-variable-effect", studentFacingSymbols: ["x"], choiceBuilder: (params) => { const n = sampledInteger(params, "n"); if (band === "A") return generatedChoiceDraft("ALG_VARIABLE", `בביטוי [[${n}x]], מה תפקידה של [[x]]?`, [{ value: "משתנה שמייצג מספר", correct: true, misconception: "variable-can-vary" }, { value: "סימן כפל בלבד", misconception: "reads-variable-as-operation" }, { value: `המספר [[${n}]]`, misconception: "confuses-variable-with-coefficient" }, { value: "סימן שוויון", misconception: "confuses-algebraic-symbols" }], n); if (band === "B") return generatedChoiceDraft("ALG_VARIABLE", `בביטוי [[${n}x]], מהו המקדם של [[x]]?`, [{ value: `${n}`, correct: true, misconception: "identifies-coefficient" }, { value: "x", misconception: "confuses-variable-with-coefficient" }, { value: "1", misconception: "assumes-unit-coefficient" }, { value: `${n + 1}`, misconception: "off-by-one-generalization" }], n); return generatedChoiceDraft("ALG_VARIABLE", `בביטוי [[${n}x + 1]], מה עשוי להשתנות כאשר הערך של [[x]] משתנה?`, [{ value: "ערך הביטוי", correct: true, misconception: "variable-affects-expression" }, { value: `המקדם [[${n}]]`, misconception: "changes-coefficient" }, { value: "סימן החיבור", misconception: "changes-operation" }, { value: "המספר הקבוע", misconception: "changes-constant" }], n); } }),
-    conceptualGenerator({ id: `MVP_ALG_SUBSTITUTE_${band}`, skillId: "ALG_SUBSTITUTE", family: "substitution-abstraction", category: band === "A" ? "conceptual" : "reasoning", band, exprTemplate: band === "A" ? "{a}*{x}" : band === "B" ? "a*{x}+{b}" : "a*({x}+b)", params: band === "A" ? { a: { type: "natural", min: 2, max: 5 }, x: { type: "natural", min: 2, max: 30 } } : band === "B" ? { x: { type: "natural", min: 2, max: 30 }, b: { type: "natural", min: 1, max: 6 } } : { x: { type: "natural", min: 2, max: 30 } }, constraints: band === "A" ? ["a != x", "a * x != a + x"] : band === "B" ? ["b != x"] : undefined, difficultyFeature: "structure", structuralStage: band === "A" ? "numeric-result" : band === "B" ? "one-symbol-remains" : "multiple-symbols-remain", studentFacingSymbols: band === "A" ? [] : band === "B" ? ["a"] : ["a", "b"], choiceBuilder: (params) => { const x = sampledInteger(params, "x"); if (band === "A") { const a = sampledInteger(params, "a"); return generatedChoiceDraft("ALG_SUBSTITUTE", `אם [[x = ${x}]], איזה ביטוי מתקבל לאחר הצבה ב־[[${a}x]]?`, [{ value: `${a} × ${x}`, correct: true, misconception: "substitutes-variable-value" }, { value: `${a} + ${x}`, misconception: "replaces-coefficient-multiplication-with-addition" }, { value: `${x}`, misconception: "drops-coefficient" }, { value: `${a}`, misconception: "uses-coefficient-only" }], a + x); } if (band === "B") { const b = sampledInteger(params, "b"); return generatedChoiceDraft("ALG_SUBSTITUTE", `אם [[x = ${x}]], איזה ביטוי מתקבל לאחר הצבה ב־[[ax + ${b}]]?`, [{ value: `a × ${x} + ${b}`, correct: true, misconception: "substitutes-variable-value" }, { value: `a + ${x} + ${b}`, misconception: "replaces-coefficient-multiplication-with-addition" }, { value: `${x} + ${b}`, misconception: "drops-coefficient" }, { value: `a × ${b} + ${x}`, misconception: "substitutes-into-wrong-position" }], x + b); } return generatedChoiceDraft("ALG_SUBSTITUTE", `אם [[x = ${x}]], איזה ביטוי מתקבל לאחר הצבה ב־[[a(x + b)]]?`, [{ value: `a × (${x} + b)`, correct: true, misconception: "substitutes-variable-value" }, { value: `a × ${x} + b`, misconception: "ignores-parentheses" }, { value: `a + ${x} + b`, misconception: "replaces-multiplication-with-addition" }, { value: `(a + b) × ${x}`, misconception: "substitutes-into-wrong-position" }], x); } }),
-    conceptualGenerator({ id: `MVP_EQ_ADD_${band}`, skillId: "EQ_ADD", family: "additive-equation-abstraction", category: band === "A" ? "conceptual" : "reasoning", band, exprTemplate: band === "A" ? "\\square+{b}={a}+{b}" : band === "B" ? "x+{a}={a}+{b}" : "x+a=b+{n}", params: band === "C" ? algebraSingleParams : algebraPairParams, constraints: band === "C" ? undefined : ["a != b"], difficultyFeature: "structure", structuralStage: band === "A" ? "numeric-placeholder" : band === "B" ? "one-symbol" : "symbolic-solution", studentFacingSymbols: band === "A" ? [] : band === "B" ? ["x"] : ["x", "a", "b"], choiceBuilder: (params) => { if (band === "C") { const n = sampledInteger(params, "n"); return generatedChoiceDraft("EQ_ADD", `נתון [[x + a = b + ${n}]]. איזה ביטוי שווה ל־[[x]]?`, [{ value: `b + ${n} - a`, correct: true, misconception: "inverse-addition" }, { value: `b + ${n} + a`, misconception: "adds-instead-of-subtracting" }, { value: `a - b - ${n}`, misconception: "reverses-logical-direction" }, { value: `b - a`, misconception: "ignores-added-value" }], n); } const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); const total = a + b; const equation = band === "A" ? `□ + ${b} = ${total}` : `x + ${a} = ${total}`; return generatedChoiceDraft("EQ_ADD", band === "A" ? `איזה ערך משלים את השוויון [[${equation}]]?` : `איזה ערך של [[x]] מקיים את השוויון [[${equation}]]?`, [{ value: `${b}`, correct: true, misconception: "inverse-addition" }, { value: `${total}`, misconception: "uses-result-as-unknown" }, { value: `${a}`, misconception: "reuses-visible-addend" }, { value: `${total + 1}`, misconception: "off-by-one-generalization" }], total); } }),
-    conceptualGenerator({ id: `MVP_EQ_MUL_${band}`, skillId: "EQ_MUL", family: "multiplicative-inverse-abstraction", category: band === "A" ? "conceptual" : "reasoning", band, exprTemplate: band === "A" ? "({a}*{b})/{b}" : band === "B" ? "(x*{n})/{n}" : "(a*b*{n})/(b*{n})", params: band === "A" ? algebraPairParams : algebraSingleParams, constraints: band === "A" ? ["a != b"] : undefined, difficultyFeature: "structure", structuralStage: band === "A" ? "numeric" : band === "B" ? "one-symbol" : "multiple-symbols", studentFacingSymbols: band === "A" ? [] : band === "B" ? ["x"] : ["a", "b"], symbolicConditions: band === "C" ? ["b != 0"] : undefined, choiceBuilder: (params) => { if (band === "A") { const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); return generatedChoiceDraft("EQ_MUL", `מהו הערך של [[(${a} × ${b}) ÷ ${b}]]?`, [{ value: `${a}`, correct: true, misconception: "inverse-multiplication" }, { value: `${b}`, misconception: "reuses-visible-factor" }, { value: `${a * b}`, misconception: "uses-product-as-factor" }, { value: `${a + b}`, misconception: "adds-instead-of-dividing" }], a + b); } const n = sampledInteger(params, "n"); if (band === "B") return generatedChoiceDraft("EQ_MUL", `איזה ביטוי שווה ל־[[(x × ${n}) ÷ ${n}]]?`, [{ value: "x", correct: true, misconception: "inverse-multiplication" }, { value: `${n}`, misconception: "reuses-visible-factor" }, { value: `x × ${n}`, misconception: "ignores-division" }, { value: "1", misconception: "cancels-entire-product" }], n); return generatedChoiceDraft("EQ_MUL", `כאשר [[b ≠ 0]], איזה ביטוי שווה ל־[[(a × b × ${n}) ÷ (b × ${n})]]?`, [{ value: "a", correct: true, misconception: "inverse-multiplication" }, { value: "b", misconception: "reuses-visible-factor" }, { value: "a × b", misconception: "incomplete-cancellation" }, { value: `${n}`, misconception: "uses-irrelevant-value" }], n); } }),
+    conceptualGenerator({
+      id: `MVP_ALG_SUBSTITUTE_${band}`, skillId: "ALG_SUBSTITUTE", family: "substitution-abstraction",
+      category: band === "A" ? "calculation" : band === "B" ? "conceptual" : "reasoning", band, version: 3,
+      exprTemplate: band === "A" ? "{a}*{x}" : band === "B" ? "a*{x}+{b}" : "a*({x}+b)",
+      params: band === "A" ? { a: { type: "natural", min: 2, max: 5 }, x: { type: "natural", min: 2, max: 30 } } : band === "B" ? { x: { type: "natural", min: 2, max: 30 }, b: { type: "natural", min: 1, max: 6 } } : { x: { type: "natural", min: 2, max: 30 } },
+      constraints: band === "A" ? ["a != x", "a * x != a + x"] : band === "B" ? ["b != x"] : undefined,
+      difficultyFeature: "structure", structuralStage: band === "A" ? "numeric-result" : band === "B" ? "one-symbol-remains" : "multiple-symbols-remain",
+      studentFacingSymbols: band === "A" ? [] : band === "B" ? ["a"] : ["a", "b"],
+      choiceBuilder: (params) => {
+        const x = sampledInteger(params, "x");
+        if (band === "A") {
+          const a = sampledInteger(params, "a");
+          return generatedChoiceDraft("ALG_SUBSTITUTE", `אם [[x = ${x}]], איזה ביטוי מתקבל לאחר הצבה ב־[[${a}x]]?`, [{ value: `${a} × ${x}`, correct: true, misconception: "substitutes-variable-value" }, { value: `${a} + ${x}`, misconception: "replaces-coefficient-multiplication-with-addition" }, { value: `${x}`, misconception: "drops-coefficient" }, { value: `${a}`, misconception: "uses-coefficient-only" }], a + x);
+        }
+        if (band === "B") {
+          const b = sampledInteger(params, "b");
+          return generatedChoiceDraft("ALG_SUBSTITUTE", `אם [[x = ${x}]], איזה ביטוי מתקבל לאחר הצבה ב־[[ax + ${b}]]?`, [{ value: `a × ${x} + ${b}`, correct: true, misconception: "substitutes-variable-value" }, { value: `a + ${x} + ${b}`, misconception: "replaces-coefficient-multiplication-with-addition" }, { value: `${x} + ${b}`, misconception: "drops-coefficient" }, { value: `a × ${b} + ${x}`, misconception: "substitutes-into-wrong-position" }], x + b);
+        }
+        return generatedChoiceDraft("ALG_SUBSTITUTE", `אם [[x = ${x}]], איזה ביטוי מתקבל לאחר הצבה ב־[[a(x + b)]]?`, [{ value: `a × (${x} + b)`, correct: true, misconception: "substitutes-variable-value" }, { value: `a × ${x} + b`, misconception: "ignores-parentheses" }, { value: `a + ${x} + b`, misconception: "replaces-multiplication-with-addition" }, { value: `(a + b) × ${x}`, misconception: "substitutes-into-wrong-position" }], x);
+      },
+    }),
+    conceptualGenerator({
+      id: `MVP_EQ_ADD_${band}`, skillId: "EQ_ADD", family: "additive-equation-abstraction",
+      category: band === "A" ? "calculation" : band === "B" ? "conceptual" : "reasoning", band, version: 3,
+      exprTemplate: band === "A" ? "\\square+{b}={a}+{b}" : band === "B" ? "x+{a}={a}+{b}" : "x+a=b+{n}",
+      params: band === "C" ? algebraSingleParams : algebraPairParams,
+      constraints: band === "C" ? undefined : ["a != b"], difficultyFeature: "structure",
+      structuralStage: band === "A" ? "numeric-placeholder" : band === "B" ? "one-symbol" : "symbolic-solution",
+      studentFacingSymbols: band === "A" ? [] : band === "B" ? ["x"] : ["x", "a", "b"],
+      choiceBuilder: (params) => {
+        if (band === "C") {
+          const n = sampledInteger(params, "n");
+          return generatedChoiceDraft("EQ_ADD", `נתון [[x + a = b + ${n}]]. איזה ביטוי שווה תמיד ל־[[x]]?`, [{ value: `b + ${n} - a`, correct: true, misconception: "inverse-addition" }, { value: `b + ${n} + a`, misconception: "adds-instead-of-subtracting" }, { value: `a - b - ${n}`, misconception: "reverses-logical-direction" }, { value: `b - a`, misconception: "ignores-added-value" }], n);
+        }
+        const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); const total = a + b;
+        const equation = band === "A" ? `□ + ${b} = ${total}` : `x + ${a} = ${total}`;
+        const correct = band === "A" ? a : b;
+        const visibleAddend = band === "A" ? b : a;
+        return generatedChoiceDraft("EQ_ADD", band === "A" ? `איזה ערך משלים את השוויון [[${equation}]]?` : `איזה ערך של [[x]] מקיים את השוויון [[${equation}]]?`, [{ value: `${correct}`, correct: true, misconception: "inverse-addition" }, { value: `${total}`, misconception: "uses-result-as-unknown" }, { value: `${visibleAddend}`, misconception: "reuses-visible-addend" }, { value: `${total + 1}`, misconception: "off-by-one-generalization" }], total);
+      },
+    }),
+    conceptualGenerator({
+      id: `MVP_EQ_MUL_${band}`, skillId: "EQ_MUL", family: "multiplicative-equation-abstraction",
+      category: band === "A" ? "calculation" : band === "B" ? "conceptual" : "reasoning", band, version: 3,
+      exprTemplate: band === "A" ? "\\square*{b}={a}*{b}" : band === "B" ? "x*{b}={a}*{b}" : "a*x=b*{n}",
+      params: band === "C" ? algebraSingleParams : algebraPairParams,
+      constraints: band === "C" ? undefined : ["a != b"], difficultyFeature: "structure",
+      structuralStage: band === "A" ? "numeric-placeholder" : band === "B" ? "one-symbol" : "symbolic-solution",
+      studentFacingSymbols: band === "A" ? [] : band === "B" ? ["x"] : ["x", "a", "b"],
+      symbolicConditions: band === "C" ? ["a != 0"] : undefined,
+      choiceBuilder: (params) => {
+        if (band !== "C") {
+          const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); const product = a * b;
+          const equation = band === "A" ? `□ × ${b} = ${product}` : `x × ${b} = ${product}`;
+          return generatedChoiceDraft("EQ_MUL", band === "A" ? `איזה ערך משלים את השוויון [[${equation}]]?` : `איזה ערך של [[x]] מקיים את השוויון [[${equation}]]?`, [{ value: `${a}`, correct: true, misconception: "inverse-multiplication" }, { value: `${b}`, misconception: "reuses-visible-factor" }, { value: `${product}`, misconception: "uses-product-as-factor" }, { value: `${a + b}`, misconception: "adds-instead-of-dividing" }], a + b);
+        }
+        const n = sampledInteger(params, "n");
+        return generatedChoiceDraft("EQ_MUL", `נתון [[a × x = b × ${n}]], כאשר [[a ≠ 0]]. איזה ביטוי שווה תמיד ל־[[x]]?`, [{ value: `(b × ${n}) ÷ a`, correct: true, misconception: "inverse-multiplication" }, { value: `b × ${n} × a`, misconception: "multiplies-instead-of-dividing" }, { value: `(b + ${n}) ÷ a`, misconception: "adds-factors" }, { value: `b ÷ a`, misconception: "ignores-visible-factor" }], n);
+      },
+    }),
   ];
 });
 
@@ -364,4 +502,4 @@ const CURATED_WORDING_ITEMS: SkillQuestionDefinition[] = [
   },
 ];
 
-export const FOUNDATIONAL_QUESTIONS: SkillQuestionDefinition[] = [...GENERATED, ...SIGNED_CALCULATION_GENERATORS, ...REVIEWED_CONCEPT_GENERATORS, ...GLOBAL_AUTHORING_GENERATORS, ...CURATED_WORDING_ITEMS];
+export const FOUNDATIONAL_QUESTIONS: SkillQuestionDefinition[] = [...GENERATED, ...SIGNED_CALCULATION_GENERATORS, ...REVIEWED_CONCEPT_GENERATORS, ...SIGNED_CONCEPT_GENERATORS, ...GLOBAL_AUTHORING_GENERATORS, ...CURATED_WORDING_ITEMS];

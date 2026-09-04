@@ -9,6 +9,7 @@ import type { Question } from "../../domain/questions/types.ts";
 import {
   buildReviewUnits,
   deterministicRandomIndex,
+  effectiveReviewRecord,
   expectedAnswer,
   filterReviewDefinitions,
   flaggedCuratedFamilies,
@@ -68,8 +69,10 @@ export function QuestionReviewScreen() {
   const previewDefinition = previewDefinitionId ? currentUnit?.definitions.find((definition) => definition.id === previewDefinitionId) : undefined;
   const currentDefinition = previewDefinition ?? scopeDefinition;
   const currentQuestion = useMemo(() => currentDefinition ? resolveReviewQuestion(currentDefinition, seed) : null, [currentDefinition, seed]);
-  const currentRecord = currentDefinition ? records.get(currentDefinition.id) : undefined;
-  const note = currentDefinition ? draftNotes.get(currentDefinition.id) ?? currentRecord?.note ?? "" : "";
+  const storedRecord = currentDefinition ? records.get(currentDefinition.id) : undefined;
+  const currentRecord = currentDefinition ? effectiveReviewRecord(currentDefinition, storedRecord) : undefined;
+  const needsRereview = !!storedRecord && !currentRecord;
+  const note = currentDefinition ? draftNotes.get(currentDefinition.id) ?? currentRecord?.note ?? storedRecord?.note ?? "" : "";
   const flaggedFamilies = useMemo(() => flaggedCuratedFamilies(FOUNDATIONAL_QUESTIONS), []);
   const scopeDefinitions = useMemo(() => filterReviewDefinitions(FOUNDATIONAL_QUESTIONS, { ...filters, reviewStatus: "all" }, records, catalog), [filters, records]);
   const scopeUnits = useMemo(() => buildReviewUnits(FOUNDATIONAL_QUESTIONS, { ...filters, reviewStatus: "all" }, records, catalog), [filters, records]);
@@ -90,7 +93,7 @@ export function QuestionReviewScreen() {
 
   async function mark(status: ReviewStatus) {
     if (!currentDefinition) return;
-    const record = await repository.save(currentDefinition.id, status, note);
+    const record = await repository.save(currentDefinition.id, status, note, undefined, currentDefinition.version);
     setRecords((current) => {
       const next = new Map(current).set(record.definitionId, record);
       const aggregate = currentUnit ? reviewUnitStatus(currentUnit, next) : undefined;
@@ -121,7 +124,7 @@ export function QuestionReviewScreen() {
 
   async function saveNote() {
     if (!currentDefinition || !currentRecord) { setMessage("יש לבחור סטטוס כדי לשמור הערה"); return; }
-    const record = await repository.save(currentDefinition.id, currentRecord.status, note);
+    const record = await repository.save(currentDefinition.id, currentRecord.status, note, undefined, currentDefinition.version);
     setRecords((current) => new Map(current).set(record.definitionId, record)); setMessage("ההערה נשמרה מקומית");
   }
 
@@ -215,7 +218,7 @@ export function QuestionReviewScreen() {
             {familyNote?.difficultyNoteHe ? <p><strong>הערת קושי:</strong> {familyNote.difficultyNoteHe}</p> : null}
           </> : <><p><strong>contentFamily:</strong> <code>{currentDefinition.contentFamily}</code></p><p><strong>סיבת curation:</strong> {currentDefinition.curationReason}</p>{currentDefinition.curationJustificationHe ? <p><strong>הצדקת curation:</strong> {currentDefinition.curationJustificationHe}</p> : null}{currentQuestion.type !== "numeric" ? <><h3>מסיחים ומיסקונספציות</h3><table><thead><tr><th>אפשרות</th><th>מיסקונספציה</th></tr></thead><tbody>{currentQuestion.options.filter((option) => option.id !== (currentQuestion.type === "singleChoice" ? currentQuestion.correctOptionId : "") && option.misconceptionId).map((option) => <tr key={option.id}><td><ContentRenderer content={option.content} /></td><td><code>{option.misconceptionId}</code>{option.misconceptionRationale ? <small>{option.misconceptionRationale}</small> : null}</td></tr>)}</tbody></table></> : null}</>}
         </section><details className="review-technical"><summary>פרטים טכניים</summary><dl><dt>definition ID</dt><dd><code>{currentDefinition.id}</code></dd><dt>instance ID</dt><dd><code>{currentQuestion.id}</code></dd><dt>contentFamily</dt><dd><code>{currentDefinition.contentFamily}</code>{currentDefinition.contentFamily && flaggedFamilies.has(currentDefinition.contentFamily) ? <mark>משפחה שסומנה</mark> : null}</dd><dt>authoringMode</dt><dd>{currentDefinition.authoringMode}</dd><dt>Domain / Skill Group</dt><dd>{currentDomain?.id} / {currentGroups.map((group) => group.id).join(", ") || "—"}</dd><dt>difficulty</dt><dd>{currentQuestion.difficulty ?? "—"} · Band {currentDefinition.difficultyBand}</dd><dt>tags</dt><dd>{currentDefinition.tags?.join(", ") ?? "—"}</dd><dt>raw exprTemplate</dt><dd><pre>{isGeneratedQuestionDefinition(currentDefinition) ? currentDefinition.exprTemplate : "—"}</pre></dd><dt>raw promptTemplate</dt><dd><pre>{isGeneratedQuestionDefinition(currentDefinition) ? JSON.stringify(currentDefinition.promptTemplate, null, 2) : "—"}</pre></dd><dt>raw params</dt><dd><pre>{isGeneratedQuestionDefinition(currentDefinition) ? JSON.stringify(currentDefinition.params, null, 2) : "—"}</pre></dd><dt>raw constraints</dt><dd><pre>{isGeneratedQuestionDefinition(currentDefinition) ? JSON.stringify(currentDefinition.constraints ?? [], null, 2) : "—"}</pre></dd><dt>technical-only constraints</dt><dd>{constraints?.technicalOnly.join(" | ") || "—"}</dd><dt>seed / structure</dt><dd>{isGeneratedQuestionDefinition(currentDefinition) ? `${seed} / ${currentDefinition.structureKey}` : "—"}</dd><dt>generator metadata</dt><dd><pre>{isGeneratedQuestionDefinition(currentDefinition) ? JSON.stringify(currentDefinition.metadata ?? {}, null, 2) : "—"}</pre></dd><dt>readiness</dt><dd>{readiness ? `${readiness.strategy}; humanReviewed(source)=${readiness.humanReviewed}` : "—"}</dd></dl></details></div> : <p className="review-student-mode-note">Student View פעיל. התצוגה במרכז נשארת זהה לתלמיד; לחצו Reviewer Details להצגת הסיכום.</p>}
-        <section className="review-state"><div><strong>סטטוס {currentUnit?.generated ? `רמה ${currentDefinition.difficultyBand}` : ""}:</strong> {currentRecord ? statusLabels[currentRecord.status] : "לא נבדק"}{currentRecord ? <small> · {new Date(currentRecord.reviewedAt).toLocaleString("he-IL")}</small> : null}{currentUnit?.generated ? <small> · סטטוס משפחה: {currentUnitReviewStatus ? statusLabels[currentUnitReviewStatus] : "עדיין לא נבדקה במלואה"}</small> : null}</div><textarea value={note} onChange={(event) => setDraftNotes((current) => new Map(current).set(currentDefinition.id, event.target.value))} placeholder="הערת מבקר קצרה…" rows={2} /><div><button className="approve" type="button" onClick={() => void mark("approved")}>A · אישור והבא</button><button className="fix" type="button" onClick={() => void mark("needs-fix")}>F · לתיקון</button><button className="reject" type="button" onClick={() => void mark("rejected")}>R · דחייה</button><button type="button" onClick={() => void saveNote()}>שמירת הערה</button>{currentRecord ? <button type="button" onClick={() => void clearReview()}>איפוס</button> : null}</div>{message ? <p role="status">{message}</p> : null}<small>←/→ ניווט · A אישור · F תיקון · R דחייה</small></section>
+        <section className="review-state"><div><strong>סטטוס {currentUnit?.generated ? `רמה ${currentDefinition.difficultyBand}` : ""}:</strong> {needsRereview ? "דורש בדיקה מחדש לאחר שינוי תוכן" : currentRecord ? statusLabels[currentRecord.status] : "לא נבדק"}{currentRecord ? <small> · {new Date(currentRecord.reviewedAt).toLocaleString("he-IL")}</small> : null}{currentUnit?.generated ? <small> · סטטוס משפחה: {currentUnitReviewStatus ? statusLabels[currentUnitReviewStatus] : "עדיין לא נבדקה במלואה"}</small> : null}</div><textarea value={note} onChange={(event) => setDraftNotes((current) => new Map(current).set(currentDefinition.id, event.target.value))} placeholder="הערת מבקר קצרה…" rows={2} /><div><button className="approve" type="button" onClick={() => void mark("approved")}>A · אישור והבא</button><button className="fix" type="button" onClick={() => void mark("needs-fix")}>F · לתיקון</button><button className="reject" type="button" onClick={() => void mark("rejected")}>R · דחייה</button><button type="button" onClick={() => void saveNote()}>שמירת הערה</button>{storedRecord ? <button type="button" onClick={() => void clearReview()}>איפוס</button> : null}</div>{message ? <p role="status">{message}</p> : null}<small>←/→ ניווט · A אישור · F תיקון · R דחייה</small></section>
       </> : null}</aside>
     </div>
   </main>;

@@ -84,8 +84,14 @@ export function signedSkillDefinitionIssues(definitions: readonly SkillQuestionD
   }
   for (const [family, members] of families) {
     if (members.length < 2) continue;
-    if (new Set(members.map((item) => item.exprTemplate)).size !== 1) issues.push(`${family}: template changes across Bands`);
-    if (new Set(members.map((item) => item.metadata?.signPattern)).size !== 1) issues.push(`${family}: signPattern changes across Bands`);
+    const structuralProgression = members.every((item) => item.metadata?.difficultyFeature === "structure");
+    if (structuralProgression) {
+      const stages = members.map((item) => item.metadata?.structuralStage);
+      if (stages.some((stage) => typeof stage !== "string") || new Set(stages).size !== members.length) issues.push(`${family}: structural signed Bands require distinct structuralStage values`);
+    } else {
+      if (new Set(members.map((item) => item.exprTemplate)).size !== 1) issues.push(`${family}: magnitude-based template changes across Bands`);
+      if (new Set(members.map((item) => item.metadata?.signPattern)).size !== 1) issues.push(`${family}: magnitude-based signPattern changes across Bands`);
+    }
     if (new Set(members.map((item) => item.metadata?.skillInvariant)).size !== 1) issues.push(`${family}: Skill invariant changes across Bands`);
   }
   return issues;

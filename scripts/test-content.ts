@@ -11,7 +11,7 @@ import type { Attempt } from "../src/domain/attempts/types.ts";
 import { isAssignmentComplete } from "../src/domain/studentHome/deriveStudentHome.ts";
 import { createChallengeSignature, challengeSignatureKey } from "../src/domain/personalBests/challengeSignature.ts";
 import { resolveQuickPracticeScope } from "../src/domain/studentHome/quickPractice.ts";
-import { auditFoundationalContent, curatedNumericLiteralIssues, curatedNumericLiteralItems, generatedInstanceMetadataIssues, magnitudeBandProgressionIssues, structuralBandProgressionIssues, studentMathContentIssues, symbolicAuthoringIssues, validateFoundationalContent } from "../src/content/validateContent.ts";
+import { auditFoundationalContent, curatedNumericLiteralIssues, curatedNumericLiteralItems, generatedInstanceMetadataIssues, magnitudeBandProgressionIssues, pedagogicalTargetingIssues, structuralBandProgressionIssues, studentMathContentIssues, studentMathContentWarnings, symbolicAuthoringIssues, validateFoundationalContent } from "../src/content/validateContent.ts";
 import { atomicSkillIdentityIssues } from "../src/content/foundations/skillScope.ts";
 import { signedGeneratedInstanceIssues, signedSkillDefinitionIssues } from "../src/content/foundations/skillScope.ts";
 import type { GeneratedQuestionInstance, OptionContent } from "../src/domain/questions/types.ts";
@@ -84,7 +84,7 @@ run("every ready definition carries category and meaningful band metadata", () =
 
 run("foundational authoring intent and normalized inventory stay explicit", () => {
   const audit = auditFoundationalContent();
-  assert.deepEqual({ total: audit.total, generated: audit.generated, curatedFixed: audit.curatedFixed, fixedNumeric: audit.fixedNumeric }, { total: 197, generated: 195, curatedFixed: 2, fixedNumeric: 0 });
+  assert.deepEqual({ total: audit.total, generated: audit.generated, curatedFixed: audit.curatedFixed, fixedNumeric: audit.fixedNumeric }, { total: 169, generated: 167, curatedFixed: 2, fixedNumeric: 0 });
   for (const definition of FOUNDATIONAL_QUESTIONS) {
     assert.ok(definition.contentFamily, definition.id);
     if (isGeneratedQuestionDefinition(definition)) {
@@ -129,8 +129,17 @@ run("foundational generators cover exact edge cases deterministically", () => {
 run("full content validation checks configured samples and reports review families", () => {
   const report = validateFoundationalContent(20);
   assert.deepEqual(report.issues, []);
-  assert.equal(report.generatedSamples, 195 * 20);
+  assert.equal(report.generatedSamples, 167 * 20);
   assert.deepEqual(report.warnings, []);
+});
+
+run("every generated singleChoice sample has exactly one marked correct option", () => {
+  const definitions = FOUNDATIONAL_QUESTIONS.filter((item): item is GeneratedQuestionDefinition & { skillId: string } => isGeneratedQuestionDefinition(item) && !!item.choiceBuilder);
+  for (const definition of definitions) for (let seed = 1; seed <= 5; seed += 1) {
+    const question = buildGeneratedQuestion(definition, { seed });
+    if (question.type !== "singleChoice") continue;
+    assert.equal(question.options.filter((option) => option.id === question.correctOptionId).length, 1, `${definition.id}:${seed}`);
+  }
 });
 
 run("fixed numeric literals are exceptional and require explicit pedagogical justification", () => {
@@ -143,6 +152,7 @@ run("fixed numeric literals are exceptional and require explicit pedagogical jus
   assert.match(curatedNumericLiteralIssues([base])[0]!, /curationReason/);
   assert.match(curatedNumericLiteralIssues([{ ...base, curationReason: "edge-case" }])[0]!, /curationJustificationHe/);
   assert.deepEqual(curatedNumericLiteralIssues([{ ...base, curationReason: "edge-case", curationJustificationHe: "הערך המדויק מפעיל מקרה קצה שנבדק במפורש." }]), []);
+  assert.match(curatedNumericLiteralIssues([{ ...base, curationReason: "other", curationJustificationHe: "סיבה כללית." }])[0]!, /approved curationReason/);
   assert.ok(curatedNumericLiteralIssues([{ ...base, curationReason: "deliberate-example", curationJustificationHe: "דוגמה נוחה" }]).length > 0);
 });
 
@@ -234,7 +244,7 @@ run("magnitude-driven Bands progress monotonically", () => {
 });
 
 run("student-facing mathematical objects use math content instead of RTL text", () => {
-  const comparison = buildGeneratedQuestion(generatedDefinition("MVP_INT_COMPARE_ADJACENT_NEGATIVES_A"), { seed: 19 });
+  const comparison = buildGeneratedQuestion(generatedDefinition("MVP_INT_COMPARE_SIGNED_A"), { seed: 19 });
   assert.equal(comparison.prompt.filter((part) => part.kind === "math").length, 2);
   assert.deepEqual(studentMathContentIssues(comparison.templateId, comparison, "test"), []);
   assert.ok(comparison.type !== "numeric" && comparison.options.filter((option) => option.content.some((part) => part.kind === "math")).length >= 3);
@@ -247,6 +257,35 @@ run("student-facing mathematical objects use math content instead of RTL text", 
   assert.ok(studentMathContentIssues("TEST_PLAIN_TEXT_MATH", invalid).length > 0);
   assert.ok(studentMathContentIssues("TEST_CONSECUTIVE_SIGNS", { ...comparison, prompt: [{ kind: "math", latex: "5+-3" }] }).some((issue) => issue.includes("consecutive operators")));
   assert.ok(studentMathContentIssues("TEST_MALFORMED_FRACTION", { ...comparison, prompt: [{ kind: "math", latex: "3/" }] }).some((issue) => issue.includes("malformed fraction")));
+});
+
+run("mathematical data inside word problems is emitted as inline math", () => {
+  const cases = [
+    ["MVP_AR_SUB_FACTS_REMOVE_A", 2],
+    ["MVP_AR_MUL_F_3_4_CONTEXT_A", 2],
+    ["MVP_AR_DIV_F_3_4_SHARING_A", 2],
+    ["MVP_INT_NUMBER_LINE_LEFT_A", 1],
+    ["MVP_FRAC_MEANING_PARTS_A", 2],
+  ] as const;
+  for (const [id, minimumMathSegments] of cases) {
+    const question = buildGeneratedQuestion(generatedDefinition(id), { seed: 23 });
+    assert.ok(question.prompt.filter((part) => part.kind === "math").length >= minimumMathSegments, id);
+    assert.deepEqual(studentMathContentWarnings(id, question, "test"), [], id);
+  }
+  const question = buildGeneratedQuestion(generatedDefinition("MVP_AR_SUB_FACTS_REMOVE_A"), { seed: 23 });
+  assert.ok(studentMathContentWarnings("TEST_PROSE_DATA", { ...question, prompt: [{ kind: "text", value: "יש 12 כדורים" }] }).some((warning) => warning.includes("prose number")));
+});
+
+run("Skill-targeting checks reject arithmetic-only substitutes for algebra and equation evidence", () => {
+  for (const id of ["MVP_ALG_SUBSTITUTE_A", "MVP_EQ_ADD_A", "MVP_EQ_MUL_A", "MVP_AR_FACTORS_MULTIPLES_A_A"]) {
+    const definition = generatedDefinition(id);
+    assert.deepEqual(pedagogicalTargetingIssues(definition, buildGeneratedQuestion(definition, { seed: 17 }), 17), [], id);
+  }
+  const equationDefinition = generatedDefinition("MVP_EQ_ADD_A");
+  const equation = buildGeneratedQuestion(equationDefinition, { seed: 17 });
+  assert.deepEqual(correctOptionTexts(equation), [equation.sampledParams.a]);
+  assert.ok(pedagogicalTargetingIssues(equationDefinition, { ...equation, prompt: authoredStudentContent("חשבו את הסכום.") }, 17).some((issue) => issue.includes("equation")));
+  for (const retired of ["MVP_ALG_SUBSTITUTE_A_A", "MVP_EQ_ADD_A_A", "MVP_EQ_MUL_A_A"]) assert.equal(FOUNDATIONAL_QUESTIONS.some((item) => item.id === retired), false, retired);
 });
 
 run("algebra and equation Bands use deterministic structural progression", () => {
@@ -263,6 +302,20 @@ run("algebra and equation Bands use deterministic structural progression", () =>
       assert.ok(Object.values(definition.params).every((spec) => spec.type === "rational" || spec.min >= 1));
     }
   }
+});
+
+run("structural and magnitude Bands progress deterministically", () => {
+  for (const ids of [
+    ["MVP_OPS_ORDER_BASIC_FIRST_A", "MVP_OPS_ORDER_BASIC_FIRST_B", "MVP_OPS_ORDER_BASIC_FIRST_C"],
+    ["MVP_INT_COMPARE_SIGNED_A", "MVP_INT_COMPARE_SIGNED_B", "MVP_INT_COMPARE_SIGNED_C"],
+  ]) {
+    const definitions = ids.map(generatedDefinition);
+    assert.equal(new Set(definitions.map((item) => item.exprTemplate)).size, definitions.length);
+    assert.equal(new Set(definitions.map((item) => item.metadata?.structuralStage)).size, definitions.length);
+    assert.ok(definitions.every((item) => item.metadata?.difficultyFeature === "structure"));
+  }
+  assert.deepEqual(FOUNDATIONAL_QUESTIONS.filter((item) => item.skillId === "INT_NEGATION").map((item) => item.difficultyBand).sort(), ["A", "B"]);
+  assert.deepEqual(magnitudeBandProgressionIssues(FOUNDATIONAL_QUESTIONS), []);
 });
 
 run("algebra terminology distinguishes variable, coefficient, and expression value", () => {
@@ -322,13 +375,13 @@ run("choice and prompt content preserve mixed math rendering and RTL isolation s
 
 run("negative and opposite-number content remains math-rendered in prompts and choices", () => {
   const positive = buildGeneratedQuestion(generatedDefinition("MVP_INT_NEGATION_POSITIVE_A"), { seed: 11 });
-  const negative = buildGeneratedQuestion(generatedDefinition("MVP_INT_NEGATION_NEGATIVE_A"), { seed: 11 });
+  const negative = buildGeneratedQuestion(generatedDefinition("MVP_INT_NEGATION_NEGATIVE_B"), { seed: 11 });
   for (const question of [positive, negative]) {
     assert.ok(question.prompt.some((part) => part.kind === "math"));
     assert.ok(question.type !== "numeric" && question.options.some((option) => option.content.some((part) => part.kind === "math" && part.latex.includes("-"))));
   }
   assert.match(generatedDefinition("MVP_INT_NEGATION_POSITIVE_A").exprTemplate, /^-\(/u);
-  assert.match(generatedDefinition("MVP_INT_NEGATION_NEGATIVE_A").exprTemplate, /^-\(-/u);
+  assert.match(generatedDefinition("MVP_INT_NEGATION_NEGATIVE_B").exprTemplate, /^-\(-/u);
 });
 
 run("every generated Band documents its actual difficulty feature", () => {

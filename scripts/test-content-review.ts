@@ -6,6 +6,7 @@ import { isGeneratedQuestionDefinition } from "../src/domain/questions/definitio
 import { MemoryPersistenceDriver } from "../src/infrastructure/persistence/MemoryPersistenceDriver.ts";
 import {
   buildReviewUnits,
+  effectiveReviewRecord,
   EMPTY_REVIEW_FILTERS,
   expectedAnswer,
   filterReviewDefinitions,
@@ -136,6 +137,29 @@ await run("unreviewed filter and progress derive only from author review records
   assert.equal(progress.approved, 1);
 });
 
+await run("approved content changed under global rules is surfaced for re-review", async () => {
+  const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_EQ_ADD_A")!;
+  assert.ok(definition.tags?.includes("requires-rereview") && definition.version);
+  const stale = {
+    definitionId: definition.id,
+    definitionVersion: definition.version! - 1,
+    status: "approved" as const,
+    note: "אושר לפני שינוי התוכן",
+    reviewedAt: "2026-09-03T00:00:00.000Z",
+  } satisfies QuestionReviewRecord;
+  const staleState = new Map([[definition.id, stale]]);
+  assert.equal(effectiveReviewRecord(definition, stale), undefined);
+  assert.ok(filter({ skillId: definition.skillId, reviewStatus: "unreviewed" }, staleState).some((item) => item.id === definition.id));
+  assert.equal(reviewProgress([definition], staleState).reviewed, 0);
+
+  const store = new MemoryAuthorReviewStore();
+  const repository = new AuthorReviewRepository(store);
+  await repository.save(definition.id, "approved", "נבדק מחדש", "2026-09-04T00:00:00.000Z", definition.version);
+  const persisted = (await new AuthorReviewRepository(store).list())[0]!;
+  assert.equal(persisted.definitionVersion, definition.version);
+  assert.equal(effectiveReviewRecord(definition, persisted)?.status, "approved");
+});
+
 await run("expected answer reveal supports numeric and choice questions", () => {
   const generated = resolveReviewQuestion(FOUNDATIONAL_QUESTIONS.find(isGeneratedQuestionDefinition)!, 1);
   assert.ok(expectedAnswer(generated));
@@ -193,7 +217,7 @@ await run("Next walks A, B, C, D before the next definition", () => {
   const base = generatedUnit("AR_PLACE_VALUE", "AR_PLACE_VALUE:identify-digit-value");
   const bandD = { ...base.definitions.at(-1)!, id: "TEST_PLACE_VALUE_D", difficultyBand: "D" as const };
   const fourBands: ReviewUnit = { ...base, definitions: [...base.definitions, bandD] };
-  const next = generatedUnit("INT_COMPARE", "INT_COMPARE:compare-adjacent-negatives");
+  const next = generatedUnit("INT_COMPARE", "INT_COMPARE:signed-comparison");
   const units = [fourBands, next];
   let location = reviewUnitNavigation("first", units, 0, null);
   assert.equal(location.definitionId, fourBands.definitions[0]!.id);
@@ -210,7 +234,7 @@ await run("Next walks A, B, C, D before the next definition", () => {
 await run("A/B families advance directly from B to the next definition", () => {
   const twoBands = generatedUnit("AR_ADD_FACTS", "AR_ADD_FACTS:two-addend-sum");
   assert.deepEqual(twoBands.definitions.map((item) => item.difficultyBand), ["A", "B"]);
-  const next = generatedUnit("INT_COMPARE", "INT_COMPARE:compare-adjacent-negatives");
+  const next = generatedUnit("INT_COMPARE", "INT_COMPARE:signed-comparison");
   const afterA = reviewUnitNavigation("next", [twoBands, next], 0, twoBands.definitions[0]!.id);
   assert.deepEqual(afterA, { index: 0, definitionId: twoBands.definitions[1]!.id });
   assert.deepEqual(reviewUnitNavigation("next", [twoBands, next], afterA.index, afterA.definitionId), { index: 1, definitionId: next.definitions[0]!.id });
@@ -218,7 +242,7 @@ await run("A/B families advance directly from B to the next definition", () => {
 
 await run("Previous reverses across Band and definition boundaries", () => {
   const previous = generatedUnit("AR_ADD_FACTS", "AR_ADD_FACTS:two-addend-sum");
-  const current = generatedUnit("INT_COMPARE", "INT_COMPARE:compare-adjacent-negatives");
+  const current = generatedUnit("INT_COMPARE", "INT_COMPARE:signed-comparison");
   const across = reviewUnitNavigation("previous", [previous, current], 1, current.definitions[0]!.id);
   assert.deepEqual(across, { index: 0, definitionId: previous.definitions.at(-1)!.id });
   const within = reviewUnitNavigation("previous", [previous, current], 0, previous.definitions[1]!.id);
@@ -230,7 +254,7 @@ await run("Previous reverses across Band and definition boundaries", () => {
 await run("curated items behave as one review unit before the next definition", () => {
   const curated = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_ALG_VARIABLE_CONTEXT_BASIC_CURATED")!;
   const curatedUnit: ReviewUnit = { key: `curated:${curated.id}`, definitions: [curated], generated: false };
-  const next = generatedUnit("INT_COMPARE", "INT_COMPARE:compare-adjacent-negatives");
+  const next = generatedUnit("INT_COMPARE", "INT_COMPARE:signed-comparison");
   assert.deepEqual(reviewUnitNavigation("next", [curatedUnit, next], 0, curated.id), { index: 1, definitionId: next.definitions[0]!.id });
 });
 
@@ -245,14 +269,14 @@ await run("Band sequence navigation leaves the explicit Difficulty filter unchan
 await run("generated family approval requires every supported Band", () => {
   const unit = generatedUnit("AR_PLACE_VALUE", "AR_PLACE_VALUE:identify-digit-value");
   const reviewedAt = "2026-09-04T00:00:00.000Z";
-  const oneBand = new Map([[unit.definitions[0]!.id, { definitionId: unit.definitions[0]!.id, status: "approved", note: "", reviewedAt } satisfies QuestionReviewRecord]]);
+  const oneBand = new Map([[unit.definitions[0]!.id, { definitionId: unit.definitions[0]!.id, definitionVersion: unit.definitions[0]!.version, status: "approved", note: "", reviewedAt } satisfies QuestionReviewRecord]]);
   assert.equal(isReviewUnitFullyApproved(unit, oneBand), false);
   assert.equal(reviewUnitStatus(unit, oneBand), undefined);
   assert.deepEqual(reviewUnitBandCoverage(unit, oneBand).map((item) => item.status), ["approved", undefined, undefined]);
-  const allBands = new Map<string, QuestionReviewRecord>(unit.definitions.map((definition) => [definition.id, { definitionId: definition.id, status: "approved", note: "", reviewedAt }]));
+  const allBands = new Map<string, QuestionReviewRecord>(unit.definitions.map((definition) => [definition.id, { definitionId: definition.id, definitionVersion: definition.version, status: "approved", note: "", reviewedAt }]));
   assert.equal(isReviewUnitFullyApproved(unit, allBands), true);
   assert.equal(reviewUnitStatus(unit, allBands), "approved");
-  allBands.set(unit.definitions[1]!.id, { definitionId: unit.definitions[1]!.id, status: "needs-fix", note: "", reviewedAt });
+  allBands.set(unit.definitions[1]!.id, { definitionId: unit.definitions[1]!.id, definitionVersion: unit.definitions[1]!.version, status: "needs-fix", note: "", reviewedAt });
   assert.equal(isReviewUnitFullyApproved(unit, allBands), false);
   assert.equal(reviewUnitStatus(unit, allBands), "needs-fix");
 });
@@ -387,10 +411,10 @@ await run("review summary distinguishes sampled parameters from intentional stud
   assert.ok(isGeneratedQuestionDefinition(definition));
   const summary = generatorStructureSummary(definition, resolveReviewQuestion(definition, 42));
   assert.deepEqual(summary?.sampledValues.map((item) => item.name), ["n"]);
-  assert.deepEqual(summary?.studentFacingSymbols, ["a", "b"]);
-  assert.deepEqual(summary?.symbolicConditions.humanReadable, ["b שונה מאפס"]);
+  assert.deepEqual(summary?.studentFacingSymbols, ["x", "a", "b"]);
+  assert.deepEqual(summary?.symbolicConditions.humanReadable, ["a שונה מאפס"]);
   const bands = deriveBandSummaries(FOUNDATIONAL_QUESTIONS, definition);
-  assert.deepEqual(bands.map((item) => item.studentFacingSymbols), [[], ["x"], ["a", "b"]]);
+  assert.deepEqual(bands.map((item) => item.studentFacingSymbols), [[], ["x"], ["x", "a", "b"]]);
   assert.ok(bands[1]?.changesFromPrevious.some((change) => change.includes("סמלים שנשארים")));
 });
 

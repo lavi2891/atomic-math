@@ -11,7 +11,7 @@ import type { SkillQuestionDefinition } from "../domain/session/skillQuestionSel
 import type { OptionContent, Question, QuestionCurationReason } from "../domain/questions/types.ts";
 import type { GeneratedQuestionInstance } from "../domain/questions/types.ts";
 import { atomicSkillIdentityIssues, signedGeneratedInstanceIssues, signedSkillDefinitionIssues } from "./foundations/skillScope.ts";
-import { mathLookingText } from "./foundations/studentMathContent.ts";
+import { hasAmbiguousProseNumber, mathLookingText } from "./foundations/studentMathContent.ts";
 
 export interface SkillContentAudit {
   skillId: string;
@@ -52,7 +52,6 @@ const APPROVED_FIXED_NUMERIC_REASONS = new Set<QuestionCurationReason>([
   "representation",
   "regression",
   "deliberate-example",
-  "other",
 ]);
 const NUMERIC_LITERAL_PATTERN = /(?:^|[^\p{L}\p{N}_])[-−–]?\d+(?:[.,/]\d+)?/gu;
 const GENERIC_JUSTIFICATION_PATTERN = /(?:convenient|arbitrary|magic number|דוגמה נוחה|מספר שרירותי)/iu;
@@ -68,6 +67,19 @@ function studentFacingNotationIssues(definitionId: string, question: GeneratedQu
   return surfaces.some((surface) => CONSECUTIVE_SIGN_PATTERN.test(surface))
     ? [`${definitionId}: seed ${seed} exposes a negative operand without parentheses`]
     : [];
+}
+
+/** Small, explicit invariants for Skills whose identity must be visible in the rendered task. */
+export function pedagogicalTargetingIssues(definition: GeneratedQuestionDefinition, question: GeneratedQuestionInstance, seed: number): string[] {
+  const promptText = contentSurface(question.prompt);
+  const promptMath = question.prompt.filter((part) => part.kind === "math").map((part) => part.latex).join(" ");
+  const issues: string[] = [];
+  if ((definition.skillId === "EQ_ADD" || definition.skillId === "EQ_MUL") && !promptMath.includes("=")) issues.push(`${definition.id}: seed ${seed} does not show the equation being solved`);
+  if (definition.skillId === "ALG_SUBSTITUTE" && (!/הצב/u.test(promptText) || !promptMath.includes("="))) issues.push(`${definition.id}: seed ${seed} does not explicitly present substitution`);
+  if (definition.skillId === "AR_FACTORS_MULTIPLES" && !/כפול|גורם/u.test(promptText)) issues.push(`${definition.id}: seed ${seed} does not explicitly target factors or multiples`);
+  if (definition.skillId === "INT_COMPARE" && (!/השוו|השוואה|יחס/u.test(promptText) || question.prompt.filter((part) => part.kind === "math").length < 2)) issues.push(`${definition.id}: seed ${seed} does not explicitly show both signed values being compared`);
+  if (definition.skillId === "INT_NEGATION" && !/נגד/u.test(promptText)) issues.push(`${definition.id}: seed ${seed} does not explicitly target opposite-number reasoning`);
+  return issues;
 }
 
 export function studentMathContentIssues(definitionId: string, question: Question, sampleLabel = "curated"): string[] {
@@ -91,6 +103,19 @@ export function studentMathContentIssues(definitionId: string, question: Questio
     }
     return [];
   }));
+}
+
+export function studentMathContentWarnings(definitionId: string, question: Question, sampleLabel = "curated"): string[] {
+  const surfaces: Array<{ label: string; content: readonly OptionContent[] }> = [
+    { label: "prompt", content: question.prompt },
+    ...(question.hints ?? []).map((content, index) => ({ label: `hint ${index + 1}`, content })),
+    ...(question.type === "numeric" ? [] : question.options.map((option) => ({ label: `option ${option.id}`, content: option.content }))),
+  ];
+  return surfaces.flatMap(({ label, content }) => content.flatMap((part) =>
+    part.kind === "text" && hasAmbiguousProseNumber(part.value)
+      ? [`${definitionId}: ${sampleLabel} ${label} contains a prose number; confirm it is incidental rather than mathematical problem data`]
+      : [],
+  ));
 }
 
 function numericContentValue(content: readonly OptionContent[]): string | null {
@@ -216,11 +241,14 @@ export function magnitudeBandProgressionIssues(definitions: readonly SkillQuesti
     family.sort((left, right) => BAND_ORDER.indexOf(left.difficultyBand ?? "") - BAND_ORDER.indexOf(right.difficultyBand ?? ""));
     for (let index = 1; index < family.length; index += 1) {
       const easier = family[index - 1]!; const harder = family[index]!;
-      const meaningfulIncrease = Object.entries(harder.params).some(([name, hardSpec]) => {
-        const easySpec = easier.params[name]; if (!easySpec) return true;
-        const easy = parameterBounds(easySpec); const hard = parameterBounds(hardSpec); if (!easy || !hard) return false;
-        return hard.min >= easy.max || (hard.min > easy.min && hard.max > easy.max);
+      const sharedBounds = Object.entries(harder.params).flatMap(([name, hardSpec]) => {
+        const easySpec = easier.params[name]; if (!easySpec) return [];
+        const easy = parameterBounds(easySpec); const hard = parameterBounds(hardSpec); if (!easy || !hard) return [];
+        return [{ name, easy, hard }];
       });
+      const regression = sharedBounds.find(({ easy, hard }) => hard.min < easy.min || hard.max < easy.max);
+      if (regression) issues.push(`${key}: Band ${harder.difficultyBand} lowers ${regression.name} below Band ${easier.difficultyBand}`);
+      const meaningfulIncrease = sharedBounds.some(({ easy, hard }) => hard.min >= easy.max);
       if (!meaningfulIncrease) issues.push(`${key}: Band ${harder.difficultyBand} does not increase a magnitude range beyond Band ${easier.difficultyBand}`);
     }
   }
@@ -231,6 +259,17 @@ const STRUCTURAL_BAND_SKILLS = new Set(["ALG_EQUALITY", "ALG_VARIABLE", "ALG_SUB
 
 export function structuralBandProgressionIssues(definitions: readonly SkillQuestionDefinition[]): string[] {
   const issues: string[] = [];
+  const declaredFamilies = new Map<string, GeneratedQuestionDefinition[]>();
+  for (const definition of definitions) {
+    if (!isGeneratedQuestionDefinition(definition) || definition.metadata?.difficultyFeature !== "structure" || !definition.contentFamily) continue;
+    const key = `${definition.skillId}|${definition.contentFamily}`;
+    declaredFamilies.set(key, [...(declaredFamilies.get(key) ?? []), definition]);
+  }
+  for (const [key, family] of declaredFamilies) {
+    if (family.length < 2) continue;
+    const stages = family.map((definition) => definition.metadata?.structuralStage);
+    if (stages.some((stage) => typeof stage !== "string") || new Set(stages).size !== family.length) issues.push(`${key}: structural Bands must declare distinct structuralStage values`);
+  }
   for (const skillId of STRUCTURAL_BAND_SKILLS) {
     const family = definitions.filter((definition): definition is GeneratedQuestionDefinition & { skillId: string } =>
       isGeneratedQuestionDefinition(definition) && definition.skillId === skillId && !!definition.choiceBuilder,
@@ -291,6 +330,8 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
           issues.push(...signedGeneratedInstanceIssues(definition, question));
           issues.push(...studentFacingNotationIssues(definition.id, question, seed));
           issues.push(...studentMathContentIssues(definition.id, question, `seed ${seed}`));
+          warnings.push(...studentMathContentWarnings(definition.id, question, `seed ${seed}`));
+          issues.push(...pedagogicalTargetingIssues(definition, question, seed));
           issues.push(...mathematicallyDuplicateChoiceIssues(definition.id, question, seed));
           if (question.id !== repeat.id || question.renderedExpression !== repeat.renderedExpression) issues.push(`${definition.id}: seed ${seed} is not reproducible`);
           if (question.renderedExpression.includes("undefined") || optionText(question.prompt).includes("undefined")) issues.push(`${definition.id}: seed ${seed} rendered undefined content`);
@@ -324,6 +365,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
       } catch { issues.push(`${definition.id}: anti-repetition could not produce a follow-up item`); }
     } else if (definition.type === "singleChoice") {
       issues.push(...studentMathContentIssues(definition.id, definition));
+      warnings.push(...studentMathContentWarnings(definition.id, definition));
       if (definition.authoringMode !== "curated" || !definition.curationReason) issues.push(`${definition.id}: curated authoring intent is incomplete`);
       const optionValues = definition.options.map((option) => optionText(option.content));
       const surfaceKey = `${definition.skillId}|${optionText(definition.prompt)}|${optionValues.join("|")}`;
@@ -342,6 +384,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
       normalizedFamilies.set(normalizedKey, { skillId: definition.skillId, family: definition.contentFamily ?? "missing-family", ids: [...(existing?.ids ?? []), definition.id] });
     } else if (definition.type === "numeric") {
       issues.push(...studentMathContentIssues(definition.id, definition));
+      warnings.push(...studentMathContentWarnings(definition.id, definition));
       if (definition.authoringMode !== "curated" || !definition.curationReason) issues.push(`${definition.id}: fixed numeric item requires an explicit curation reason`);
       const surfaceKey = `${definition.skillId}|${optionText(definition.prompt)}|${definition.correctAnswers.join("|")}`;
       if (fixedSurfaceKeys.has(surfaceKey)) issues.push(`${definition.id}: duplicate fixed-question surface`);
@@ -351,6 +394,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
       normalizedFamilies.set(normalizedKey, { skillId: definition.skillId ?? "missing-skill", family: definition.contentFamily ?? "missing-family", ids: [...(existing?.ids ?? []), definition.id] });
     } else if (definition.type === "multiChoice") {
       issues.push(...studentMathContentIssues(definition.id, definition));
+      warnings.push(...studentMathContentWarnings(definition.id, definition));
       if (definition.authoringMode !== "curated" || !definition.curationReason) issues.push(`${definition.id}: curated authoring intent is incomplete`);
       if (!definition.correctOptionIds.length || definition.correctOptionIds.some((id) => !definition.options.some((option) => option.id === id))) issues.push(`${definition.id}: invalid correct options`);
     }

@@ -2,8 +2,9 @@ import type { OptionContent } from "../../domain/questions/types.ts";
 
 /**
  * Authoring boundary for RTL student content:
- * - A number used only as a prose quantity (for example, "יש 4 שקיות") stays text.
- * - A value or expression being inspected, compared, solved, or selected is wrapped in [[...]]
+ * - Every mathematically relevant value, including data inside a word problem, is wrapped in [[...]].
+ * - Incidental UI/prose numbering that is not used to solve the question may stay text.
+ * - A value or expression being inspected, compared, solved, or selected is also wrapped in [[...]]
  *   and becomes a math segment rendered by ContentRenderer/KaTeX.
  */
 
@@ -51,4 +52,9 @@ export function mathLookingText(value: string): boolean {
   if (/\d+\/\d+/u.test(text)) return true;
   if (/\b[A-Za-z]\b/u.test(text) || /\d+[A-Za-z]/u.test(text)) return true;
   return /(?:\d|[A-Za-z□)])\s*(?:\+|−|-|×|÷|\*|=|<|>)\s*(?:[-−]?\d|[A-Za-z□(])/u.test(text);
+}
+
+/** Digits in prose are ambiguous: validation warns so an author can decide whether they are problem data. */
+export function hasAmbiguousProseNumber(value: string): boolean {
+  return /\d/u.test(value);
 }

@@ -122,6 +122,18 @@ function definitionType(definition: SkillQuestionDefinition): Question["type"] {
   return isGeneratedQuestionDefinition(definition) ? definition.generatedType ?? "numeric" : definition.type;
 }
 
+/**
+ * A definition tagged requires-rereview owns its approval by version. This keeps legacy
+ * records readable while preventing an approval for old content from blessing changed content.
+ */
+export function effectiveReviewRecord(
+  definition: SkillQuestionDefinition,
+  record: QuestionReviewRecord | undefined,
+): QuestionReviewRecord | undefined {
+  if (!record || !definition.tags?.includes("requires-rereview")) return record;
+  return record.definitionVersion === definition.version ? record : undefined;
+}
+
 export function filterReviewDefinitions(
   definitions: readonly SkillQuestionDefinition[],
   filters: ReviewFilters,
@@ -131,7 +143,7 @@ export function filterReviewDefinitions(
   const groupSkills = filters.skillGroupId ? new Set(catalog.skillGroups.find((group) => group.id === filters.skillGroupId)?.skillIds ?? []) : null;
   const domainSkills = filters.domainId ? new Set(catalog.skills.filter((skill) => skill.domainId === filters.domainId).map((skill) => skill.id)) : null;
   return definitions.filter((definition) => {
-    const record = records.get(definition.id);
+    const record = effectiveReviewRecord(definition, records.get(definition.id));
     return (!domainSkills || domainSkills.has(definition.skillId))
       && (!groupSkills || groupSkills.has(definition.skillId))
       && (!filters.skillId || definition.skillId === filters.skillId)
@@ -161,7 +173,7 @@ function aggregateStatuses(statuses: Array<ReviewStatus | undefined>): ReviewSta
 }
 
 export function reviewUnitStatus(unit: ReviewUnit, records: ReadonlyMap<string, QuestionReviewRecord>): ReviewStatus | undefined {
-  return aggregateStatuses(unit.definitions.map((definition) => records.get(definition.id)?.status));
+  return aggregateStatuses(unit.definitions.map((definition) => effectiveReviewRecord(definition, records.get(definition.id))?.status));
 }
 
 export function isReviewUnitFullyApproved(unit: ReviewUnit, records: ReadonlyMap<string, QuestionReviewRecord>): boolean {
@@ -173,7 +185,7 @@ export function reviewUnitBandCoverage(unit: ReviewUnit, records: ReadonlyMap<st
   return unit.definitions.map((definition) => ({
     band: definition.difficultyBand ?? "?",
     definitionId: definition.id,
-    status: records.get(definition.id)?.status,
+    status: effectiveReviewRecord(definition, records.get(definition.id))?.status,
   }));
 }
 
@@ -282,7 +294,7 @@ export function reviewProgress(definitions: readonly SkillQuestionDefinition[], 
   const statuses: Record<ReviewStatus, number> = { approved: 0, "needs-fix": 0, rejected: 0 };
   let reviewed = 0;
   for (const definition of definitions) {
-    const record = records.get(definition.id);
+    const record = effectiveReviewRecord(definition, records.get(definition.id));
     if (record) { reviewed += 1; statuses[record.status] += 1; }
   }
   return { total: definitions.length, reviewed, ...statuses };
