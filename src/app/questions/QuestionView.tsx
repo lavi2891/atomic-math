@@ -75,7 +75,7 @@ function getUserAnswerNode(question: Question, raw: AnyRawAnswer) {
 
   switch (raw.questionType) {
     case "numeric":
-      return <span dir="ltr">{raw.data.value}</span>;
+      return <NumericMathValue value={raw.data.value} />;
 
     case "singleChoice": {
       if (question.type !== "singleChoice") return <span>-</span>;
@@ -105,7 +105,16 @@ function getUserAnswerNode(question: Question, raw: AnyRawAnswer) {
 function getCorrectAnswerNode(question: Question) {
   switch (question.type) {
     case "numeric":
-      return <span dir="ltr">{question.correctAnswers.join(" / ")}</span>;
+      return (
+        <span>
+          {question.correctAnswers.map((answer, index) => (
+            <span key={`${answer}-${index}`} style={{ marginInlineEnd: spacing.xs }}>
+              {index > 0 ? <span aria-hidden="true">/ </span> : null}
+              <NumericMathValue value={answer} />
+            </span>
+          ))}
+        </span>
+      );
 
     case "singleChoice": {
       const opt = question.options.find(
@@ -543,4 +552,8 @@ export function QuestionView({
       <DevQuestionDebug question={question} />
     </div>
   );
+}
+
+function NumericMathValue({ value }: { value: string }) {
+  return <ContentRenderer content={[{ kind: "math", latex: value.replaceAll("−", "-").replaceAll("×", "\\times ").replaceAll("÷", "\\div ") }]} />;
 }

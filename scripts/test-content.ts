@@ -11,7 +11,7 @@ import type { Attempt } from "../src/domain/attempts/types.ts";
 import { isAssignmentComplete } from "../src/domain/studentHome/deriveStudentHome.ts";
 import { createChallengeSignature, challengeSignatureKey } from "../src/domain/personalBests/challengeSignature.ts";
 import { resolveQuickPracticeScope } from "../src/domain/studentHome/quickPractice.ts";
-import { auditFoundationalContent, curatedNumericLiteralIssues, curatedNumericLiteralItems, generatedInstanceMetadataIssues, magnitudeBandProgressionIssues, validateFoundationalContent } from "../src/content/validateContent.ts";
+import { auditFoundationalContent, curatedNumericLiteralIssues, curatedNumericLiteralItems, generatedInstanceMetadataIssues, magnitudeBandProgressionIssues, structuralBandProgressionIssues, studentMathContentIssues, validateFoundationalContent } from "../src/content/validateContent.ts";
 import { atomicSkillIdentityIssues } from "../src/content/foundations/skillScope.ts";
 import { signedGeneratedInstanceIssues, signedSkillDefinitionIssues } from "../src/content/foundations/skillScope.ts";
 import type { GeneratedQuestionInstance, OptionContent } from "../src/domain/questions/types.ts";
@@ -228,6 +228,48 @@ run("magnitude-driven Bands progress monotonically", () => {
   const easier = generatedDefinition("MVP_AR_ADD_FACTS_A_A").params.a;
   const harder = generatedDefinition("MVP_AR_ADD_FACTS_B_A").params.a;
   assert.ok(easier.type !== "rational" && harder.type !== "rational" && harder.min >= easier.max);
+});
+
+run("student-facing mathematical objects use math content instead of RTL text", () => {
+  const comparison = buildGeneratedQuestion(generatedDefinition("MVP_INT_COMPARE_ADJACENT_NEGATIVES_A"), { seed: 19 });
+  assert.equal(comparison.prompt.filter((part) => part.kind === "math").length, 2);
+  assert.deepEqual(studentMathContentIssues(comparison.templateId, comparison, "test"), []);
+  assert.ok(comparison.type !== "numeric" && comparison.options.filter((option) => option.content.some((part) => part.kind === "math")).length >= 3);
+
+  const signed = buildGeneratedQuestion(generatedDefinition("MVP_INT_SUB_NEGATIVE_REWRITE_A"), { seed: 19 });
+  assert.ok(signed.prompt.some((part) => part.kind === "math" && part.latex.includes("-")));
+  assert.deepEqual(studentMathContentIssues(signed.templateId, signed, "test"), []);
+
+  const invalid = { ...comparison, prompt: [{ kind: "text" as const, value: "השוו בין -3 לבין -4" }] };
+  assert.ok(studentMathContentIssues("TEST_PLAIN_TEXT_MATH", invalid).length > 0);
+  assert.ok(studentMathContentIssues("TEST_CONSECUTIVE_SIGNS", { ...comparison, prompt: [{ kind: "math", latex: "5+-3" }] }).some((issue) => issue.includes("consecutive operators")));
+  assert.ok(studentMathContentIssues("TEST_MALFORMED_FRACTION", { ...comparison, prompt: [{ kind: "math", latex: "3/" }] }).some((issue) => issue.includes("malformed fraction")));
+});
+
+run("algebra and equation Bands use deterministic structural progression", () => {
+  assert.deepEqual(structuralBandProgressionIssues(FOUNDATIONAL_QUESTIONS), []);
+  for (const skillId of ["ALG_EQUALITY", "ALG_VARIABLE", "ALG_SUBSTITUTE", "EQ_ADD", "EQ_MUL"]) {
+    const definitions = FOUNDATIONAL_QUESTIONS.filter((item): item is GeneratedQuestionDefinition & { skillId: string } => isGeneratedQuestionDefinition(item) && item.skillId === skillId && !!item.choiceBuilder);
+    assert.deepEqual(definitions.map((item) => item.difficultyBand).sort(), ["A", "B", "C"]);
+    assert.equal(new Set(definitions.map((item) => item.contentFamily)).size, 3);
+    assert.ok(definitions.every((item) => item.metadata?.difficultyFeature === "structure"));
+  }
+  for (const skillId of ["EQ_ADD", "EQ_MUL"]) {
+    for (const definition of FOUNDATIONAL_QUESTIONS.filter((item): item is GeneratedQuestionDefinition & { skillId: string } => isGeneratedQuestionDefinition(item) && item.skillId === skillId && !!item.choiceBuilder)) {
+      assert.ok(Object.values(definition.params).every((spec) => spec.type === "rational" || spec.min >= 1));
+    }
+  }
+});
+
+run("algebra terminology distinguishes variable, coefficient, and expression value", () => {
+  const variableA = buildGeneratedQuestion(generatedDefinition("MVP_ALG_VARIABLE_A"), { seed: 6 });
+  const variableB = buildGeneratedQuestion(generatedDefinition("MVP_ALG_VARIABLE_B"), { seed: 6 });
+  const variableC = buildGeneratedQuestion(generatedDefinition("MVP_ALG_VARIABLE_C"), { seed: 6 });
+  assert.match(renderedText(variableA.prompt), /תפקידה של x/u);
+  assert.deepEqual(correctOptionTexts(variableA), ["משתנה שמייצג מספר"]);
+  assert.match(renderedText(variableB.prompt), /המקדם של x/u);
+  assert.deepEqual(correctOptionTexts(variableB), [variableB.sampledParams.n]);
+  assert.deepEqual(correctOptionTexts(variableC), ["ערך הביטוי"]);
 });
 
 run("every generated Band documents its actual difficulty feature", () => {

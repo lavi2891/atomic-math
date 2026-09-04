@@ -8,9 +8,10 @@ import { buildGeneratedQuestion } from "../domain/questions/generator/buildGener
 import { evaluateExpression } from "../domain/questions/generator/evaluateExpression.ts";
 import type { GeneratedQuestionDefinition, ParamSpec } from "../domain/questions/generator/types.ts";
 import type { SkillQuestionDefinition } from "../domain/session/skillQuestionSelector.ts";
-import type { OptionContent, QuestionCurationReason } from "../domain/questions/types.ts";
+import type { OptionContent, Question, QuestionCurationReason } from "../domain/questions/types.ts";
 import type { GeneratedQuestionInstance } from "../domain/questions/types.ts";
 import { atomicSkillIdentityIssues, signedGeneratedInstanceIssues, signedSkillDefinitionIssues } from "./foundations/skillScope.ts";
+import { mathLookingText } from "./foundations/studentMathContent.ts";
 
 export interface SkillContentAudit {
   skillId: string;
@@ -67,6 +68,29 @@ function studentFacingNotationIssues(definitionId: string, question: GeneratedQu
   return surfaces.some((surface) => CONSECUTIVE_SIGN_PATTERN.test(surface))
     ? [`${definitionId}: seed ${seed} exposes a negative operand without parentheses`]
     : [];
+}
+
+export function studentMathContentIssues(definitionId: string, question: Question, sampleLabel = "curated"): string[] {
+  const surfaces: Array<{ label: string; content: readonly OptionContent[] }> = [
+    { label: "prompt", content: question.prompt },
+    ...(question.hints ?? []).map((content, index) => ({ label: `hint ${index + 1}`, content })),
+    ...(question.type === "numeric" ? [] : question.options.map((option) => ({ label: `option ${option.id}`, content: option.content }))),
+  ];
+  return surfaces.flatMap(({ label, content }) => content.flatMap((part) => {
+    if (part.kind === "text" && mathLookingText(part.value)) {
+      return [`${definitionId}: ${sampleLabel} ${label} contains mathematical notation in a text segment`];
+    }
+    if (part.kind === "math" && !part.latex.trim()) {
+      return [`${definitionId}: ${sampleLabel} ${label} contains an empty math segment`];
+    }
+    if (part.kind === "math" && /(?:\+|-|\\times|\\div|\*|\/)\s*-\s*\d/u.test(part.latex)) {
+      return [`${definitionId}: ${sampleLabel} ${label} contains consecutive operators before a negative operand`];
+    }
+    if (part.kind === "math" && /(?:\d|[A-Za-z])\s*\/\s*(?:$|[)=<>+*/])/u.test(part.latex)) {
+      return [`${definitionId}: ${sampleLabel} ${label} contains malformed fraction notation`];
+    }
+    return [];
+  }));
 }
 
 function numericContentValue(content: readonly OptionContent[]): string | null {
@@ -193,6 +217,26 @@ export function magnitudeBandProgressionIssues(definitions: readonly SkillQuesti
   return issues;
 }
 
+const STRUCTURAL_BAND_SKILLS = new Set(["ALG_EQUALITY", "ALG_VARIABLE", "ALG_SUBSTITUTE", "EQ_ADD", "EQ_MUL"]);
+
+export function structuralBandProgressionIssues(definitions: readonly SkillQuestionDefinition[]): string[] {
+  const issues: string[] = [];
+  for (const skillId of STRUCTURAL_BAND_SKILLS) {
+    const family = definitions.filter((definition): definition is GeneratedQuestionDefinition & { skillId: string } =>
+      isGeneratedQuestionDefinition(definition) && definition.skillId === skillId && !!definition.choiceBuilder,
+    );
+    const bands = new Set(family.map((definition) => definition.difficultyBand));
+    for (const band of ["A", "B", "C"]) if (!bands.has(band as GeneratedQuestionDefinition["difficultyBand"])) issues.push(`${skillId}: missing structural Band ${band}`);
+    if (family.some((definition) => definition.metadata?.difficultyFeature !== "structure")) issues.push(`${skillId}: structural Bands must declare difficultyFeature=structure`);
+    const contentFamilies = family.map((definition) => definition.contentFamily);
+    if (new Set(contentFamilies).size !== contentFamilies.length) issues.push(`${skillId}: structural Bands must use distinct content families`);
+    if ((skillId === "EQ_ADD" || skillId === "EQ_MUL") && family.some((definition) => Object.values(definition.params).some((spec) => spec.type !== "rational" && spec.min < 1))) {
+      issues.push(`${skillId}: equation Bands must not introduce signed-number arithmetic`);
+    }
+  }
+  return issues;
+}
+
 export function validateFoundationalContent(samplesPerGenerator = 100): ContentValidationReport {
   const issues: string[] = [];
   const warnings: string[] = [];
@@ -202,6 +246,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
   const fixedSurfaceKeys = new Set<string>();
   const normalizedFamilies = new Map<string, { skillId: string; family: string; ids: string[] }>();
   issues.push(...magnitudeBandProgressionIssues(FOUNDATIONAL_QUESTIONS));
+  issues.push(...structuralBandProgressionIssues(FOUNDATIONAL_QUESTIONS));
   issues.push(...curatedNumericLiteralIssues(FOUNDATIONAL_QUESTIONS));
   issues.push(...atomicSkillIdentityIssues(FOUNDATIONAL_QUESTIONS));
   issues.push(...signedSkillDefinitionIssues(FOUNDATIONAL_QUESTIONS));
@@ -227,6 +272,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
           issues.push(...generatedInstanceMetadataIssues(definition, question));
           issues.push(...signedGeneratedInstanceIssues(definition, question));
           issues.push(...studentFacingNotationIssues(definition.id, question, seed));
+          issues.push(...studentMathContentIssues(definition.id, question, `seed ${seed}`));
           issues.push(...mathematicallyDuplicateChoiceIssues(definition.id, question, seed));
           if (question.id !== repeat.id || question.renderedExpression !== repeat.renderedExpression) issues.push(`${definition.id}: seed ${seed} is not reproducible`);
           if (question.renderedExpression.includes("undefined") || optionText(question.prompt).includes("undefined")) issues.push(`${definition.id}: seed ${seed} rendered undefined content`);
@@ -258,6 +304,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
         if (next.renderedExpression === first.renderedExpression) issues.push(`${definition.id}: anti-repetition repeated the recent expression`);
       } catch { issues.push(`${definition.id}: anti-repetition could not produce a follow-up item`); }
     } else if (definition.type === "singleChoice") {
+      issues.push(...studentMathContentIssues(definition.id, definition));
       if (definition.authoringMode !== "curated" || !definition.curationReason) issues.push(`${definition.id}: curated authoring intent is incomplete`);
       const optionValues = definition.options.map((option) => optionText(option.content));
       const surfaceKey = `${definition.skillId}|${optionText(definition.prompt)}|${optionValues.join("|")}`;
@@ -275,6 +322,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
       const existing = normalizedFamilies.get(normalizedKey);
       normalizedFamilies.set(normalizedKey, { skillId: definition.skillId, family: definition.contentFamily ?? "missing-family", ids: [...(existing?.ids ?? []), definition.id] });
     } else if (definition.type === "numeric") {
+      issues.push(...studentMathContentIssues(definition.id, definition));
       if (definition.authoringMode !== "curated" || !definition.curationReason) issues.push(`${definition.id}: fixed numeric item requires an explicit curation reason`);
       const surfaceKey = `${definition.skillId}|${optionText(definition.prompt)}|${definition.correctAnswers.join("|")}`;
       if (fixedSurfaceKeys.has(surfaceKey)) issues.push(`${definition.id}: duplicate fixed-question surface`);
@@ -283,6 +331,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
       const existing = normalizedFamilies.get(normalizedKey);
       normalizedFamilies.set(normalizedKey, { skillId: definition.skillId ?? "missing-skill", family: definition.contentFamily ?? "missing-family", ids: [...(existing?.ids ?? []), definition.id] });
     } else if (definition.type === "multiChoice") {
+      issues.push(...studentMathContentIssues(definition.id, definition));
       if (definition.authoringMode !== "curated" || !definition.curationReason) issues.push(`${definition.id}: curated authoring intent is incomplete`);
       if (!definition.correctOptionIds.length || definition.correctOptionIds.some((id) => !definition.options.some((option) => option.id === id))) issues.push(`${definition.id}: invalid correct options`);
     }
