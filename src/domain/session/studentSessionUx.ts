@@ -3,7 +3,7 @@ import type { AnswerResult } from "../results/types.ts";
 import { isSuccessfulSessionCompletion, type PracticeSession, type PracticeSessionState, type SessionMode } from "./practiceSession.ts";
 
 export function repeatSessionConfig(session: PracticeSession) {
-  return { skillIds: [...session.selectedSkillIds], settings: { ...session.settings }, assignmentId: session.assignmentId };
+  return { skillIds: [...session.selectedSkillIds], settings: { ...session.settings }, assignmentId: session.assignmentId, ...(session.learningStage ? { learningStage: { ...session.learningStage } } : {}) };
 }
 
 export const sessionModeLabels: Record<SessionMode, string> = {

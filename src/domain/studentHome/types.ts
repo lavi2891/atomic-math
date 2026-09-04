@@ -1,4 +1,5 @@
 import type { MasterySnapshot } from "../mastery/projectMastery.ts";
+import type { StudentLearningProgress } from "../learningPath/types.ts";
 
 export interface StudentProfile {
   studentId: string;
@@ -21,6 +22,8 @@ export interface Assignment {
 }
 
 export interface StudentHomeData {
+  /** Undefined means local path history could not be loaded, not zero progress. */
+  learningProgress?: StudentLearningProgress;
   student: StudentProfile | null;
   assignments: Assignment[];
   masteryBySkill: Record<string, MasterySnapshot>;

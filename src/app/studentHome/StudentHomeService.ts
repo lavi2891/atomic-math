@@ -7,6 +7,8 @@ import { chooseFresherMastery } from "../../domain/studentHome/deriveStudentHome
 import type { PersistenceDriver } from "../../infrastructure/persistence/driver.ts";
 import type { AppsScriptClient } from "../../infrastructure/sync/AppsScriptClient.ts";
 import { SKILLS } from "../../content/catalog/index.ts";
+import { LEARNING_PATHS } from "../../content/learningPaths.ts";
+import { progressFromSessions } from "../../domain/learningPath/sessionProgress.ts";
 
 function truthy(value: unknown): boolean {
   return value === true || String(value).toUpperCase() === "TRUE";
@@ -107,7 +109,16 @@ export class StudentHomeService {
       return [skill.id, chooseFresherMastery(server?.masteryBySkill[skill.id], local)] as const;
     }));
 
+    let learningProgress: StudentHomeData["learningProgress"];
+    try {
+      const sessions = await this.persistence.listSessions();
+      learningProgress = progressFromSessions(studentId, LEARNING_PATHS, sessions.map((record) => record.value));
+    } catch {
+      // Do not display a false fresh start when saved path history is unavailable.
+    }
+
     return {
+      learningProgress,
       student: server?.student ?? null,
       assignments: server?.assignments ?? [],
       masteryBySkill: Object.fromEntries(masteryEntries),

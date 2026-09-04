@@ -6,6 +6,11 @@ export type StageType = "normal" | "review" | "checkpoint" | "bonus";
 export type StageStars = 0 | 1 | 2 | 3;
 export type StageSkillIds = readonly [SkillId, ...SkillId[]];
 
+export interface LearningStageReference {
+  readonly pathId: LearningPathId;
+  readonly stageId: string;
+}
+
 /** Presentation content only. Skills and their evidence policies remain atomic. */
 export interface Stage {
   /** Stable and unique across paths, including student-specific inserted stages. */

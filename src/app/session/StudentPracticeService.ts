@@ -9,6 +9,9 @@ import { createChallengeSignature } from "../../domain/personalBests/challengeSi
 import { DOMAINS, SKILLS } from "../../content/catalog/index.ts";
 import { isFixedPersonalBestEligible } from "../../domain/personalBests/eligibility.ts";
 import { modeEligible } from "../../domain/session/challengeContent.ts";
+import type { LearningStageReference } from "../../domain/learningPath/types.ts";
+import { findLearningStage, matchesStageSkills } from "../../domain/learningPath/sessionProgress.ts";
+import { LEARNING_PATHS } from "../../content/learningPaths.ts";
 
 export type SessionStartResult = { session: PracticeSession; masteryBefore: Record<string, MasterySnapshot>; previousBest: import("../../domain/personalBests/types.ts").PersonalBest | null };
 export type SessionFinishResult = { masteryAfter: Record<string, MasterySnapshot>; personalBest: PersonalBestUpdate | null };
@@ -38,11 +41,17 @@ export class StudentPracticeService {
     })));
   }
 
-  async start(input: { studentId: string; skillIds: string[]; settings: SessionSettings; assignmentId?: string }): Promise<SessionStartResult> {
+  async start(input: { studentId: string; skillIds: string[]; settings: SessionSettings; assignmentId?: string; learningStage?: LearningStageReference }): Promise<SessionStartResult> {
+    if (input.learningStage) {
+      const stage = findLearningStage(LEARNING_PATHS, input.learningStage);
+      if (!stage || !matchesStageSkills(stage, input.skillIds) || input.settings.mode !== "fixed" || input.assignmentId) {
+        throw new Error("Invalid learning-stage session scope");
+      }
+    }
     const selectedSkills = input.skillIds.map((id) => getSkillById(id));
     if (selectedSkills.some((skill) => !skill || !skill.active || !modeEligible(skill, input.settings))) throw new Error("One or more skills are not eligible for this session mode");
     const masteryBefore = await this.snapshot(input.studentId, input.skillIds);
-    const session = createPracticeSession({ id: createSessionId(), studentId: input.studentId, selectedSkillIds: input.skillIds, settings: input.settings, startedAt: Date.now(), source: input.assignmentId ? "assignment" : "freePractice", assignmentId: input.assignmentId });
+    const session = createPracticeSession({ id: createSessionId(), studentId: input.studentId, selectedSkillIds: input.skillIds, settings: input.settings, startedAt: Date.now(), source: input.assignmentId ? "assignment" : "freePractice", assignmentId: input.assignmentId, ...(input.learningStage ? { learningStage: { ...input.learningStage } } : {}) });
     const signature = createChallengeSignature(session.settings, session.selectedSkillIds, DOMAINS, SKILLS);
     const previousBest = signature ? await this.personalBests.get(session.studentId, signature) : null;
     await this.sessions.saveSession({ ...session, source: session.source ?? "freePractice", strategy: "balanced", status: "active", questionCount: 0, correctCount: 0, incorrectCount: 0, accuracy: 0 });

@@ -1,31 +1,54 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { DOMAINS, SKILLS, getSkillById } from "../../content/catalog/index.ts";
-import type { SkillQuestionDefinition } from "@domain/session/skillQuestionSelector";
-import type { StudentHomeData } from "@domain/studentHome/types";
-import type { SessionSettings } from "@domain/session/practiceSession";
-import { FIXED_QUESTION_COUNTS } from "@domain/session/practiceSession";
-import { sessionDefaults, TIMED_DURATION_PRESETS_SECONDS, type TimedDurationSeconds } from "@domain/session/config";
-import { contentBackedCatalog } from "@domain/studentHome/contentAvailability";
-import { resolveQuickPracticeScope } from "@domain/studentHome/quickPractice";
-import { deriveSkillDisplayState, evidenceLabels, isAssignmentComplete, skillDisplayLabels, sortAssignments } from "@domain/studentHome/deriveStudentHome";
-import { colors } from "@ui/tokens"; import { TopicIcon } from "@ui/icons/TopicIcon"; import type { TopicIconName } from "@ui/icons/types";
-import { createChallengeSignature } from "@domain/personalBests/challengeSignature"; import { personalBestRepository } from "@app/persistenceInstances";
-import { presentationItems } from "../../content/catalog/skillGroups.ts";
-import { modeEligible } from "@domain/session/challengeContent";
-type Props = { data: StudentHomeData; definitions: readonly SkillQuestionDefinition[]; onStartAssignment: (skillId: string, assignmentId: string) => void; onStartQuick: (skillIds: string[], settings: SessionSettings) => void; onOpenDomain: (domainId: string) => void };
-export function StudentHomeScreen({ data, definitions, onStartAssignment, onStartQuick, onOpenDomain }: Props) {
-  const catalog = contentBackedCatalog(DOMAINS, SKILLS, definitions); const assignments = useMemo(() => sortAssignments(data.assignments), [data.assignments]); const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const quick = useMemo(() => resolveQuickPracticeScope({ assignments, masteryBySkill: data.masteryBySkill, domains: DOMAINS, skills: SKILLS, definitions }), [assignments, data.masteryBySkill, definitions]);
-  const [fixedCount, setFixedCount] = useState<(typeof FIXED_QUESTION_COUNTS)[number]>(sessionDefaults.fixedQuestionCount); const [timedDuration, setTimedDuration] = useState<TimedDurationSeconds>(sessionDefaults.timedDurationSeconds);
-  const timedQuickIds = useMemo(() => quick.skillIds.filter((id) => { const skill = getSkillById(id); return skill ? modeEligible(skill, { mode: "timed", durationSeconds: timedDuration }) : false; }), [quick.skillIds, timedDuration]);
-  const [bests, setBests] = useState<Record<string, number | undefined>>({});
-  const toggle = (id: string) => setExpanded((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
-  useEffect(() => { const settings: SessionSettings[] = [{ mode: "fixed", questionCount: fixedCount }, { mode: "timed", durationSeconds: timedDuration }, { mode: "survival", maxErrors: sessionDefaults.survivalMaxErrors }]; let active = true; void Promise.all(settings.map(async (item) => { const ids = item.mode === "timed" ? timedQuickIds : quick.skillIds; const signature = createChallengeSignature(item, ids, DOMAINS, SKILLS); return [item.mode, signature ? (await personalBestRepository.get(data.student?.studentId ?? "local", signature))?.bestScore : undefined] as const; })).then((values) => { if (active) setBests(Object.fromEntries(values)); }); return () => { active = false; }; }, [data.student?.studentId, fixedCount, quick.skillIds, timedDuration, timedQuickIds]);
-  return <section className="home-screen"><header><h1>{data.student?.displayName ? `שלום ${data.student.displayName}` : "Atomic Math"}</h1><small>{data.connection === "online" ? "מסונכרן" : data.connection === "offline" ? "עובדים במצב לא מקוון" : "שמירה מקומית"}</small></header>
-    {Object.values(bests).some((value) => value !== undefined) ? <div className="quick-best-strip"><strong>השיאים שלך:</strong>{bests.fixed !== undefined ? <span>{fixedCount} שאלות — {Math.round(bests.fixed / 1000)} שניות</span> : null}{bests.timed !== undefined ? <span>נגד השעון — {bests.timed} נכונות</span> : null}{bests.survival !== undefined ? <span>הישרדות — {bests.survival} נכונות</span> : null}</div> : null}
-    {assignments.length ? <section className="home-section"><h2>העבודה שלי</h2>{assignments.map((assignment) => { const skill = getSkillById(assignment.skillId); const snapshot = data.masteryBySkill[assignment.skillId]; return <article key={assignment.assignmentId} className="assignment-card"><strong>{skill?.nameHe ?? assignment.skillId}</strong><span>שליטה: {Math.round(snapshot?.mastery ?? 0)}% · יעד: {assignment.targetMastery}%</span><small>{snapshot ? evidenceLabels[snapshot.evidenceLevel] : evidenceLabels.insufficient}</small><button type="button" className="quiet-button" onClick={() => onStartAssignment(assignment.skillId, assignment.assignmentId)}>{isAssignmentComplete(assignment, snapshot) ? "תרגול נוסף" : "התחל"}</button></article>; })}</section> : null}
-    <section className="home-section quick-practice"><h2>תרגול מהיר</h2>{quick.skillIds.length ? <><p>בחרו אתגר ומתחילים מיד.</p><div className="quick-presets"><label>שאלות<select value={fixedCount} onChange={(event) => setFixedCount(Number(event.target.value) as typeof fixedCount)}>{FIXED_QUESTION_COUNTS.map((count) => <option key={count}>{count}</option>)}</select></label><label>זמן<select value={timedDuration} onChange={(event) => setTimedDuration(Number(event.target.value) as TimedDurationSeconds)}>{TIMED_DURATION_PRESETS_SECONDS.map((seconds) => <option key={seconds} value={seconds}>{seconds < 60 ? `${seconds} שניות` : `${seconds / 60} דקות`}</option>)}</select></label></div><div className="quick-mode-grid"><button type="button" onClick={() => onStartQuick(quick.skillIds, { mode: "fixed", questionCount: fixedCount })}><strong>🎯 {fixedCount} שאלות</strong><small>דיוק של 90% קובע שיא זמן</small></button><button type="button" disabled={!timedQuickIds.length} onClick={() => onStartQuick(timedQuickIds, { mode: "timed", durationSeconds: timedDuration })}><strong>⏱ {timedDuration < 60 ? `${timedDuration} שניות` : `${timedDuration / 60} דקות`}</strong><small>כמה תשובות נכונות?</small></button><button type="button" onClick={() => onStartQuick(quick.skillIds, { mode: "survival", maxErrors: sessionDefaults.survivalMaxErrors })}><strong>♡ הישרדות</strong><small>{sessionDefaults.survivalMaxErrors} פסילות</small></button></div></> : <p role="status">אין כרגע תוכן זמין לתרגול מהיר.</p>}</section>
-    <section className="home-section manual-practice"><h2>בחירת נושאים</h2><small>רוצה לבחור בדיוק מה לתרגל?</small>{catalog.map(({ domain, skills }) => <button key={domain.id} type="button" className="domain-launch" style={{ "--domain-accent": colors[domain.colorToken as keyof typeof colors] ?? colors.topicBlue } as CSSProperties} onClick={() => onOpenDomain(domain.id)}><span className="domain-icon"><TopicIcon name={domain.icon as TopicIconName} size={28} /></span><span><strong>{domain.nameHe}</strong><small>{skills.length} מיומנויות זמינות</small></span><span>←</span></button>)}</section>
-    <section className="home-section"><h2>מפת המיומנויות שלי</h2>{catalog.map(({ domain, skills }) => { const open = expanded.has(domain.id); const items = presentationItems(domain.id, skills.map((skill) => skill.id), skills); const active = items.filter((item) => item.skillIds.some((id) => (data.masteryBySkill[id]?.attemptCount ?? 0) > 0)).length; return <section key={domain.id} className="domain-tree" style={{ "--domain-accent": colors[domain.colorToken as keyof typeof colors] ?? colors.topicBlue } as CSSProperties}><button type="button" className="skill-map-summary" aria-expanded={open} onClick={() => toggle(domain.id)}><span className="domain-icon"><TopicIcon name={domain.icon as TopicIconName} size={28} /></span><span><strong>{domain.nameHe}</strong><small>{active}/{items.length} נושאים בתהליך או בשליטה</small></span><span>{open ? "⌃" : "⌄"}</span></button>{open ? <div className="domain-tree__children">{items.map((item) => { const snapshots = item.skillIds.map((id) => data.masteryBySkill[id]).filter((value) => value !== undefined); const attempts = snapshots.reduce((sum, value) => sum + value.attemptCount, 0); const mastery = snapshots.length ? snapshots.reduce((sum, value) => sum + value.mastery, 0) / snapshots.length : 0; const representative = snapshots[0] ? { ...snapshots[0], mastery, attemptCount: attempts, evidenceLevel: snapshots.every((value) => value.evidenceLevel === "established") ? "established" as const : "emerging" as const } : undefined; const state = deriveSkillDisplayState(representative); return <article key={item.id} className="mastery-row"><span><strong>{item.nameHe}</strong><small>{skillDisplayLabels[state]}</small></span><span className="mastery-badge">{attempts ? `${Math.round(mastery)}%` : "—"}</span></article>; })}</div> : null}</section>; })}</section>
+import { useMemo } from "react";
+import { DOMAINS, SKILLS } from "../../content/catalog/index.ts";
+import { LEARNING_PATHS } from "../../content/learningPaths.ts";
+import type { SkillQuestionDefinition } from "../../domain/session/skillQuestionSelector.ts";
+import type { StudentHomeData } from "../../domain/studentHome/types.ts";
+import type { LearningStageReference } from "../../domain/learningPath/types.ts";
+import { contentBackedCatalog } from "../../domain/studentHome/contentAvailability.ts";
+import { resolveQuickPracticeScope } from "../../domain/studentHome/quickPractice.ts";
+import { learningPathCards } from "../../domain/studentHome/learningPathCards.ts";
+
+type Props = {
+  data: StudentHomeData;
+  definitions: readonly SkillQuestionDefinition[];
+  starting?: boolean;
+  onContinue: (stage: LearningStageReference, skillIds: string[]) => void;
+  onStartQuick: (skillIds: string[]) => void;
+  onFreePractice: () => void;
+};
+
+export function StudentHomeScreen({ data, definitions, starting = false, onContinue, onStartQuick, onFreePractice }: Props) {
+  const available = useMemo(() => new Set(contentBackedCatalog(DOMAINS, SKILLS, definitions)
+    .flatMap(({ skills }) => skills.filter((skill) => skill.modes.fixed).map((skill) => skill.id))), [definitions]);
+  const cards = learningPathCards(LEARNING_PATHS, data.learningProgress, available);
+  const quick = useMemo(() => resolveQuickPracticeScope({ assignments: data.assignments, masteryBySkill: data.masteryBySkill, domains: DOMAINS, skills: SKILLS, definitions }), [data.assignments, data.masteryBySkill, definitions]);
+  const quickIds = quick.skillIds.filter((id) => available.has(id));
+
+  return <section className="home-screen student-home" aria-busy={starting}>
+    <h1>המשך במסלול</h1>
+    <div className="learning-path-cards">
+      {cards.map((card) => <article key={card.path.id} className="learning-path-card" data-path={card.path.id} aria-labelledby={`path-${card.path.id}`}>
+        <h2 id={`path-${card.path.id}`}>{card.path.nameHe}</h2>
+        <div className="learning-path-position">
+          {card.chapter && card.stage ? <><p>{card.chapter.nameHe}</p><p className="learning-path-stage">{card.pathCompleted ? "המסלול הושלם · " : "השלב הבא: "}{card.stage.nameHe}</p></> :
+            <p>{card.availability === "progress_unavailable" ? "לא ניתן לטעון את ההתקדמות כרגע" : "המסלול ייפתח בקרוב"}</p>}
+          {card.availability === "content_unavailable" ? <small>השלב יהיה זמין בקרוב</small> : null}
+        </div>
+        <div className="learning-path-progress">
+          <progress value={card.availability === "progress_unavailable" ? undefined : card.completedStages} max={card.totalStages || 1} aria-label={`התקדמות בפרק במסלול ${card.path.nameHe}`} />
+          {card.totalStages > 0 ? <small>{card.completedStages} מתוך {card.totalStages} שלבים בפרק</small> : null}
+        </div>
+        <button type="button" className="primary-action" aria-label={`${card.pathCompleted ? "תרגול נוסף" : "המשך"} במסלול ${card.path.nameHe}`} disabled={starting || card.availability !== "ready"} onClick={() => {
+          if (card.stage && card.availability === "ready") onContinue({ pathId: card.path.id, stageId: card.stage.id }, [...card.stage.skillIds]);
+        }}>{card.pathCompleted ? "תרגול נוסף" : "המשך"}</button>
+      </article>)}
+    </div>
+    <section className="home-secondary-action" aria-labelledby="quick-check-title">
+      <h2 id="quick-check-title">בדיקה מהירה</h2>
+      <p>{quickIds.length ? "5 שאלות לתרגול קצר" : "אין כרגע שאלות זמינות"}</p>
+      <button type="button" className="quiet-button" disabled={starting || !quickIds.length} onClick={() => onStartQuick(quickIds)}>התחל בדיקה</button>
+    </section>
+    <button type="button" className="home-free-practice quiet-button" disabled={starting} onClick={onFreePractice}>תרגול חופשי <span aria-hidden="true">←</span></button>
+    {data.connection === "offline" ? <small className="home-connection" role="status">אפשר להמשיך ללמוד גם ללא חיבור</small> : null}
   </section>;
 }

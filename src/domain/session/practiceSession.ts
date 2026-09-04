@@ -1,5 +1,6 @@
 import type { AnswerResult } from "../results/types.ts";
 import type { TimedDurationSeconds } from "./config.ts";
+import type { LearningStageReference } from "../learningPath/types.ts";
 
 export const FIXED_QUESTION_COUNTS = [5, 10, 15, 20] as const;
 export type FixedQuestionCount = (typeof FIXED_QUESTION_COUNTS)[number];
@@ -20,6 +21,8 @@ export interface PracticeSession {
   startedAt: number;
   source?: "freePractice" | "assignment";
   assignmentId?: string;
+  /** Student path context only; question Attempts still belong to atomic Skills. */
+  learningStage?: LearningStageReference;
 }
 
 export type PracticeSessionState = {

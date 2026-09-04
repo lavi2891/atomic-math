@@ -12,11 +12,106 @@ import { MemoryPersistenceDriver } from "../src/infrastructure/persistence/Memor
 import { AppsScriptClient } from "../src/infrastructure/sync/AppsScriptClient.ts";
 import { resolveQuickPracticeScope } from "../src/domain/studentHome/quickPractice.ts";
 import { FOUNDATIONAL_QUESTIONS } from "../src/content/foundations/questions.ts";
+import { LEARNING_PATHS } from "../src/content/learningPaths.ts";
+import { learningPathCards } from "../src/domain/studentHome/learningPathCards.ts";
+import { progressFromSessions } from "../src/domain/learningPath/sessionProgress.ts";
+import type { LearningPath } from "../src/domain/learningPath/types.ts";
+import type { PersistedSession } from "../src/domain/sync/types.ts";
+import { StudentPracticeService } from "../src/app/session/StudentPracticeService.ts";
+import { DurableSessionRepository } from "../src/infrastructure/persistence/DurableRepositories.ts";
+import { DurablePersonalBestRepository } from "../src/infrastructure/persistence/DurablePersonalBestRepository.ts";
+import type { SyncCoordinator } from "../src/infrastructure/sync/SyncCoordinator.ts";
+import { createInitialSessionState } from "../src/domain/session/practiceSession.ts";
+import { repeatSessionConfig } from "../src/domain/session/studentSessionUx.ts";
 
 async function run(name: string, testFn: () => void | Promise<void>) { await testFn(); process.stdout.write(`PASS ${name}\n`); }
 const snapshot = (mastery: number, evidenceLevel: MasterySnapshot["evidenceLevel"], attemptCount = 12, lastAttemptAt = "2026-01-01T00:00:00.000Z"): MasterySnapshot => ({ studentId: "student", skillId: "INT_ADD", mastery, accuracy: mastery, attemptCount, recentAverage: mastery / 100, historyAverage: mastery / 100, evidenceLevel, evidenceCoverage: { categories: {}, bands: {}, sufficient: true }, lastAttemptAt, calculatedAt: lastAttemptAt });
 const assignment = (overrides: Partial<Assignment> = {}): Assignment => ({ assignmentId: "A", studentId: "student", skillId: "INT_ADD", targetMastery: 85, priority: 1, active: true, ...overrides });
 const emptyAttempts = { getAttemptsForSkill: async () => [] } as unknown as AttemptRepository;
+const allSkillIds = new Set(SKILLS.map((skill) => skill.id));
+const freshProgress = { studentId: "student", bestStarsByStage: {} };
+const stageSession = (overrides: Partial<PersistedSession> = {}): PersistedSession => ({
+  id: "stage-session", studentId: "student", selectedSkillIds: ["AR_PLACE_VALUE"], settings: { mode: "fixed", questionCount: 5 },
+  learningStage: { pathId: "NUMBERS_ALGEBRA", stageId: "NA_PLACE_VALUE" }, startedAt: 0, endedAt: 1000,
+  source: "freePractice", strategy: "balanced", status: "completed", endReason: "completed", questionCount: 5,
+  correctCount: 0, incorrectCount: 5, accuracy: 0, ...overrides,
+});
+
+await run("home cards start at the first stage and keep Geometry visibly unavailable", () => {
+  const cards = learningPathCards(LEARNING_PATHS, freshProgress, allSkillIds);
+  assert.equal(cards[0]!.stage?.id, "NA_PLACE_VALUE");
+  assert.equal(cards[0]!.chapter?.id, "NA_DECIMAL_ARITHMETIC");
+  assert.equal(cards[0]!.availability, "ready");
+  assert.equal(cards[0]!.completedStages, 0);
+  assert.equal(cards[0]!.totalStages, 4);
+  assert.equal(cards[1]!.availability, "coming_soon");
+});
+
+await run("home resumes by stars, skips bonus stages, and advances chapters", () => {
+  const numbers: LearningPath = LEARNING_PATHS[0];
+  const beforeBonus = numbers.chapters.slice(0, 2).flatMap((chapter) => chapter.stages).filter((stage) => stage.type !== "bonus");
+  const progress = { studentId: "student", bestStarsByStage: Object.fromEntries(beforeBonus.map((stage) => [stage.id, 1 as const])) };
+  const card = learningPathCards(LEARNING_PATHS, progress, allSkillIds)[0]!;
+  assert.equal(card.chapter?.id, "NA_OPERATION_ORDER");
+  assert.equal(card.stage?.id, "NA_OPERATION_ORDER_BASIC");
+  assert.equal(card.completedStages, 0);
+  assert.equal(card.totalStages, 1);
+});
+
+await run("home never skips an unavailable stage or launches a partial Skill cluster", () => {
+  const progress = { studentId: "student", bestStarsByStage: { NA_PLACE_VALUE: 1 as const } };
+  const card = learningPathCards(LEARNING_PATHS, progress, new Set(["AR_ADD_FACTS"]))[0]!;
+  assert.equal(card.stage?.id, "NA_ADD_SUBTRACT");
+  assert.equal(card.availability, "content_unavailable");
+  assert.equal(learningPathCards(LEARNING_PATHS, undefined, allSkillIds)[0]!.availability, "progress_unavailable");
+});
+
+await run("completed paths offer a replay with full chapter progress", () => {
+  const stages = (LEARNING_PATHS as readonly LearningPath[]).flatMap((path) => path.chapters.flatMap((chapter) => chapter.stages));
+  const progress = { studentId: "student", bestStarsByStage: Object.fromEntries(stages.filter((stage) => stage.type !== "bonus").map((stage) => [stage.id, 1 as const])) };
+  const card = learningPathCards(LEARNING_PATHS, progress, allSkillIds)[0]!;
+  assert.equal(card.pathCompleted, true);
+  assert.equal(card.stage?.id, "NA_EQUATIONS_CHECKPOINT");
+  assert.equal(card.completedStages, card.totalStages);
+  assert.equal(card.availability, "ready");
+});
+
+await run("only completed fixed stage sessions restore a one-star completion reward", () => {
+  const invalid = [
+    stageSession({ status: "active" }), stageSession({ status: "abandoned", endReason: "stopped" }),
+    stageSession({ studentId: "other" }), stageSession({ questionCount: 4 }), stageSession({ learningStage: undefined }),
+    stageSession({ selectedSkillIds: ["AR_ADD_FACTS"] }), stageSession({ settings: { mode: "practice" } }),
+    stageSession({ learningStage: { pathId: "GEOMETRY", stageId: "NA_PLACE_VALUE" } }),
+  ];
+  assert.deepEqual(progressFromSessions("student", LEARNING_PATHS, invalid), freshProgress);
+  const completed = progressFromSessions("student", LEARNING_PATHS, [...invalid, stageSession(), stageSession()]);
+  assert.deepEqual(completed.bestStarsByStage, { NA_PLACE_VALUE: 1 });
+});
+
+await run("Continue sessions persist stage identity, advance Home, and preserve atomic mastery", async () => {
+  const persistence = new MemoryPersistenceDriver();
+  const sessions = new DurableSessionRepository(persistence);
+  const practice = new StudentPracticeService(emptyAttempts, sessions, new DurablePersonalBestRepository(persistence), { flush: async () => {} } as unknown as SyncCoordinator);
+  const home = () => new StudentHomeService(emptyAttempts, persistence, null).load("student");
+  const started = await practice.start({ studentId: "student", skillIds: ["AR_PLACE_VALUE"], settings: { mode: "fixed", questionCount: 5 }, learningStage: { pathId: "NUMBERS_ALGEBRA", stageId: "NA_PLACE_VALUE" } });
+  assert.deepEqual((await sessions.getSession(started.session.id))?.learningStage, started.session.learningStage);
+  assert.deepEqual((await home()).learningProgress, freshProgress);
+  const results = Array.from({ length: 5 }, (_, i) => ({ questionId: `q-${i}`, topicId: "FOUNDATIONS", attemptIndex: 0, isCorrect: false, rawAnswer: { questionType: "numeric" as const, data: { value: "0" } }, responseTimeMs: 1000, timestamp: i * 1000 }));
+  await practice.finish({ ...createInitialSessionState(started.session), status: "ended", endReason: "completed", endedAt: Date.now() + 5000, results });
+  const restored = await home();
+  assert.equal(learningPathCards(LEARNING_PATHS, restored.learningProgress, allSkillIds)[0]!.stage?.id, "NA_ADD_SUBTRACT");
+  assert.equal(restored.masteryBySkill.AR_PLACE_VALUE!.attemptCount, 0);
+  assert.deepEqual(repeatSessionConfig(started.session).learningStage, started.session.learningStage);
+  await assert.rejects(() => practice.start({ studentId: "student", skillIds: ["AR_ADD_FACTS"], settings: { mode: "fixed", questionCount: 5 }, learningStage: started.session.learningStage }), /Invalid learning-stage/);
+});
+
+await run("Home leaves progress unavailable when local session history cannot load", async () => {
+  const persistence = new MemoryPersistenceDriver();
+  persistence.listSessions = async () => { throw new Error("unavailable"); };
+  const data = await new StudentHomeService(emptyAttempts, persistence, null).load("student");
+  assert.equal(data.learningProgress, undefined);
+  assert.equal(learningPathCards(LEARNING_PATHS, data.learningProgress, allSkillIds)[0]!.availability, "progress_unavailable");
+});
 
 await run("assignments sort by priority and omit inactive rows", () => {
   assert.deepEqual(sortAssignments([assignment({ assignmentId: "late", priority: 8 }), assignment({ assignmentId: "off", active: false }), assignment({ assignmentId: "first", priority: 1 })]).map((item) => item.assignmentId), ["first", "late"]);

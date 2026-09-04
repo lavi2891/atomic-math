@@ -77,7 +77,7 @@ export const LEARNING_PATHS = [
   },
   {
     id: "GEOMETRY",
-    nameHe: "גאומטריה",
+    nameHe: "גיאומטריה",
     // No atomic Geometry Skills exist yet. Add chapters when those Skills exist.
     chapters: [],
   },

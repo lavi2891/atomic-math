@@ -1,6 +1,6 @@
 # Atomic Math
 
-Atomic Math is a Hebrew-first mathematics practice application. The current student experience presents teacher assignments, Domain-based free practice, and a Skill Map while continuing to work when the optional Google Sheets backend is unavailable.
+Atomic Math is a Hebrew-first mathematics practice application. Student Home leads with two learning paths, followed by a five-question quick check and free practice. It continues to work when the optional Google Sheets backend is unavailable.
 
 ## Development
 
@@ -32,6 +32,8 @@ Student UI
 ```
 
 `Attempt` is the authoritative learning record. Mastery is a deterministic projection derived from Attempts; the `Mastery` Sheet and cached snapshots are rebuildable views, not primary evidence.
+
+Home's Continue action starts the next main stage directly. Its card shows the current chapter/stage and simple chapter progress; completed stage sessions restore the student's place on this device. Geometry is marked as coming soon until its atomic Skills exist. The existing topic and Skill selection tree is available through “תרגול חופשי”. Home does not display mastery analytics or a path map.
 
 - `src/app`: React screens, top-level composition, and application services.
 - `src/domain`: framework-independent session, mastery, attempt, and student-home rules.

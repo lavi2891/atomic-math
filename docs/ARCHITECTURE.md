@@ -28,7 +28,17 @@ Normal practice consumes `SkillQuestionDefinition`, which requires a catalog-val
 
 Stage stars are UX rewards, not evidence of Skill mastery. Completion/status are derived, not stored on definitions. A multi-Skill stage still produces individual atomic-Skill Attempts through the existing practice pipeline; stage rewards neither create Attempts nor change Mastery. The caller supplies awarded stars; scoring thresholds are deliberately unspecified in this foundation. Chapter `shortcutTest` metadata identifies an assessment and its atomic Skills; it does not award stars or skip stages by itself.
 
-This foundation adds no visual path, session integration, persistence, adaptive insertion engine, or shortcut-test execution. The existing Attempt/Mastery architecture and student practice behavior remain unchanged. Run `npm run test:learning-path` for the progression and catalog checks (also included in `npm test`).
+There is no path-map visualization, adaptive insertion engine, or shortcut-test execution. Run `npm run test:learning-path` for the progression and catalog checks (also included in `npm test`).
+
+## Student Home
+
+Home presents “המשך במסלול”, two path cards, “בדיקה מהירה”, and “תרגול חופשי” in a single column. `learningPathCards` selects the first unfinished main stage and derives progress within its chapter, excluding bonuses. A completed path offers a replay of its final main stage. Missing content disables Continue without skipping ahead or dropping Skills from a cluster. Geometry remains visible as coming soon. Free practice opens Domain selection and the existing Skill tree; mastery/evidence analytics and challenge configuration are absent from Home.
+
+Continue launches five fixed questions with optional `learningStage` context on the session. That context is retained by session persistence and replays; atomic Attempt identity and mastery projection are unchanged. A completed fixed stage session earns the baseline one-star UX reward regardless of accuracy; this does not claim Skill mastery. Higher-star scoring is deferred. `StudentHomeService` restores these rewards from the student's locally saved sessions, including synced sessions, so there is no new database store or schema migration. Abandoned sessions and ordinary quick/free practice never award stage stars. For backend compatibility, session `source` retains the existing values; stage identity is additional metadata. Cross-device path-history reconciliation is not implemented.
+
+If local session history cannot be read, Continue is unavailable rather than showing a false fresh start. Quick check and free practice remain accessible. Quick check uses the existing assignment/learning/foundations scope selection and starts five fixed questions without a setup screen; it is not the Chapter shortcut test.
+
+`npm run test:student-home` checks selection and session restoration. `npm run test:mobile` also checks the actual Home at 320px and 390px, Continue/quick launches, restored progression, and free-practice back navigation.
 
 ## Mastery reconciliation
 
