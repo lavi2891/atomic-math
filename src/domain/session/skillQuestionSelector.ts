@@ -32,14 +32,27 @@ export class SkillQuestionSelector {
     const definitions = this.definitions.filter((definition) => definition.skillId === skillId);
     if (definitions.length === 0) throw new Error(`No questions available for skill ${skillId}`);
 
-    const candidates = definitions.map((definition) =>
-      resolveQuestionDefinition(definition, {
-        seed: this.seeds.next(),
-        recentHistory: this.generatorHistory,
-      }),
-    );
+    // A failed sample must not terminate an otherwise playable session.
+    const candidates: Question[] = [];
+    for (const definition of definitions) {
+      try {
+        candidates.push(resolveQuestionDefinition(definition, {
+          seed: this.seeds.next(),
+          recentHistory: this.generatorHistory,
+        }));
+      } catch {
+        // Reuse a previously resolved instance of this eligible definition.
+        const previous = [...this.questionHistory].reverse().find((question) =>
+          question.skillId === skillId && (isGeneratedQuestionInstance(question)
+            ? question.baseId === definition.id : question.id === definition.id));
+        if (previous) candidates.push(previous);
+      }
+    }
+    if (!candidates.length) throw new Error(`No valid questions available for skill ${skillId}`);
+    const lastId = this.questionHistory.at(-1)?.id;
+    const alternatives = candidates.filter((question) => question.id !== lastId);
     const selected = pickNextQuestion({
-      questions: candidates,
+      questions: alternatives.length ? alternatives : candidates,
       targetDifficulty,
       history: {
         questionIds: this.questionHistory.map((question) => question.id),

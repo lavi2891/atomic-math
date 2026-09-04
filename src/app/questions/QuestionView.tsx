@@ -22,6 +22,9 @@ import { colors, fontSize, lineHeight, radius, spacing } from "@ui/tokens";
 import { useQuestionSolve } from "./useQuestionSolve";
 import { numericAnswerFormatHint, resolveAcceptedInputFormats } from "@domain/questions/evaluators";
 
+import { feedbackDelayMs } from "../../domain/session/studentSessionUx.ts";
+import type { SessionMode } from "../../domain/session/practiceSession.ts";
+
 type Mode = "solve" | "review";
 
 type AnyRawAnswer =
@@ -38,6 +41,7 @@ type ReviewData = {
 type Props = {
   question: Question;
   mode?: Mode;
+  sessionMode?: SessionMode;
   onNext?: (result: AnswerResult) => void;
   onEvaluated?: (result: AnswerResult) => void;
   review?: ReviewData;
@@ -150,10 +154,12 @@ function getCorrectAnswerNode(question: Question) {
 export function QuestionView({
   question,
   mode = "solve",
+  sessionMode = "practice",
   onNext,
   onEvaluated,
   review,
 }: Props) {
+  const autoAdvanceMs = feedbackDelayMs(sessionMode);
   const numericInputRef = useRef<HTMLInputElement>(null);
   const lastHandledEnterTsRef = useRef<number | null>(null);
   const shuffleSeed = useMemo(
@@ -275,11 +281,19 @@ export function QuestionView({
     onNext(result);
   }, [mode, nextResult, onNext]);
 
+  const advanceRef = useRef(onNextClick);
+  useEffect(() => { advanceRef.current = onNextClick; }, [onNextClick]);
+  useEffect(() => {
+    if (mode !== "solve" || phase !== "checked" || autoAdvanceMs === null) return;
+    const timeout = window.setTimeout(() => advanceRef.current(), autoAdvanceMs);
+    return () => window.clearTimeout(timeout);
+  }, [mode, phase, autoAdvanceMs]);
+
   function onNumericSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (mode === "solve" && phase === "checked") {
-      onNextClick();
+      if (autoAdvanceMs === null) onNextClick();
       return;
     }
 
@@ -303,7 +317,7 @@ export function QuestionView({
     lastHandledEnterTsRef.current = event.timeStamp;
     event.preventDefault();
     event.stopPropagation();
-    onNextClick();
+    if (autoAdvanceMs === null) onNextClick();
   }
 
   useEffect(() => {
@@ -334,7 +348,7 @@ export function QuestionView({
       lastHandledEnterTsRef.current = event.timeStamp;
       event.preventDefault();
       event.stopPropagation();
-      onNextClick();
+      if (autoAdvanceMs === null) onNextClick();
     }
 
     window.addEventListener("keydown", onWindowKeyDown, { capture: true });
@@ -342,7 +356,7 @@ export function QuestionView({
       window.removeEventListener("keydown", onWindowKeyDown, {
         capture: true,
       });
-  }, [mode, onNextClick, phase]);
+  }, [mode, onNextClick, phase, autoAdvanceMs]);
 
   const reviewData = mode === "review" ? review : null;
   const showCorrect = reviewData?.showCorrectAnswer ?? true;
@@ -378,7 +392,7 @@ export function QuestionView({
         <ContentRenderer content={question.prompt} />
       </div>
 
-      <div>
+      {mode === "solve" ? <div>
         {question.type === "numeric" ? (
           isNumericAnsweringSolve ? (
             <form
@@ -451,7 +465,7 @@ export function QuestionView({
         ) : (
           unreachable(question, "Unknown question type")
         )}
-      </div>
+      </div> : null}
 
       {mode === "solve" && phase === "checked" && lastEval && (
         <div
@@ -462,10 +476,10 @@ export function QuestionView({
             background: colors.bgSubtle,
           }}
         >
-          <strong>
-            {lastEval.isCorrect ? he.feedback.correct : he.feedback.incorrect}
+          <strong role="status" aria-live="polite">
+            {autoAdvanceMs !== null ? (lastEval.isCorrect ? "✓ נכון" : "✗ לא נכון") : (lastEval.isCorrect ? he.feedback.correct : he.feedback.incorrect)}
           </strong>
-          {lastEval.message ? (
+          {autoAdvanceMs === null && lastEval.message ? (
             <div style={{ marginTop: spacing.xs }}>{lastEval.message}</div>
           ) : null}
         </div>
@@ -499,7 +513,7 @@ export function QuestionView({
         </div>
       )}
 
-      {mode === "solve" && !isNumericAnsweringSolve ? (
+      {mode === "solve" && !isNumericAnsweringSolve && (phase === "answering" || autoAdvanceMs === null) ? (
         <div style={{ display: "flex", gap: spacing.sm, minWidth: 0 }}>
           {phase === "answering" ? (
             <button

@@ -89,6 +89,7 @@ export function practiceSessionReducer(state: PracticeSessionState, action: Prac
       return { ...state, status: "active", currentQuestionId: action.questionId, currentSkillId: action.skillId };
     case "ANSWER_SUBMITTED": {
       if (state.status !== "active" || state.currentQuestionId !== action.result.questionId) return state;
+      if (state.session.settings.mode === "timed" && action.result.timestamp >= state.session.startedAt + state.session.settings.durationSeconds * 1000) return state;
       const result = { ...action.result, sessionId: state.session.id };
       const results = [...state.results, result];
       const answeredState: PracticeSessionState = {
@@ -108,7 +109,7 @@ export function practiceSessionReducer(state: PracticeSessionState, action: Prac
       if (state.status !== "active" || state.currentQuestionId !== null) return state;
       return { ...state, currentQuestionId: action.questionId, currentSkillId: action.skillId };
     case "TIMER_EXPIRED":
-      return state.session.settings.mode === "timed"
+      return state.session.settings.mode === "timed" && action.at >= state.session.startedAt + state.session.settings.durationSeconds * 1000
         ? { ...state, status: "ended", currentQuestionId: null, currentSkillId: null, endedAt: action.at, endReason: "timer_expired" }
         : state;
     case "STOP_SESSION":

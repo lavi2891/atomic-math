@@ -17,6 +17,8 @@ import { styles } from "@ui/styles";
 import { theme } from "../theme/theme";
 import type { PersonalBest, PersonalBestUpdate } from "@domain/personalBests/types";
 
+import { repeatSessionConfig } from "../domain/session/studentSessionUx.ts";
+
 type Screen = "home" | "setup" | "session" | "summary";
 
 export default function StudentApp() {
@@ -64,6 +66,6 @@ export default function StudentApp() {
     {screen === "home" ? homeData ? <StudentHomeScreen data={homeData} definitions={definitions} onOpenDomain={(domainId) => { setActiveDomainId(domainId); setScreen("setup"); }} onStartQuick={(skillIds, settings) => void startSession(skillIds, settings)} onStartAssignment={(skillId, assignmentId) => { const launch = assignmentSessionLaunch(skillId); void startSession(launch.skillIds, launch.settings, assignmentId); }} /> : <p role="status" aria-live="polite">טוען את העבודה שלך…</p> : null}
     {screen === "setup" && activeDomainId ? <SessionSetupScreen studentId={studentIdentityProvider.getStudentId()} domainId={activeDomainId} definitions={definitions} onBack={() => setScreen("home")} onStart={(skillIds, settings) => void startSession(skillIds, settings)} /> : null}
     {screen === "session" && session ? <SessionView session={session} definitions={definitions} previousBest={previousBest} onSessionEnd={(state) => void finishSession(state)} /> : null}
-    {screen === "summary" && completed ? <SessionSummaryScreen completed={completed} masteryBefore={masteryBefore} masteryAfter={masteryAfter} personalBestUpdate={personalBestUpdate} onHome={() => void returnHome()} onRepeat={() => void startSession(completed.session.selectedSkillIds, completed.session.settings, completed.session.assignmentId)} /> : null}
+    {screen === "summary" && completed ? <SessionSummaryScreen completed={completed} masteryBefore={masteryBefore} masteryAfter={masteryAfter} personalBestUpdate={personalBestUpdate} onHome={() => void returnHome()} onRepeat={() => { const config = repeatSessionConfig(completed.session); void startSession(config.skillIds, config.settings, config.assignmentId); }} /> : null}
   </main></div></div>;
 }

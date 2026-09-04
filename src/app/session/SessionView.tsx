@@ -11,6 +11,8 @@ import { QuestionView } from "../questions/QuestionView";
 import { useSessionEngine } from "./useSessionEngine";
 import type { PersonalBest } from "@domain/personalBests/types";
 
+import { practiceScopeLabel, sessionModeLabels } from "../../domain/session/studentSessionUx.ts";
+
 type Props = {
   session: PracticeSession;
   definitions: readonly SkillQuestionDefinition[];
@@ -35,6 +37,7 @@ function SessionStatus({ state, remainingSeconds }: { state: PracticeSessionStat
 
 export function SessionView({ session, definitions, initialTargetDifficulty = 0, onSessionEnd, previousBest }: Props) {
   const engine = useSessionEngine(session, definitions, initialTargetDifficulty);
+  const pendingSaves = useRef<Promise<void>[]>([]);
   const didEndRef = useRef(false);
   const [now, setNow] = useState(() => Date.now());
   const durationSeconds = session.settings.mode === "timed" ? session.settings.durationSeconds : undefined;
@@ -57,7 +60,7 @@ export function SessionView({ session, definitions, initialTargetDifficulty = 0,
   useEffect(() => {
     if (engine.state.status !== "ended" || didEndRef.current) return;
     didEndRef.current = true;
-    onSessionEnd(engine.state);
+    void Promise.all(pendingSaves.current).then(() => onSessionEnd(engine.state));
   }, [engine.state, onSessionEnd]);
 
   if (engine.state.status === "ended" || !engine.state.currentQuestion) {
@@ -80,6 +83,7 @@ export function SessionView({ session, definitions, initialTargetDifficulty = 0,
 
   return (
     <section style={{ display: "grid", gap: spacing.md }}>
+      <div><strong>{practiceScopeLabel(session.selectedSkillIds)}</strong><div>{sessionModeLabels[session.settings.mode]}</div></div>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: spacing.sm }}>
         <span><SessionStatus state={engine.state} remainingSeconds={remainingSeconds} />{session.settings.mode === "timed" ? <small style={{ display: "block", color: colors.textMuted }}>נכונות עכשיו: {correctCount}{previousBest ? ` · השיא שלך: ${previousBest.bestScore}` : ""}</small> : null}</span>
         <button
@@ -91,9 +95,17 @@ export function SessionView({ session, definitions, initialTargetDifficulty = 0,
         </button>
       </header>
       <QuestionView
-        key={engine.state.currentQuestion.id}
+        key={`${engine.state.results.length}:${engine.state.currentQuestion.id}`}
         question={engine.state.currentQuestion}
-        onEvaluated={(result) => void saveAttempt(result)}
+        sessionMode={session.settings.mode}
+        onEvaluated={(result) => {
+          if (durationSeconds !== undefined && result.timestamp >= session.startedAt + durationSeconds * 1000) {
+            engine.actions.timerExpired();
+            return;
+          }
+          engine.actions.rememberAnswer(result);
+          pendingSaves.current.push(saveAttempt(result));
+        }}
         onNext={engine.actions.submitAnswer}
       />
     </section>

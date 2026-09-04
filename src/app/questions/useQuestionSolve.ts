@@ -163,7 +163,7 @@ export function useQuestionSolve(
     numericParsedValue?: number | null,
   ): AnswerResult | null {
     if (mode !== "solve") return null;
-    if (!canCheck) return null;
+    if (!canCheck || phase === "checked" || checkedAtRef.current !== null) return null;
 
     if (
       question.type === "numeric" &&

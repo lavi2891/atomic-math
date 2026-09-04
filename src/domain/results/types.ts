@@ -1,8 +1,10 @@
-import type { RawAnswer } from "../questions/types";
+import type { Question, RawAnswer } from "../questions/types";
 
 export interface AnswerResult {
   /** Ephemeral evaluation/UI state. Attempt is the only persisted learning evidence. */
   questionId: string;
+  /** Original instance retained for session review, never regenerated. */
+  questionSnapshot?: Question;
   topicId: string;
   attemptIndex: number;
   isCorrect: boolean;

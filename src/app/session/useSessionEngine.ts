@@ -1,4 +1,4 @@
-import { useMemo, useReducer, useState } from "react";
+import { useMemo, useReducer, useRef, useState } from "react";
 import type { Question } from "@domain/questions/types";
 import type { AnswerResult } from "@domain/results/types";
 import {
@@ -18,6 +18,7 @@ import { SKILLS } from "../../content/catalog/index.ts";
 export type SessionEngine = {
   state: PracticeSessionState & { currentQuestion: Question | null };
   actions: {
+    rememberAnswer: (result: AnswerResult) => void;
     submitAnswer: (result: AnswerResult) => void;
     timerExpired: () => void;
     stopSession: () => void;
@@ -29,6 +30,7 @@ export function useSessionEngine(
   definitions: readonly SkillQuestionDefinition[],
   initialTargetDifficulty = 0,
 ): SessionEngine {
+  const pendingAnswer = useRef<AnswerResult | null>(null);
   const [selector] = useState(() => {
     const selected = SKILLS.filter((skill) => session.selectedSkillIds.includes(skill.id));
     return new SkillQuestionSelector(filterChallengeContent(session.settings, selected, definitions));
@@ -72,9 +74,11 @@ export function useSessionEngine(
   );
 
   function submitAnswer(result: AnswerResult): void {
+    pendingAnswer.current = null;
     const action = { type: "ANSWER_SUBMITTED" as const, result, elapsedMs: Math.max(0, performance.now() - monotonicStartedAt) };
     const answered = practiceSessionReducer(state, action);
     dispatch(action);
+    if (answered === state) return;
     if (answered.status !== "active") return;
     try {
       const { question, skillId } = chooseQuestion(answered);
@@ -87,9 +91,19 @@ export function useSessionEngine(
   return {
     state: { ...state, currentQuestion },
     actions: {
-      submitAnswer,
-      timerExpired: () => dispatch({ type: "TIMER_EXPIRED", at: Date.now() }),
-      stopSession: () => dispatch({ type: "STOP_SESSION", at: Date.now() }),
+      rememberAnswer: (result) => { pendingAnswer.current = { ...result, questionSnapshot: currentQuestion ?? undefined }; },
+      submitAnswer: (result) => submitAnswer(pendingAnswer.current ?? result),
+      timerExpired: () => {
+        if (session.settings.mode !== "timed" || Date.now() < session.startedAt + session.settings.durationSeconds * 1000) return;
+        if (pendingAnswer.current) dispatch({ type: "ANSWER_SUBMITTED", result: pendingAnswer.current });
+        pendingAnswer.current = null;
+        dispatch({ type: "TIMER_EXPIRED", at: Date.now() });
+      },
+      stopSession: () => {
+        if (pendingAnswer.current) dispatch({ type: "ANSWER_SUBMITTED", result: pendingAnswer.current });
+        pendingAnswer.current = null;
+        dispatch({ type: "STOP_SESSION", at: Date.now() });
+      },
     },
   };
 }

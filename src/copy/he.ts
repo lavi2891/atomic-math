@@ -34,7 +34,7 @@ export const he = {
     weekly: "אתגר שבועי",
     monthly: "משימה חודשית",
   },
-  session: { check: "בדוק", next: "הבא" },
+  session: { check: "אישור", next: "הבא" },
   feedback: { correct: "נכון ✅", incorrect: "לא נכון ❌" },
   review: {
     yourAnswer: "התשובה שלך:",
