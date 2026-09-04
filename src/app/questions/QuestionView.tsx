@@ -25,6 +25,9 @@ import { numericAnswerFormatHint, resolveAcceptedInputFormats } from "@domain/qu
 import { feedbackDelayMs } from "../../domain/session/studentSessionUx.ts";
 import type { SessionMode } from "../../domain/session/practiceSession.ts";
 
+import { MobileSubmitBar } from "./MobileSubmitBar.tsx";
+import type { PracticeViewport } from "../session/usePracticeViewport.ts";
+
 type Mode = "solve" | "review";
 
 type AnyRawAnswer =
@@ -42,6 +45,7 @@ type Props = {
   question: Question;
   mode?: Mode;
   sessionMode?: SessionMode;
+  viewport?: PracticeViewport;
   onNext?: (result: AnswerResult) => void;
   onEvaluated?: (result: AnswerResult) => void;
   review?: ReviewData;
@@ -155,10 +159,12 @@ export function QuestionView({
   question,
   mode = "solve",
   sessionMode = "practice",
+  viewport,
   onNext,
   onEvaluated,
   review,
 }: Props) {
+  const mobileAction = mode === "solve" && !!viewport?.narrow;
   const autoAdvanceMs = feedbackDelayMs(sessionMode);
   const numericInputRef = useRef<HTMLInputElement>(null);
   const lastHandledEnterTsRef = useRef<number | null>(null);
@@ -260,6 +266,7 @@ export function QuestionView({
       : canCheck;
 
   function onCheck() {
+    if (phase !== "answering" || (question.type === "numeric" ? !numericCanCheck : !canCheck)) return;
     if (question.type === "numeric") {
       if (!parsedNumeric || !parsedNumeric.ok || parsedNumeric.kind !== "RATIONAL")
         return;
@@ -292,14 +299,11 @@ export function QuestionView({
   function onNumericSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (mode === "solve" && phase === "checked") {
-      if (autoAdvanceMs === null) onNextClick();
-      return;
-    }
+    if (phase !== "answering") return;
 
     if (
       question.type === "numeric" &&
-      (!hasNumericInput || !parsedNumeric || !parsedNumeric.ok)
+      (!numericCanCheck || !hasNumericInput || !parsedNumeric || !parsedNumeric.ok)
     ) {
       return;
     }
@@ -308,7 +312,7 @@ export function QuestionView({
   }
 
   function onWrapperKeyDownCapture(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key !== "Enter") return;
+    if (event.key !== "Enter" || event.repeat || event.nativeEvent.isComposing) return;
     if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey)
       return;
     if (mode !== "solve" || phase !== "checked") return;
@@ -337,10 +341,18 @@ export function QuestionView({
   }, [mode, phase, question.id, question.type]);
 
   useEffect(() => {
+    if (!viewport?.keyboardOpen) return;
+    // The compact layout introduces a scroll container. Keep the focused field
+    // clear of the reserved action-bar space even for a long question.
+    const frame = requestAnimationFrame(() => numericInputRef.current?.scrollIntoView({ block: "nearest" }));
+    return () => cancelAnimationFrame(frame);
+  }, [viewport?.keyboardOpen, question.id]);
+
+  useEffect(() => {
     if (mode !== "solve" || phase !== "checked") return;
 
     function onWindowKeyDown(event: globalThis.KeyboardEvent) {
-      if (event.key !== "Enter") return;
+      if (event.key !== "Enter" || event.repeat || event.isComposing) return;
       if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey)
         return;
       if (lastHandledEnterTsRef.current === event.timeStamp) return;
@@ -370,10 +382,14 @@ export function QuestionView({
 
   return (
     <div
+      className="practice-question"
       onKeyDownCapture={onWrapperKeyDownCapture}
       style={{
         display: "grid",
-        gap: spacing.md,
+        gap: viewport?.keyboardOpen ? spacing.xs : spacing.md,
+        overflowY: viewport?.keyboardOpen ? "auto" : undefined,
+        minHeight: 0,
+        alignContent: "start",
         width: "100%",
         maxWidth: "100%",
         minWidth: 0,
@@ -408,7 +424,7 @@ export function QuestionView({
                 autoFocus
                 {...numericUxProps}
               />
-              <button
+              {!mobileAction ? <button
                 type="submit"
                 disabled={!numericCanCheck}
                 style={{
@@ -423,7 +439,7 @@ export function QuestionView({
                 }}
               >
                 {he.session.check}
-              </button>
+              </button> : null}
             </form>
           ) : (
             <NumericAnswerInput
@@ -513,7 +529,7 @@ export function QuestionView({
         </div>
       )}
 
-      {mode === "solve" && !isNumericAnsweringSolve && (phase === "answering" || autoAdvanceMs === null) ? (
+      {mode === "solve" && !isNumericAnsweringSolve && ((phase === "answering" && !mobileAction) || (phase === "checked" && autoAdvanceMs === null)) ? (
         <div style={{ display: "flex", gap: spacing.sm, minWidth: 0 }}>
           {phase === "answering" ? (
             <button
@@ -563,7 +579,8 @@ export function QuestionView({
         </div>
       ) : null}
 
-      <DevQuestionDebug question={question} />
+      {mobileAction && phase === "answering" && viewport ? <MobileSubmitBar viewport={viewport} disabled={question.type === "numeric" ? !numericCanCheck : !canCheck} onSubmit={onCheck} /> : null}
+      {!viewport?.keyboardOpen ? <DevQuestionDebug question={question} /> : null}
     </div>
   );
 }

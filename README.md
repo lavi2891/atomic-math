@@ -14,6 +14,8 @@ npm run lint
 npm run build
 ```
 
+`npm run test:mobile` runs browser layout regressions in installed Chrome. Set `PLAYWRIGHT_CHANNEL=msedge` to use Edge instead. These tests simulate visual-viewport keyboard shrinking/panning and layout-viewport resizing, then check real element geometry, focus, scrolling, and Enter submission. They do not replace a physical Android/iOS keyboard check. Test sessions disable external synchronization.
+
 Copy `.env.example` to `.env.local` to set the temporary development student and optional Apps Script URL. `.env.local` is ignored by Git. Without a backend URL, the application runs in local/offline mode and stores attempts and sessions in IndexedDB.
 
 Manual Google Sheets and Apps Script deployment is documented in [SETUP.md](./SETUP.md).

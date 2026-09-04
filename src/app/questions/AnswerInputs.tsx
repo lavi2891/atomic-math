@@ -102,6 +102,7 @@ export function NumericAnswerInput(
         ref={inputRef}
         className="numeric-answer-input"
         type="text"
+        enterKeyHint="done"
         inputMode={allowDecimal ? "decimal" : "numeric"}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -112,7 +113,7 @@ export function NumericAnswerInput(
         style={inputStyle}
       />
       {formatHint ? (
-        <div dir="rtl" style={{ fontSize: 12, color: colors.textMuted }}>
+        <div className="answer-format-hint" dir="rtl" style={{ fontSize: 12, color: colors.textMuted }}>
           {formatHint}
         </div>
       ) : null}

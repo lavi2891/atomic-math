@@ -142,3 +142,20 @@ input {
   .domain-icon { width: 36px; height: 36px; }
   .domain-tree__header, .domain-launch, .skill-map-summary { gap: 8px; padding: 10px; }
 }
+
+/* Active practice uses one context line; full scope remains in setup/summary. */
+.practice-context { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.practice-context strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.practice-context small { flex-shrink: 0; }
+.practice-action-bar {
+  z-index: 40; box-sizing: border-box;
+  padding: 8px max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  background: #202020; border-top: 1px solid #555;
+}
+.practice-action-bar button { display: block; width: 100%; min-height: 44px; padding: 8px 16px; font-weight: 700; background: #2563eb; color: #fff; }
+.practice-action-bar button:disabled { opacity: .45; cursor: default; }
+.practice-session--keyboard .math-input-preview,
+.practice-session--keyboard .answer-format-hint { display: none !important; }
+.practice-session--keyboard .math-input-card { padding: 8px !important; gap: 4px !important; }
+.practice-session--keyboard .numeric-answer-input { scroll-margin-block: 8px 80px; }
+.practice-session--keyboard { padding-top: max(8px, env(safe-area-inset-top)) !important; }

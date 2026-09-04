@@ -16,8 +16,8 @@ const { QuestionView } = await server.ssrLoadModule('/src/app/questions/Question
 const { SessionView } = await server.ssrLoadModule('/src/app/session/SessionView.tsx');
 const { SessionSummaryScreen } = await server.ssrLoadModule('/src/app/session/SessionSummaryScreen.tsx');
 const { useSessionEngine } = await server.ssrLoadModule('/src/app/session/useSessionEngine.ts');
-const { SKILLS } = await server.ssrLoadModule('/src/content/catalog/index.ts');
-const { sessionReviewResults, repeatSessionConfig } = await server.ssrLoadModule('/src/domain/session/studentSessionUx.ts');
+const { SKILLS, SKILL_GROUPS, DOMAINS } = await server.ssrLoadModule('/src/content/catalog/index.ts');
+const { sessionReviewResults, repeatSessionConfig, activePracticeScopeLabel } = await server.ssrLoadModule('/src/domain/session/studentSessionUx.ts');
 const { FOUNDATIONAL_QUESTIONS } = await server.ssrLoadModule('/src/content/foundations/questions.ts');
 const { filterChallengeContent } = await server.ssrLoadModule('/src/domain/session/challengeContent.ts');
 const skill = SKILLS.find(s => s.active && s.modes.timedProfileId);
@@ -41,6 +41,12 @@ async function answer(tree, value = '2') {
 }
 async function unmount(tree) { await act(() => tree.unmount()); }
 try {
+  assert.equal(activePracticeScopeLabel([skill.id]), skill.nameHe);
+  const group = SKILL_GROUPS.find(item => item.active && item.skillIds.length > 1);
+  assert.equal(activePracticeScopeLabel(group.skillIds), `${group.nameHe} · ${group.skillIds.length} מיומנויות`);
+  const domainSkills = SKILLS.filter(item => item.domainId === skill.domainId).map(item => item.id);
+  assert.equal(activePracticeScopeLabel(domainSkills), `${DOMAINS.find(item => item.id === skill.domainId).nameHe} · ${domainSkills.length} מיומנויות`);
+  console.log('PASS compact active scope uses skill, group, or domain with count');
   mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'], now: 1000 });
   for (const mode of ['timed', 'survival', 'fixed', 'practice']) {
     const settings = mode === 'timed' ? { mode, durationSeconds: 30 } : mode === 'survival' ? { mode, maxErrors: 3 } : mode === 'fixed' ? { mode, questionCount: 5 } : { mode };
