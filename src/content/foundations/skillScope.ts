@@ -102,8 +102,12 @@ export function signedGeneratedInstanceIssues(definition: GeneratedQuestionDefin
   if (!skillId || !SIGNED_OPERATORS[skillId]) return [];
   const expression = question.renderedExpression;
   const hasStructuralNegative = /(?:^-[A-Za-z\d]|\(-(?:[A-Za-z\d]|\())/u.test(expression);
+  const isNegativeResultBridge = skillId === "INT_SUB"
+    && String(definition.metadata?.signPattern ?? "").includes("negative result")
+    && question.type === "numeric"
+    && question.correctAnswers.some((answer) => /^-/u.test(answer));
   const issues: string[] = [];
-  if (!hasStructuralNegative) issues.push(`${definition.id}: ${skillId} instance does not contain a structurally negative operand`);
+  if (!hasStructuralNegative && !isNegativeResultBridge) issues.push(`${definition.id}: ${skillId} instance does not contain a structurally negative operand or an explicit negative-result bridge`);
   if (!usesTargetOperation(skillId, expression)) issues.push(`${definition.id}: ${skillId} instance does not use its target operation`);
   const signPattern = String(definition.metadata?.signPattern ?? "");
   if (question.type === "numeric" && question.correctAnswers.includes("0") && !signPattern.includes("zero")) issues.push(`${definition.id}: zero result is not attributed to an explicit zero/opposites family`);

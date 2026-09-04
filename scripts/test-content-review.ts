@@ -161,11 +161,11 @@ await run("approved content changed under global rules is surfaced for re-review
 });
 
 await run("approved definitions preserved unchanged keep their versioned approval", () => {
-  const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_OPS_ORDER_BASIC_FIRST_C")!;
-  assert.equal(definition.version, 3);
+  const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_OPS_ORDER_BASIC_A_A")!;
+  assert.equal(definition.version, 1);
   const approval = {
     definitionId: definition.id,
-    definitionVersion: 3,
+    definitionVersion: 1,
     status: "approved" as const,
     note: "ה־Band המבני כבר תקין",
     reviewedAt: "2026-09-04T00:00:00.000Z",
@@ -173,7 +173,7 @@ await run("approved definitions preserved unchanged keep their versioned approva
   assert.equal(effectiveReviewRecord(definition, approval)?.status, "approved");
   assert.equal(effectiveReviewRecord(definition, { ...approval, definitionVersion: undefined })?.status, "approved");
   const changed = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_AR_PLACE_VALUE_GEN_A")!;
-  assert.equal(changed.version, 4);
+  assert.equal(changed.version, 5);
   assert.equal(effectiveReviewRecord(changed, { ...approval, definitionId: changed.id, definitionVersion: undefined }), undefined);
 });
 
@@ -231,8 +231,8 @@ await run("Band A and Band B previews preserve filters and do not set difficulty
 });
 
 await run("Next walks A, B, C, D before the next definition", () => {
-  const base = generatedUnit("AR_PLACE_VALUE", "AR_PLACE_VALUE:identify-digit-value");
-  const bandD = { ...base.definitions.at(-1)!, id: "TEST_PLACE_VALUE_D", difficultyBand: "D" as const };
+  const base = generatedUnit("FRAC_MEANING", "FRAC_MEANING:selected-equal-parts");
+  const bandD = { ...base.definitions.at(-1)!, id: "TEST_FRACTION_PARTS_D", difficultyBand: "D" as const };
   const fourBands: ReviewUnit = { ...base, definitions: [...base.definitions, bandD] };
   const next = generatedUnit("INT_COMPARE", "INT_COMPARE:signed-comparison");
   const units = [fourBands, next];
@@ -243,7 +243,7 @@ await run("Next walks A, B, C, D before the next definition", () => {
   location = reviewUnitNavigation("next", units, location.index, location.definitionId);
   assert.equal(location.definitionId, fourBands.definitions[2]!.id);
   location = reviewUnitNavigation("next", units, location.index, location.definitionId);
-  assert.equal(location.definitionId, "TEST_PLACE_VALUE_D");
+  assert.equal(location.definitionId, "TEST_FRACTION_PARTS_D");
   location = reviewUnitNavigation("next", units, location.index, location.definitionId);
   assert.deepEqual(location, { index: 1, definitionId: next.definitions[0]!.id });
 });
@@ -284,7 +284,7 @@ await run("Band sequence navigation leaves the explicit Difficulty filter unchan
 });
 
 await run("generated family approval requires every supported Band", () => {
-  const unit = generatedUnit("AR_PLACE_VALUE", "AR_PLACE_VALUE:identify-digit-value");
+  const unit = generatedUnit("FRAC_MEANING", "FRAC_MEANING:selected-equal-parts");
   const reviewedAt = "2026-09-04T00:00:00.000Z";
   const oneBand = new Map([[unit.definitions[0]!.id, { definitionId: unit.definitions[0]!.id, definitionVersion: unit.definitions[0]!.version, status: "approved", note: "", reviewedAt } satisfies QuestionReviewRecord]]);
   assert.equal(isReviewUnitFullyApproved(unit, oneBand), false);
@@ -436,14 +436,14 @@ await run("review summary distinguishes sampled parameters from intentional stud
   assert.ok(bands[1]?.changesFromPrevious.some((change) => change.includes("סמלים שנשארים")));
 });
 
-await run("review summaries expose Band-specific supporting Skills", () => {
+await run("review summaries show when a cleaned target-Skill Band needs no supporting Skills", () => {
   const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_INT_ADD_OPPOSITES_B")!;
   assert.ok(isGeneratedQuestionDefinition(definition));
   const summary = generatorStructureSummary(definition, resolveReviewQuestion(definition, 42));
-  assert.deepEqual(summary?.supportingSkills, ["ALG_VARIABLE", "ALG_EQUALITY"]);
+  assert.deepEqual(summary?.supportingSkills, []);
+  assert.deepEqual(summary?.studentFacingSymbols, []);
   const bands = deriveBandSummaries(FOUNDATIONAL_QUESTIONS, definition);
-  assert.deepEqual(bands.map((item) => item.supportingSkills), [[], ["ALG_VARIABLE", "ALG_EQUALITY"]]);
-  assert.ok(bands[1]?.changesFromPrevious.some((change) => change.includes("Skills תומכים")));
+  assert.deepEqual(bands.map((item) => item.supportingSkills), [[], []]);
 });
 
 await run("review math display is derived from the executable template", () => {
@@ -493,7 +493,7 @@ await run("Band sampling remains deterministic and targets the selected definiti
 });
 
 await run("curated reviewer summaries stay free of generator-only panels", () => {
-  const curated = FOUNDATIONAL_QUESTIONS.find((item) => !isGeneratedQuestionDefinition(item))!;
+  const curated = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_ALG_VARIABLE_CONTEXT_BASIC_CURATED")!;
   assert.equal(hasGeneratorExplanation(curated), false);
   assert.deepEqual(deriveBandSummaries(FOUNDATIONAL_QUESTIONS, curated), []);
   if (isGeneratedQuestionDefinition(curated)) throw new Error("Expected curated question");

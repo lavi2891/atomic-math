@@ -14,6 +14,8 @@ export const CONTENT_READINESS: SkillReadiness[] = SKILLS.map((skill) => ({
   requiredCategories: ["AR_PLACE_VALUE", "INT_NUMBER_LINE", "FRAC_MEANING"].includes(skill.id)
     ? ["conceptual", "representation"]
     : skill.id === "FRAC_EQUIV" ? ["reasoning", "representation"]
+    : skill.id.startsWith("AR_MUL_F_") ? ["calculation", "representation"]
+    : skill.id === "INT_NEGATION" ? ["conceptual"]
     : conceptual.has(skill.id) ? ["conceptual", "reasoning"] : ["calculation", "conceptual"],
   requiredBands: skill.id.includes("_FACTS") || skill.id.includes("_F_") || ["INT_NEGATION", "INT_MUL", "INT_DIV"].includes(skill.id) ? ["A", "B"] : ["A", "B", "C"],
   humanReviewed: true,

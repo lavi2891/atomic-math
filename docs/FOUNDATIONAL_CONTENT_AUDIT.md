@@ -2,6 +2,26 @@
 
 המעבר השתמש ב־`atomic-math-question-review-2026-09-04 (2).json` כמקור המשוב האנושי המחייב ובדק בעקבותיו גם את כל הבנק הפעיל. לא שונו Mastery, נתוני תלמידים, sync או backend.
 
+> עדכון מאוחר ב־2026-09-04: הסעיפים ההיסטוריים בהמשך מתעדים את מצב הבנק של 168 definitions לפני ה־pass הפדגוגי הגלובלי האחרון. המצב המחייב כעת מתועד בסעיף 0.
+
+## 0. Pedagogical consistency pass — מצב מחייב
+
+- הבנק הפעיל כולל כעת 177 definitions:‏ 174 generated ו־3 curated, בתוך אותם 27 Skills וללא Domain חדש.
+- הוסרו 6 definitions סמליים שבהם הידע התומך שלט במשימה: `MVP_AR_ADD_FACTS_COMMUTE_C`, `MVP_INT_DIV_NEG_POS_B`, `MVP_INT_DIV_POS_NEG_B`, `MVP_INT_DIV_NEG_NEG_B`, `MVP_FRAC_MEANING_PARTS_D`, `MVP_INT_SUB_NEGATIVE_REWRITE_B`.
+- נוספו 15 definitions: `MVP_INT_NUMBER_LINE_DIRECTION_A`;‏ `MVP_FRAC_MEANING_NUMERATOR_A`, `MVP_FRAC_MEANING_DENOMINATOR_A`, `MVP_FRAC_MEANING_SET_B`, `MVP_FRAC_MEANING_NUMBER_LINE_B`;‏ `MVP_OPS_ORDER_BASIC_LEFT_TO_RIGHT_ADDSUB_A`, `MVP_OPS_ORDER_BASIC_LEFT_TO_RIGHT_DIVMUL_B`;‏ `MVP_INT_SUB_POS_MINUS_LARGER_POS_A/B/C`;‏ `MVP_INT_COMPARE_NEGATIVE_POSITIVE_A`;‏ `MVP_INT_NEGATION_ZERO_CURATED`;‏ `MVP_ALG_SUBSTITUTE_MEANING_A`, `MVP_EQ_ADD_INVERSE_CONCEPT_A`, `MVP_EQ_MUL_INVERSE_CONCEPT_A`.
+- שונו מהותית: `MVP_AR_PLACE_VALUE_GEN_A/B/C`; כל `MVP_AR_MUL_F_*_CONTEXT_A/B`;‏ `MVP_AR_FACTORS_MULTIPLES_MULTI_A/B/C`;‏ `MVP_AR_FACTORS_MULTIPLES_FACTORS_A/B/C`;‏ `MVP_INT_NUMBER_LINE_LEFT_A/B/C`;‏ `MVP_FRAC_MEANING_PARTS_A/B/C`;‏ `MVP_FRAC_EQUIV_FORWARD_A/B/C`;‏ `MVP_FRAC_EQUIV_REVERSE_A/B/C`;‏ `MVP_OPS_ORDER_BASIC_FIRST_B/C`;‏ `MVP_INT_NEGATION_NEGATIVE_B`;‏ `MVP_INT_ADD_OPPOSITES_B`;‏ `MVP_INT_MUL_SIGN_A/B`;‏ `MVP_INT_DIV_SIGN_A/B`;‏ `MVP_ALG_EQUALITY_A/B/C`;‏ `MVP_ALG_VARIABLE_B`;‏ `MVP_ALG_SUBSTITUTE_B/C`;‏ `MVP_EQ_ADD_B`;‏ `MVP_EQ_MUL_B`; ושני `MVP_ALG_VARIABLE_CONTEXT_*_CURATED`.
+- כל 92 ה־generated choice definitions הועלו לפחות ל־version 5 ונושאים `requires-rereview`, משום שכל rationale גנרי הוחלף במטא־דאטה אבחוני ספציפי. ההיקף המדויק הוא:
+  - `MVP_AR_PLACE_VALUE_GEN_{A,B,C}`;‏ `MVP_AR_ADD_FACTS_{MISSING_A,COMMUTE_A,MISSING_B,COMMUTE_B}`;‏ `MVP_AR_SUB_FACTS_REMOVE_{A,B}`.
+  - `MVP_AR_MUL_F_{2_5_10,3_4,6_7,8_9}_CONTEXT_{A,B}`;‏ `MVP_AR_DIV_F_{2_5_10,3_4,6_7,8_9}_{SHARING,GROUPING}_{A,B}`.
+  - `MVP_AR_FACTORS_MULTIPLES_MULTI_{A,B,C}`;‏ `MVP_AR_FACTORS_MULTIPLES_FACTORS_{A,B,C}`.
+  - `MVP_INT_NUMBER_LINE_LEFT_{A,B,C}`;‏ `MVP_INT_NUMBER_LINE_DIRECTION_A`;‏ `MVP_INT_COMPARE_SIGNED_{A,B,C}`;‏ `MVP_INT_COMPARE_NEGATIVE_POSITIVE_A`;‏ `MVP_INT_NEGATION_POSITIVE_A`;‏ `MVP_INT_NEGATION_NEGATIVE_B`;‏ `MVP_INT_ADD_OPPOSITES_{A,B}`;‏ `MVP_INT_SUB_NEGATIVE_REWRITE_A`;‏ `MVP_INT_MUL_SIGN_{A,B}`;‏ `MVP_INT_DIV_SIGN_{A,B}`.
+  - `MVP_FRAC_MEANING_PARTS_{A,B,C}`;‏ `MVP_FRAC_MEANING_NUMERATOR_A`;‏ `MVP_FRAC_MEANING_DENOMINATOR_A`;‏ `MVP_FRAC_MEANING_SET_B`;‏ `MVP_FRAC_MEANING_NUMBER_LINE_B`;‏ `MVP_FRAC_EQUIV_{FORWARD,REVERSE}_{A,B,C}`.
+  - `MVP_OPS_ORDER_BASIC_FIRST_{A,B,C}`;‏ `MVP_OPS_ORDER_BASIC_LEFT_TO_RIGHT_ADDSUB_A`;‏ `MVP_OPS_ORDER_BASIC_LEFT_TO_RIGHT_DIVMUL_B`.
+  - `MVP_ALG_EQUALITY_{A,B,C}`;‏ `MVP_ALG_VARIABLE_{A,B,C}`;‏ `MVP_ALG_SUBSTITUTE_{A,B,C}`;‏ `MVP_EQ_ADD_{A,B,C}`;‏ `MVP_EQ_MUL_{A,B,C}`;‏ `MVP_ALG_SUBSTITUTE_MEANING_A`;‏ `MVP_EQ_ADD_INVERSE_CONCEPT_A`;‏ `MVP_EQ_MUL_INVERSE_CONCEPT_A`.
+- שלושת פריטי ה־curated הפעילים מסומנים ל־re-review:‏ `MVP_INT_NEGATION_ZERO_CURATED` (`edge-case`),‏ `MVP_ALG_VARIABLE_CONTEXT_BASIC_CURATED` ו־`MVP_ALG_VARIABLE_CONTEXT_REASONING_CURATED` (`deliberate-example`). אין curated קבוע ללא הצדקה.
+- נוספו כללי blocking:‏ `representationKind` ל־`representation`, קטגוריה יציבה במשפחות magnitude, איסור rationale מסוג `Plausible misconception requiring author review`, ובדיקה שמסיחי factors/multiples אכן שגויים.
+- לא נותר מקרה חוסם ידוע. מספרים עשרוניים, פעולות בשברים ותחומי curriculum נוספים נשארו לגל הבא בלבד.
+
 ## 1. סיווג ה־export
 
 ב־export נמצאו 380 רשומות. בתחילת המעבר 156 התאימו ל־definition פעיל ו־224 היו legacy שכבר הוחלף או הוצא מהבנק.

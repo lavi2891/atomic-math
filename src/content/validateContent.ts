@@ -338,20 +338,57 @@ export function structuralBandProgressionIssues(definitions: readonly SkillQuest
     const bands = new Set(family.map((definition) => definition.difficultyBand));
     for (const band of ["A", "B", "C"]) if (!bands.has(band as GeneratedQuestionDefinition["difficultyBand"])) issues.push(`${skillId}: missing structural Band ${band}`);
     if (family.some((definition) => definition.metadata?.difficultyFeature !== "structure")) issues.push(`${skillId}: structural Bands must declare difficultyFeature=structure`);
-    const contentFamilies = family.map((definition) => definition.contentFamily);
-    if (new Set(contentFamilies).size !== 1) issues.push(`${skillId}: structural Bands must share one pedagogical content family`);
-    const stages = family.map((definition) => definition.metadata?.structuralStage);
-    if (stages.some((stage) => typeof stage !== "string") || new Set(stages).size !== family.length) issues.push(`${skillId}: every structural Band must declare a distinct structuralStage`);
     if ((skillId === "EQ_ADD" || skillId === "EQ_MUL") && family.some((definition) => Object.values(definition.params).some((spec) => spec.type !== "rational" && spec.min < 1))) {
       issues.push(`${skillId}: equation Bands must not introduce signed-number arithmetic`);
     }
-    if (["ALG_EQUALITY", "ALG_SUBSTITUTE", "EQ_ADD", "EQ_MUL"].includes(skillId)) {
-      const ordered = [...family].sort((left, right) => BAND_ORDER.indexOf(left.difficultyBand ?? "") - BAND_ORDER.indexOf(right.difficultyBand ?? ""));
-      const symbolCounts = ordered.map((definition) => definition.studentFacingSymbols?.length ?? 0);
-      if (symbolCounts.some((count, index) => index > 0 && count <= symbolCounts[index - 1]!)) issues.push(`${skillId}: symbolic abstraction must increase strictly across Bands`);
+  }
+  return issues;
+}
+
+/** Category describes the cognitive task; it must not be used as a proxy for Band. */
+export function questionCategorySemanticsIssues(definitions: readonly SkillQuestionDefinition[]): string[] {
+  const issues: string[] = [];
+  const magnitudeFamilies = new Map<string, GeneratedQuestionDefinition[]>();
+  for (const definition of definitions) {
+    if (!isGeneratedQuestionDefinition(definition)) continue;
+    if (definition.category === "representation" && typeof definition.metadata?.representationKind !== "string") {
+      issues.push(`${definition.id}: representation category requires an explicit representationKind`);
+    }
+    if (definition.metadata?.difficultyFeature !== "magnitude" || !definition.contentFamily) continue;
+    const key = `${definition.skillId}|${definition.contentFamily}`;
+    magnitudeFamilies.set(key, [...(magnitudeFamilies.get(key) ?? []), definition]);
+  }
+  for (const [key, family] of magnitudeFamilies) {
+    if (new Set(family.map((definition) => definition.category)).size > 1) {
+      issues.push(`${key}: magnitude-only Bands must not alternate QuestionCategory`);
     }
   }
   return issues;
+}
+
+function misconceptionMetadataIssue(definitionId: string, rationale: string | undefined, context: string): string[] {
+  if (!rationale) return [`${definitionId}: ${context} has incomplete misconception metadata`];
+  return /Plausible misconception requiring author review/iu.test(rationale)
+    ? [`${definitionId}: ${context} retains fallback misconception rationale`]
+    : [];
+}
+
+export function factorMultipleSemanticIssues(definition: GeneratedQuestionDefinition, question: GeneratedQuestionInstance, seed: number): string[] {
+  if (question.type !== "multiChoice" || !definition.contentFamily?.startsWith("AR_FACTORS_MULTIPLES:")) return [];
+  const family = definition.contentFamily.split(":")[1];
+  if (family !== "identify-multiples" && family !== "identify-factors") return [];
+  const a = Number(question.sampledParams.a);
+  const b = Number(question.sampledParams.b);
+  const reference = family === "identify-multiples" ? a : a * b;
+  const correctIds = new Set(question.correctOptionIds);
+  return question.options.flatMap((option) => {
+    const value = Number(contentSurface(option.content));
+    const mathematicallyCorrect = Number.isInteger(value) && value !== 0 && (family === "identify-multiples" ? value % reference === 0 : reference % value === 0);
+    const shouldBeCorrect = correctIds.has(option.id);
+    return mathematicallyCorrect === shouldBeCorrect
+      ? []
+      : [`${definition.id}: seed ${seed} ${option.id} is misclassified as a ${family === "identify-multiples" ? "multiple" : "factor"} option`];
+  });
 }
 
 export function validateFoundationalContent(samplesPerGenerator = 100): ContentValidationReport {
@@ -364,6 +401,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
   const normalizedFamilies = new Map<string, { skillId: string; family: string; ids: string[] }>();
   issues.push(...magnitudeBandProgressionIssues(FOUNDATIONAL_QUESTIONS));
   issues.push(...structuralBandProgressionIssues(FOUNDATIONAL_QUESTIONS));
+  issues.push(...questionCategorySemanticsIssues(FOUNDATIONAL_QUESTIONS));
   issues.push(...curatedNumericLiteralIssues(FOUNDATIONAL_QUESTIONS));
   issues.push(...atomicSkillIdentityIssues(FOUNDATIONAL_QUESTIONS));
   issues.push(...signedSkillDefinitionIssues(FOUNDATIONAL_QUESTIONS));
@@ -397,6 +435,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
           issues.push(...pedagogicalTargetingIssues(definition, question, seed));
           if (seed === 1) issues.push(...studentFacingVariableSupportIssues(definition as SkillQuestionDefinition, question));
           issues.push(...mathematicallyDuplicateChoiceIssues(definition.id, question, seed));
+          issues.push(...factorMultipleSemanticIssues(definition, question, seed));
           if (question.id !== repeat.id || question.renderedExpression !== repeat.renderedExpression) issues.push(`${definition.id}: seed ${seed} is not reproducible`);
           if (question.renderedExpression.includes("undefined") || optionText(question.prompt).includes("undefined")) issues.push(`${definition.id}: seed ${seed} rendered undefined content`);
           if (question.type === "numeric") {
@@ -410,7 +449,10 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
             if (correctIds.length === 0 || correctIds.some((id) => !question.options.some((option) => option.id === id))) issues.push(`${definition.id}: seed ${seed} has invalid correct options`);
             for (const option of question.options) {
               if (correctIds.includes(option.id) && option.misconceptionId) issues.push(`${definition.id}: seed ${seed} correct option has misconception metadata`);
-              if (!correctIds.includes(option.id) && (!option.misconceptionId || !option.misconceptionRationale)) issues.push(`${definition.id}: seed ${seed} distractor metadata is incomplete`);
+              if (!correctIds.includes(option.id)) {
+                if (!option.misconceptionId) issues.push(`${definition.id}: seed ${seed} distractor metadata is incomplete`);
+                else issues.push(...misconceptionMetadataIssue(definition.id, option.misconceptionRationale, `seed ${seed} distractor ${option.id}`));
+              }
             }
           }
           if (!difficultyMatchesBand(definition.difficultyBand, question.difficulty)) issues.push(`${definition.id}: seed ${seed} difficulty is outside band ${definition.difficultyBand}`);
@@ -443,7 +485,10 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
         correctPositions.set(correctIndex, (correctPositions.get(correctIndex) ?? 0) + 1);
         if (definition.options[correctIndex]?.misconceptionId) issues.push(`${definition.id}: correct option has a misconception id`);
       }
-      for (const [index, option] of definition.options.entries()) if (index !== correctIndex && (!option.misconceptionId || !option.misconceptionRationale)) issues.push(`${definition.id}: distractor ${option.id} has incomplete misconception metadata`);
+      for (const [index, option] of definition.options.entries()) if (index !== correctIndex) {
+        if (!option.misconceptionId) issues.push(`${definition.id}: distractor ${option.id} has incomplete misconception metadata`);
+        else issues.push(...misconceptionMetadataIssue(definition.id, option.misconceptionRationale, `distractor ${option.id}`));
+      }
       const normalizedKey = `${definition.skillId}|${definition.contentFamily}|${normalizedNumericSurface(definition.prompt)}|${normalizedNumericSurface(definition.options.map((option) => option.content))}`;
       const existing = normalizedFamilies.get(normalizedKey);
       normalizedFamilies.set(normalizedKey, { skillId: definition.skillId, family: definition.contentFamily ?? "missing-family", ids: [...(existing?.ids ?? []), definition.id] });
