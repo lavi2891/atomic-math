@@ -1,4 +1,4 @@
-import type { DifficultyBand } from "../../content/catalog/types.ts";
+import type { DifficultyBand, SkillId } from "../../content/catalog/types.ts";
 import { isGeneratedQuestionDefinition } from "../../domain/questions/definitions.ts";
 import type { GeneratedQuestionDefinition, ParamSpec } from "../../domain/questions/generator/types.ts";
 import type { SkillQuestionDefinition } from "../../domain/session/skillQuestionSelector.ts";
@@ -23,6 +23,7 @@ export interface BandSummary {
   variables: VariableSummary[];
   constraints: ConstraintSummary;
   studentFacingSymbols: string[];
+  supportingSkills: SkillId[];
   symbolicConditions: ConstraintSummary;
   changesFromPrevious: string[];
 }
@@ -36,6 +37,7 @@ export interface GeneratorStructureSummary {
   constraints: ConstraintSummary;
   sampledValues: Array<{ name: string; value: string }>;
   studentFacingSymbols: string[];
+  supportingSkills: SkillId[];
   symbolicConditions: ConstraintSummary;
   transformationNotes: string[];
   instanceMatchesDefinition: boolean;
@@ -156,6 +158,7 @@ export function generatorStructureSummary(
     constraints: summarizeConstraints(definition.constraints),
     sampledValues,
     studentFacingSymbols: definition.studentFacingSymbols ?? [],
+    supportingSkills: definition.supportingSkills ?? [],
     symbolicConditions: summarizeConstraints(definition.symbolicConditions),
     transformationNotes,
     instanceMatchesDefinition: question.templateId === definition.id && question.baseId === definition.id,
@@ -265,11 +268,12 @@ export function deriveBandSummaries(definitions: readonly SkillQuestionDefinitio
   const family = definitions
     .filter((item): item is GeneratedQuestionDefinition & { skillId: string; difficultyBand: DifficultyBand } => isGeneratedQuestionDefinition(item) && item.skillId === current.skillId && item.contentFamily === current.contentFamily && !!item.difficultyBand)
     .sort((left, right) => bandRank(left.difficultyBand) - bandRank(right.difficultyBand));
-  let previous: { variables: VariableSummary[]; constraints: ConstraintSummary; template: string; studentFacingSymbols: string[]; symbolicConditions: ConstraintSummary } | null = null;
+  let previous: { variables: VariableSummary[]; constraints: ConstraintSummary; template: string; studentFacingSymbols: string[]; supportingSkills: SkillId[]; symbolicConditions: ConstraintSummary } | null = null;
   return family.map((definition) => {
     const variables = generatorVariables(definition);
     const constraints = summarizeConstraints(definition.constraints);
     const studentFacingSymbols = definition.studentFacingSymbols ?? [];
+    const supportingSkills = definition.supportingSkills ?? [];
     const symbolicConditions = summarizeConstraints(definition.symbolicConditions);
     const changesFromPrevious = previous === null ? [] : variables.flatMap((variable) => {
       const earlier = previous?.variables.find((item) => item.name === variable.name);
@@ -280,10 +284,11 @@ export function deriveBandSummaries(definitions: readonly SkillQuestionDefinitio
       changesFromPrevious.push(`תנאים: ${readable}`);
     }
     if (previous && JSON.stringify(previous.studentFacingSymbols) !== JSON.stringify(studentFacingSymbols)) changesFromPrevious.push(`סמלים שנשארים בשאלה: ${studentFacingSymbols.join(", ") || "אין"}`);
+    if (previous && JSON.stringify(previous.supportingSkills) !== JSON.stringify(supportingSkills)) changesFromPrevious.push(`Skills תומכים: ${supportingSkills.join(", ") || "אין"}`);
     if (previous && JSON.stringify(previous.symbolicConditions) !== JSON.stringify(symbolicConditions)) changesFromPrevious.push(`תנאים על סמלים: ${symbolicConditions.humanReadable.join("; ") || "אין"}`);
     const templateChangedFromPrevious = previous !== null && previous.template !== definition.exprTemplate;
-    previous = { variables, constraints, template: definition.exprTemplate, studentFacingSymbols, symbolicConditions };
-    return { band: definition.difficultyBand, template: definition.exprTemplate, templateChangedFromPrevious, variables, constraints, studentFacingSymbols, symbolicConditions, changesFromPrevious };
+    previous = { variables, constraints, template: definition.exprTemplate, studentFacingSymbols, supportingSkills, symbolicConditions };
+    return { band: definition.difficultyBand, template: definition.exprTemplate, templateChangedFromPrevious, variables, constraints, studentFacingSymbols, supportingSkills, symbolicConditions, changesFromPrevious };
   });
 }
 

@@ -156,13 +156,14 @@ await run("multi-skill session creates attempts under each presented skill", () 
 
 await run("generated identity is preserved and missing skill identity fails loudly", () => {
   const session = createPracticeSession({ id: "SESSION", studentId: "student", selectedSkillIds: ["A"], settings: { mode: "practice" }, startedAt: 0 });
-  const generated: GeneratedQuestionInstance = { id: "BASE__instance", baseId: "BASE", templateId: "GEN", generatorSeed: 42, renderedExpression: "1+1", sampledParams: {}, topicId: "SIGNED_NUMBERS", skillId: "A", type: "numeric", prompt: [], correctAnswers: ["2"] };
+  const generated: GeneratedQuestionInstance = { id: "BASE__instance", baseId: "BASE", templateId: "GEN", generatorSeed: 42, renderedExpression: "1+1", sampledParams: {}, topicId: "SIGNED_NUMBERS", skillId: "A", supportingSkills: ["ALG_VARIABLE"], type: "numeric", prompt: [], correctAnswers: ["2"] };
   const result = { questionId: generated.id, topicId: "SIGNED_NUMBERS", attemptIndex: 0, isCorrect: true, rawAnswer: { questionType: "numeric" as const, data: { value: "2" } }, responseTimeMs: 500, timestamp: 1000 };
   const created = createAttemptFromAnswer({ session, question: generated, result, sequenceNumber: 1, attemptId: "A" });
   assert.equal(created.questionId, "BASE");
   assert.equal(created.questionInstanceId, "BASE__instance");
   assert.equal(created.generatorId, "GEN");
   assert.equal(created.generatorSeed, 42);
+  assert.deepEqual(created.supportingSkills, ["ALG_VARIABLE"]);
   const legacy = { ...generated, skillId: undefined };
   assert.throws(() => createAttemptFromAnswer({ session, question: legacy, result, sequenceNumber: 1 }), /missing required skillId/);
 });

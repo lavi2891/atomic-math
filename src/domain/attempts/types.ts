@@ -1,5 +1,5 @@
 import type { RawAnswer } from "../questions/types.ts";
-import type { DifficultyBand } from "../../content/catalog/types.ts";
+import type { DifficultyBand, SkillId } from "../../content/catalog/types.ts";
 import type { QuestionCategory } from "../questions/categories.ts";
 
 export type SupportLevel = "independent" | "hint" | "guided";
@@ -13,6 +13,8 @@ export interface Attempt {
   generatorId?: string;
   generatorSeed?: number;
   skillId: string;
+  /** Definition-level supporting knowledge captured for later diagnostics; never used as an access gate. */
+  supportingSkills?: SkillId[];
   difficulty: number;
   difficultyBand?: DifficultyBand;
   category?: QuestionCategory;

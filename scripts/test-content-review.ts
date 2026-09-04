@@ -429,10 +429,21 @@ await run("review summary distinguishes sampled parameters from intentional stud
   const summary = generatorStructureSummary(definition, resolveReviewQuestion(definition, 42));
   assert.deepEqual(summary?.sampledValues.map((item) => item.name), ["n"]);
   assert.deepEqual(summary?.studentFacingSymbols, ["x", "a", "b"]);
+  assert.deepEqual(summary?.supportingSkills, []);
   assert.deepEqual(summary?.symbolicConditions.humanReadable, ["a שונה מאפס"]);
   const bands = deriveBandSummaries(FOUNDATIONAL_QUESTIONS, definition);
   assert.deepEqual(bands.map((item) => item.studentFacingSymbols), [[], ["x"], ["x", "a", "b"]]);
   assert.ok(bands[1]?.changesFromPrevious.some((change) => change.includes("סמלים שנשארים")));
+});
+
+await run("review summaries expose Band-specific supporting Skills", () => {
+  const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_INT_ADD_OPPOSITES_B")!;
+  assert.ok(isGeneratedQuestionDefinition(definition));
+  const summary = generatorStructureSummary(definition, resolveReviewQuestion(definition, 42));
+  assert.deepEqual(summary?.supportingSkills, ["ALG_VARIABLE", "ALG_EQUALITY"]);
+  const bands = deriveBandSummaries(FOUNDATIONAL_QUESTIONS, definition);
+  assert.deepEqual(bands.map((item) => item.supportingSkills), [[], ["ALG_VARIABLE", "ALG_EQUALITY"]]);
+  assert.ok(bands[1]?.changesFromPrevious.some((change) => change.includes("Skills תומכים")));
 });
 
 await run("review math display is derived from the executable template", () => {

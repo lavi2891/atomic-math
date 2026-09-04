@@ -29,7 +29,7 @@ function amSubmitAttempts_(payload) {
     var partition = amPartitionAttempts_(payload.attempts, existingIds);
     if (partition.accepted.length) {
       var rows = partition.accepted.map(function(a) { return amRow_(headerInfo.values, {
-        submittedAt:a.submittedAt,attemptId:a.attemptId,sessionId:a.sessionId,studentId:a.studentId,questionId:a.questionId,questionInstanceId:a.questionInstanceId,generatorId:a.generatorId,generatorSeed:a.generatorSeed,skillId:a.skillId,difficulty:a.difficulty,answerJson:JSON.stringify(a.submittedAnswer),normalizedAnswerJson:JSON.stringify(a.normalizedAnswer),correct:a.correct,supportLevel:a.supportLevel,scoreValue:a.scoreValue,responseTimeMs:a.responseTimeMs,sequenceNumber:a.sequenceNumber,tagsJson:JSON.stringify(a.tags || []),misconceptionIdsJson:JSON.stringify(a.misconceptionIds || [])
+        submittedAt:a.submittedAt,attemptId:a.attemptId,sessionId:a.sessionId,studentId:a.studentId,questionId:a.questionId,questionInstanceId:a.questionInstanceId,generatorId:a.generatorId,generatorSeed:a.generatorSeed,skillId:a.skillId,difficulty:a.difficulty,answerJson:JSON.stringify(a.submittedAnswer),normalizedAnswerJson:JSON.stringify(a.normalizedAnswer),correct:a.correct,supportLevel:a.supportLevel,scoreValue:a.scoreValue,responseTimeMs:a.responseTimeMs,sequenceNumber:a.sequenceNumber,tagsJson:JSON.stringify(a.tags || []),misconceptionIdsJson:JSON.stringify(a.misconceptionIds || []),supportingSkillsJson:JSON.stringify(a.supportingSkills || [])
       }); });
       sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, headerInfo.values.length).setValues(rows);
     }

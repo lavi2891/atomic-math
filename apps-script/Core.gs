@@ -18,6 +18,7 @@ function amValidateAttemptBatch_(payload) {
     if (!attempt || typeof attempt.attemptId !== "string" || !attempt.attemptId) throw amError_("INVALID_ATTEMPT", "Attempt is missing attemptId", false);
     if (attempt.sessionId !== payload.sessionId || attempt.studentId !== payload.studentId) throw amError_("INVALID_ATTEMPT", "Attempt identity does not match batch", false);
     if (typeof attempt.skillId !== "string" || typeof attempt.correct !== "boolean" || typeof attempt.scoreValue !== "number") throw amError_("INVALID_ATTEMPT", "Attempt fields are invalid", false);
+    if (attempt.supportingSkills !== undefined && (!Array.isArray(attempt.supportingSkills) || attempt.supportingSkills.some(function(skillId) { return typeof skillId !== "string" || !skillId; }))) throw amError_("INVALID_ATTEMPT", "supportingSkills must contain Skill IDs", false);
     if (ids[attempt.attemptId]) throw amError_("DUPLICATE_IN_BATCH", "Duplicate attemptId inside batch", false);
     ids[attempt.attemptId] = true;
   });

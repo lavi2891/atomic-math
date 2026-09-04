@@ -128,6 +128,7 @@ export function buildGeneratedQuestion(
             tags: [...new Set([...(definition.tags ?? []), "source:generator"])],
             authoringMode: definition.authoringMode,
             contentFamily: definition.contentFamily,
+            supportingSkills: definition.supportingSkills ? [...definition.supportingSkills] : undefined,
             baseId: definition.id,
             templateId: definition.id,
             generatorSeed: options.seed,
@@ -185,6 +186,7 @@ export function buildGeneratedQuestion(
           answerSemantics,
           authoringMode: definition.authoringMode,
           contentFamily: definition.contentFamily,
+          supportingSkills: definition.supportingSkills ? [...definition.supportingSkills] : undefined,
           input: {
             allowMinus: definition.input?.allowMinus ?? true,
             allowDecimal: shouldAllowDecimal(definition, renderedExpression),

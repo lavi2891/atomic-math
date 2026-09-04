@@ -1,6 +1,6 @@
 import type { ChoiceOption, NumericAnswerSemantics, NumericInputFormat, OptionContent, QuestionAuthoringMode } from "../types.ts";
 import type { QuestionCategory } from "../categories.ts";
-import type { DifficultyBand } from "../../../content/catalog/types.ts";
+import type { DifficultyBand, SkillId } from "../../../content/catalog/types.ts";
 
 export type IntegerLikeParamSpec = {
   type: "integer" | "natural";
@@ -91,6 +91,8 @@ export interface GeneratedQuestionDefinition {
   studentFacingSymbols?: string[];
   /** Mathematical conditions on intentional student-facing symbols, such as b != 0. */
   symbolicConditions?: string[];
+  /** Additional knowledge needed to interpret or solve this family; diagnostic only, not an access gate. */
+  supportingSkills?: SkillId[];
   hintsTemplate?: OptionContent[][];
   misconceptions?: string[];
   tags?: string[];

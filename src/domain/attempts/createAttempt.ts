@@ -38,6 +38,7 @@ export function createAttemptFromAnswer(input: {
     generatorId: generated?.templateId,
     generatorSeed: generated?.generatorSeed,
     skillId: question.skillId,
+    supportingSkills: question.supportingSkills ? [...question.supportingSkills] : undefined,
     difficulty: question.difficulty ?? 0.5,
     difficultyBand: question.difficultyBand,
     category: question.category ?? "calculation",

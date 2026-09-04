@@ -11,7 +11,7 @@ import type { Attempt } from "../src/domain/attempts/types.ts";
 import { isAssignmentComplete } from "../src/domain/studentHome/deriveStudentHome.ts";
 import { createChallengeSignature, challengeSignatureKey } from "../src/domain/personalBests/challengeSignature.ts";
 import { resolveQuickPracticeScope } from "../src/domain/studentHome/quickPractice.ts";
-import { auditFoundationalContent, curatedNumericLiteralIssues, curatedNumericLiteralItems, generatedInstanceMetadataIssues, magnitudeBandProgressionIssues, pedagogicalTargetingIssues, signedMultiplicationLoadIssues, structuralBandProgressionIssues, studentMathContentIssues, studentMathContentWarnings, symbolicAuthoringIssues, validateFoundationalContent } from "../src/content/validateContent.ts";
+import { auditFoundationalContent, curatedNumericLiteralIssues, curatedNumericLiteralItems, generatedInstanceMetadataIssues, magnitudeBandProgressionIssues, pedagogicalTargetingIssues, signedMultiplicationLoadIssues, structuralBandProgressionIssues, studentFacingVariableSupportIssues, studentMathContentIssues, studentMathContentWarnings, supportingSkillMetadataIssues, symbolicAuthoringIssues, validateFoundationalContent } from "../src/content/validateContent.ts";
 import { atomicSkillIdentityIssues } from "../src/content/foundations/skillScope.ts";
 import { signedGeneratedInstanceIssues, signedSkillDefinitionIssues } from "../src/content/foundations/skillScope.ts";
 import type { GeneratedQuestionInstance, OptionContent } from "../src/domain/questions/types.ts";
@@ -495,9 +495,41 @@ run("signed division progresses from concrete calculation to symbolic cancellati
     assert.equal(concrete.type, "numeric");
     assert.equal(symbolic.type, "singleChoice");
     assert.deepEqual(symbolicDefinition.studentFacingSymbols, ["m"]);
+    assert.deepEqual(symbolicDefinition.supportingSkills, ["ALG_VARIABLE"]);
+    assert.deepEqual(symbolic.supportingSkills, ["ALG_VARIABLE"]);
     assert.match(renderedText(symbolic.prompt), /m/u);
     assert.equal(FOUNDATIONAL_QUESTIONS.some((item) => item.id === `MVP_INT_DIV_${family}_C`), false);
   }
+});
+
+run("symbolic non-algebra Bands declare definition-level supporting Skills", () => {
+  const expected = new Map<string, string[]>([
+    ["MVP_AR_ADD_FACTS_COMMUTE_C", ["ALG_VARIABLE", "ALG_EQUALITY"]],
+    ["MVP_INT_NUMBER_LINE_LEFT_C", ["ALG_VARIABLE"]],
+    ["MVP_FRAC_MEANING_PARTS_D", ["ALG_VARIABLE"]],
+    ["MVP_INT_ADD_OPPOSITES_B", ["ALG_VARIABLE", "ALG_EQUALITY"]],
+    ["MVP_INT_SUB_NEGATIVE_REWRITE_B", ["ALG_VARIABLE", "ALG_EQUALITY"]],
+    ["MVP_INT_DIV_NEG_POS_B", ["ALG_VARIABLE"]],
+    ["MVP_INT_DIV_POS_NEG_B", ["ALG_VARIABLE"]],
+    ["MVP_INT_DIV_NEG_NEG_B", ["ALG_VARIABLE"]],
+  ]);
+  for (const [id, supportingSkills] of expected) {
+    const definition = generatedDefinition(id);
+    assert.deepEqual(definition.supportingSkills, supportingSkills, id);
+    assert.deepEqual(supportingSkillMetadataIssues(definition), [], id);
+  }
+  const unannotated = { ...generatedDefinition("MVP_INT_NUMBER_LINE_LEFT_C"), supportingSkills: undefined };
+  assert.ok(supportingSkillMetadataIssues(unannotated).some((issue) => issue.includes("ALG_VARIABLE")));
+  assert.ok(studentFacingVariableSupportIssues(unannotated, buildGeneratedQuestion(unannotated, { seed: 1 })).some((issue) => issue.includes("student-facing algebraic variables")));
+});
+
+run("supporting Skill metadata rejects invalid identity and does not turn equality into equation solving", () => {
+  const definition = generatedDefinition("MVP_INT_ADD_OPPOSITES_B");
+  assert.ok(supportingSkillMetadataIssues({ ...definition, supportingSkills: ["MISSING"] }).some((issue) => issue.includes("unknown supporting Skill")));
+  assert.ok(supportingSkillMetadataIssues({ ...definition, supportingSkills: ["INT_ADD"] }).some((issue) => issue.includes("target Skill")));
+  assert.ok(supportingSkillMetadataIssues({ ...definition, supportingSkills: ["ALG_VARIABLE", "ALG_VARIABLE"] }).some((issue) => issue.includes("duplicates")));
+  const equationSupporting = FOUNDATIONAL_QUESTIONS.filter((item) => item.supportingSkills?.some((skillId) => skillId.startsWith("EQ_")));
+  assert.deepEqual(equationSupporting, []);
 });
 
 run("sign and comparison prompts state the mathematical target explicitly", () => {

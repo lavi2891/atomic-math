@@ -1,6 +1,6 @@
 var AM_SHEETS = {
   Students: ["studentId","displayName","classId","groupId","active","createdAt","updatedAt"],
-  Attempts: ["submittedAt","attemptId","sessionId","studentId","questionId","questionInstanceId","generatorId","generatorSeed","skillId","difficulty","answerJson","normalizedAnswerJson","correct","supportLevel","scoreValue","responseTimeMs","sequenceNumber","tagsJson","misconceptionIdsJson"],
+  Attempts: ["submittedAt","attemptId","sessionId","studentId","questionId","questionInstanceId","generatorId","generatorSeed","skillId","difficulty","answerJson","normalizedAnswerJson","correct","supportLevel","scoreValue","responseTimeMs","sequenceNumber","tagsJson","misconceptionIdsJson","supportingSkillsJson"],
   Sessions: ["sessionId","studentId","source","assignmentId","mode","selectedSkillIdsJson","strategy","startedAt","endedAt","status","questionCount","correctCount","incorrectCount","accuracy","gameScore","syncedAt"],
   Mastery: ["studentId","skillId","mastery","accuracy","fluencyMedianMs","attemptCount","recentAverage","historyAverage","evidenceLevel","lastAttemptAt","calculatedAt","updatedAt"],
   Assignments: ["assignmentId","studentId","skillId","targetMastery","priority","active","createdAt","dueAt","completedAt"],
@@ -14,7 +14,8 @@ function initializeAtomicMathSheets() {
     var sheet = spreadsheet.getSheetByName(name) || spreadsheet.insertSheet(name);
     var headers = AM_SHEETS[name];
     var existing = sheet.getLastColumn() ? sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0] : [];
-    if (sheet.getLastRow() > 1 && existing.join("|") !== headers.join("|")) throw new Error(name + " has data and incompatible headers; refusing to overwrite");
+    var appendOnlyUpgrade = existing.length <= headers.length && existing.every(function(header, index) { return header === headers[index]; });
+    if (sheet.getLastRow() > 1 && existing.join("|") !== headers.join("|") && !appendOnlyUpgrade) throw new Error(name + " has data and incompatible headers; refusing to overwrite");
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     sheet.setFrozenRows(1);
   });

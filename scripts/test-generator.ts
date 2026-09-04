@@ -260,6 +260,7 @@ run("mixed rational and decimal arithmetic requires an exact fraction for repeat
     id: "EXACT_REPEATING",
     topicId: "SIGNED_NUMBERS",
     kind: "generated",
+    supportingSkills: ["ALG_VARIABLE"],
     exprTemplate: "{fraction}-{decimal}",
     promptTemplate: [{ kind: "math", latex: "{fraction}-{decimal}" }],
     params: {
@@ -271,6 +272,7 @@ run("mixed rational and decimal arithmetic requires an exact fraction for repeat
   };
   const question = buildGeneratedQuestion(definition, { seed: 1 });
   assertNumericGenerated(question);
+  assert.deepEqual(question.supportingSkills, ["ALG_VARIABLE"]);
   assert.equal(question.correctAnswers[0], "-2/15");
   assert.deepEqual(question.acceptedInputFormats, ["fraction"]);
   assert.equal(evaluateAnswer(question, { questionType: "numeric", data: { value: "-2/15" } }).isCorrect, true);

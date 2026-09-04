@@ -60,6 +60,15 @@ function contentSurface(content: readonly OptionContent[]): string {
   return content.map((part) => part.kind === "text" ? part.value : part.latex).join(" ");
 }
 
+function visibleLatinSymbols(question: Question): string[] {
+  const math = [
+    ...question.prompt,
+    ...(question.hints ?? []).flat(),
+    ...(question.type === "numeric" ? [] : question.options.flatMap((option) => option.content)),
+  ].flatMap((part) => part.kind === "math" ? [part.latex] : []);
+  return [...new Set(math.join(" ").replace(/\\[A-Za-z]+/gu, "").match(/[A-Za-z]/gu) ?? [])];
+}
+
 const CONSECUTIVE_SIGN_PATTERN = /[+−*×/÷-]\s*[-−]\s*\d/u;
 
 function studentFacingNotationIssues(definitionId: string, question: GeneratedQuestionInstance, seed: number): string[] {
@@ -151,6 +160,7 @@ function mathematicallyDuplicateChoiceIssues(definitionId: string, question: Gen
 export function generatedInstanceMetadataIssues(definition: GeneratedQuestionDefinition, question: GeneratedQuestionInstance): string[] {
   const issues: string[] = [];
   if (question.templateId !== definition.id || question.baseId !== definition.id) issues.push(`${definition.id}: generated instance identity does not match its definition`);
+  if (JSON.stringify(question.supportingSkills ?? []) !== JSON.stringify(definition.supportingSkills ?? [])) issues.push(`${definition.id}: generated instance does not preserve supportingSkills`);
   const reconstructed = definition.exprTemplate.replace(/\{([A-Za-z_]\w*)\}/g, (match, name: string) => question.sampledParams[name] ?? match);
   if (reconstructed !== question.renderedExpression) issues.push(`${definition.id}: rendered expression does not match template and sampled params`);
   for (const [name, spec] of Object.entries(definition.params)) {
@@ -172,6 +182,42 @@ export function symbolicAuthoringIssues(definition: GeneratedQuestionDefinition)
     if (!new RegExp(`\\b${symbol}\\b`, "u").test(definition.exprTemplate)) issues.push(`${definition.id}: declared student-facing symbol ${symbol} is absent from exprTemplate`);
   }
   return issues;
+}
+
+const CATALOG_SKILL_IDS = new Set(SKILLS.map((skill) => skill.id));
+
+/** Definition-level dependencies are diagnostic evidence, distinct from the target Skill and from access prerequisites. */
+export function supportingSkillMetadataIssues(definition: SkillQuestionDefinition): string[] {
+  const supportingSkills = definition.supportingSkills ?? [];
+  const issues: string[] = [];
+  for (const supportingSkill of supportingSkills) {
+    if (!CATALOG_SKILL_IDS.has(supportingSkill)) issues.push(`${definition.id}: unknown supporting Skill ${supportingSkill}`);
+    if (supportingSkill === definition.skillId) issues.push(`${definition.id}: target Skill cannot also be a supporting Skill`);
+  }
+  if (new Set(supportingSkills).size !== supportingSkills.length) issues.push(`${definition.id}: supportingSkills contains duplicates`);
+  if (
+    isGeneratedQuestionDefinition(definition)
+    && (definition.studentFacingSymbols?.length ?? 0) > 0
+    && !definition.skillId?.startsWith("ALG_")
+    && !definition.skillId?.startsWith("EQ_")
+    && !supportingSkills.includes("ALG_VARIABLE")
+  ) {
+    issues.push(`${definition.id}: visible algebraic variables outside an algebra Skill require ALG_VARIABLE in supportingSkills`);
+  }
+  return issues;
+}
+
+export function studentFacingVariableSupportIssues(definition: SkillQuestionDefinition, question: Question): string[] {
+  const visibleSymbols = visibleLatinSymbols(question);
+  if (
+    visibleSymbols.length
+    && !definition.skillId.startsWith("ALG_")
+    && !definition.skillId.startsWith("EQ_")
+    && !definition.supportingSkills?.includes("ALG_VARIABLE")
+  ) {
+    return [`${definition.id}: student-facing algebraic variables ${visibleSymbols.join(", ")} require ALG_VARIABLE in supportingSkills`];
+  }
+  return [];
 }
 
 export interface CuratedNumericLiteralItem {
@@ -330,6 +376,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
     if (!definition.category) issues.push(`${definition.id}: category is missing`);
     if (!definition.difficultyBand) issues.push(`${definition.id}: difficulty band is missing`);
     if (!definition.contentFamily) issues.push(`${definition.id}: content family is missing`);
+    issues.push(...supportingSkillMetadataIssues(definition));
     if (isGeneratedQuestionDefinition(definition)) {
       const authoringMode: string | undefined = definition.authoringMode;
       if (authoringMode !== "generated") issues.push("generated definition: authoring mode is missing");
@@ -348,6 +395,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
           issues.push(...studentMathContentIssues(definition.id, question, `seed ${seed}`));
           warnings.push(...studentMathContentWarnings(definition.id, question, `seed ${seed}`));
           issues.push(...pedagogicalTargetingIssues(definition, question, seed));
+          if (seed === 1) issues.push(...studentFacingVariableSupportIssues(definition as SkillQuestionDefinition, question));
           issues.push(...mathematicallyDuplicateChoiceIssues(definition.id, question, seed));
           if (question.id !== repeat.id || question.renderedExpression !== repeat.renderedExpression) issues.push(`${definition.id}: seed ${seed} is not reproducible`);
           if (question.renderedExpression.includes("undefined") || optionText(question.prompt).includes("undefined")) issues.push(`${definition.id}: seed ${seed} rendered undefined content`);
@@ -380,6 +428,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
         if (next.renderedExpression === first.renderedExpression) issues.push(`${definition.id}: anti-repetition repeated the recent expression`);
       } catch { issues.push(`${definition.id}: anti-repetition could not produce a follow-up item`); }
     } else if (definition.type === "singleChoice") {
+      issues.push(...studentFacingVariableSupportIssues(definition, definition));
       issues.push(...studentMathContentIssues(definition.id, definition));
       warnings.push(...studentMathContentWarnings(definition.id, definition));
       if (definition.authoringMode !== "curated" || !definition.curationReason) issues.push(`${definition.id}: curated authoring intent is incomplete`);
@@ -399,6 +448,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
       const existing = normalizedFamilies.get(normalizedKey);
       normalizedFamilies.set(normalizedKey, { skillId: definition.skillId, family: definition.contentFamily ?? "missing-family", ids: [...(existing?.ids ?? []), definition.id] });
     } else if (definition.type === "numeric") {
+      issues.push(...studentFacingVariableSupportIssues(definition, definition));
       issues.push(...studentMathContentIssues(definition.id, definition));
       warnings.push(...studentMathContentWarnings(definition.id, definition));
       if (definition.authoringMode !== "curated" || !definition.curationReason) issues.push(`${definition.id}: fixed numeric item requires an explicit curation reason`);
@@ -409,6 +459,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
       const existing = normalizedFamilies.get(normalizedKey);
       normalizedFamilies.set(normalizedKey, { skillId: definition.skillId ?? "missing-skill", family: definition.contentFamily ?? "missing-family", ids: [...(existing?.ids ?? []), definition.id] });
     } else if (definition.type === "multiChoice") {
+      issues.push(...studentFacingVariableSupportIssues(definition, definition));
       issues.push(...studentMathContentIssues(definition.id, definition));
       warnings.push(...studentMathContentWarnings(definition.id, definition));
       if (definition.authoringMode !== "curated" || !definition.curationReason) issues.push(`${definition.id}: curated authoring intent is incomplete`);

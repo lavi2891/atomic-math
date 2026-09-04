@@ -1,5 +1,5 @@
 import type { QuestionCategory } from "./categories.ts";
-import type { DifficultyBand } from "../../content/catalog/types.ts";
+import type { DifficultyBand, SkillId } from "../../content/catalog/types.ts";
 
 export type QuestionType = "numeric" | "singleChoice" | "multiChoice"; // TODO: expression, drag & drop, desmos?, geometry?
 
@@ -43,6 +43,8 @@ export interface BaseQuestion {
   authoringMode?: QuestionAuthoringMode;
   /** Stable pedagogical family for audits and future review tooling. */
   contentFamily?: string;
+  /** Additional knowledge needed by this definition; diagnostic only and never an access gate. */
+  supportingSkills?: SkillId[];
   /** Required by validation for curated foundational content. */
   curationReason?: QuestionCurationReason;
   /** Explains why fixed values or wording are pedagogically essential. */
