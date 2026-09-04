@@ -131,3 +131,23 @@ test('desktop keeps inline submit and full header despite focus and resize', asy
   await expect(page.locator('.practice-context')).toBeVisible();
   await expect(page.locator('form button[type="submit"]')).toHaveText('אישור');
 });
+
+test('30-second game survives two answers at six seconds and a missing next skill', async ({ page }) => {
+  await page.clock.install();
+  await page.clock.pauseAt(new Date(Date.now() + 1000));
+  await page.addInitScript(() => { Math.random = () => 0; });
+  await open(page, '?mode=timed&missing');
+  await expect(page.locator('.practice-status')).toContainText('0:30');
+  await page.locator('input').fill('2'); await page.locator('input').press('Enter'); await page.clock.runFor(3000);
+  await page.locator('input').fill('2'); await page.locator('input').press('Enter'); await page.clock.runFor(3000);
+  await expect(page.locator('.practice-status')).toContainText('0:24');
+  await expect(page.locator('input')).toBeVisible();
+  expect(await page.evaluate(() => window.finishedSession)).toBeUndefined();
+  await page.clock.runFor(23900);
+  await expect(page.locator('.practice-status')).toContainText('0:01');
+  await page.clock.runFor(100);
+  await expect(page.getByRole('heading', { name: 'סיימת את התרגול!' })).toBeVisible();
+  await expect(page.getByText('2 נכונות ב־30 שניות')).toBeVisible();
+  const ended = await page.evaluate(() => window.finishedSession);
+  expect(ended.endReason).toBe('timer_expired'); expect(ended.elapsedDurationMs).toBeGreaterThanOrEqual(30000);
+});

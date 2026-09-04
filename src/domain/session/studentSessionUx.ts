@@ -1,6 +1,6 @@
 import { DOMAINS, SKILL_GROUPS, getSkillById } from "../../content/catalog/index.ts";
 import type { AnswerResult } from "../results/types.ts";
-import type { PracticeSession, PracticeSessionState, SessionMode } from "./practiceSession.ts";
+import { isSuccessfulSessionCompletion, type PracticeSession, type PracticeSessionState, type SessionMode } from "./practiceSession.ts";
 
 export function repeatSessionConfig(session: PracticeSession) {
   return { skillIds: [...session.selectedSkillIds], settings: { ...session.settings }, assignmentId: session.assignmentId };
@@ -36,8 +36,8 @@ export function sessionResultLabel(completed: PracticeSessionState): string {
   const correct = completed.results.filter((result) => result.isCorrect).length;
   const settings = completed.session.settings;
   if (settings.mode === "timed") {
-    const seconds = completed.endReason === "timer_expired" ? settings.durationSeconds
-      : Math.round(Math.max(0, (completed.endedAt ?? completed.session.startedAt) - completed.session.startedAt) / 1000);
+    const seconds = isSuccessfulSessionCompletion(completed) ? settings.durationSeconds
+      : Math.round(Math.max(0, completed.elapsedDurationMs ?? (completed.endedAt ?? completed.session.startedAt) - completed.session.startedAt) / 1000);
     return `${correct} נכונות ב־${seconds} שניות`;
   }
   if (settings.mode === "survival") return `${correct} נכונות לפני ${completed.results.length - correct} טעויות`;

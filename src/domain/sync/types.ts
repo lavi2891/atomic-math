@@ -1,4 +1,4 @@
-import type { PracticeSession } from "../session/practiceSession.ts";
+import type { PracticeSession, SessionEndReason } from "../session/practiceSession.ts";
 
 export type PersistedSessionStatus = "active" | "completed" | "abandoned";
 
@@ -7,6 +7,7 @@ export interface PersistedSession extends PracticeSession {
   assignmentId?: string;
   strategy: "balanced";
   endedAt?: number;
+  endReason?: SessionEndReason;
   status: PersistedSessionStatus;
   questionCount: number;
   correctCount: number;

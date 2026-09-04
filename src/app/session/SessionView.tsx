@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { PracticeSession, PracticeSessionState } from "@domain/session/practiceSession";
 import { countIncorrect } from "@domain/session/practiceSession";
 import type { SkillQuestionDefinition } from "@domain/session/skillQuestionSelector";
@@ -42,23 +42,8 @@ export function SessionView({ session, definitions, initialTargetDifficulty = 0,
   const engine = useSessionEngine(session, definitions, initialTargetDifficulty);
   const pendingSaves = useRef<Promise<void>[]>([]);
   const didEndRef = useRef(false);
-  const [now, setNow] = useState(() => Date.now());
-  const durationSeconds = session.settings.mode === "timed" ? session.settings.durationSeconds : undefined;
-  const remainingSeconds = durationSeconds === undefined
-    ? undefined
-    : Math.max(0, durationSeconds - Math.floor((now - session.startedAt) / 1000));
+  const remainingSeconds = engine.remainingSeconds;
   const correctCount = engine.state.results.filter((result) => result.isCorrect).length;
-
-  useEffect(() => {
-    if (durationSeconds === undefined || engine.state.status === "ended") return;
-    const timer = window.setInterval(() => setNow(Date.now()), 250);
-    return () => window.clearInterval(timer);
-  }, [durationSeconds, engine.state.status]);
-
-  useEffect(() => {
-    if (remainingSeconds !== 0 || engine.state.status === "ended") return;
-    engine.actions.timerExpired();
-  }, [engine.actions, engine.state.status, remainingSeconds]);
 
   useEffect(() => {
     if (engine.state.status !== "ended" || didEndRef.current) return;
@@ -74,7 +59,7 @@ export function SessionView({ session, definitions, initialTargetDifficulty = 0,
     const question = engine.state.currentQuestion;
     if (!question) throw new Error("Cannot create an attempt without the presented question");
     const attempt = createAttemptFromAnswer({
-      session,
+      session: engine.state.session,
       question,
       result,
       sequenceNumber: engine.state.results.length + 1,
@@ -107,11 +92,7 @@ export function SessionView({ session, definitions, initialTargetDifficulty = 0,
         sessionMode={session.settings.mode}
         viewport={viewport}
         onEvaluated={(result) => {
-          if (durationSeconds !== undefined && result.timestamp >= session.startedAt + durationSeconds * 1000) {
-            engine.actions.timerExpired();
-            return;
-          }
-          engine.actions.rememberAnswer(result);
+          if (!engine.actions.rememberAnswer(result)) return;
           pendingSaves.current.push(saveAttempt(result));
         }}
         onNext={engine.actions.submitAnswer}

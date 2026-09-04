@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { MasterySnapshot } from "../../domain/mastery/projectMastery.ts";
-import type { PracticeSessionState } from "../../domain/session/practiceSession.ts";
+import { isSuccessfulSessionCompletion, type PracticeSessionState } from "../../domain/session/practiceSession.ts";
 import type { PersonalBestUpdate } from "../../domain/personalBests/types.ts";
 import { practiceScopeLabel, sessionModeLabels, sessionResultLabel, sessionReviewResults } from "../../domain/session/studentSessionUx.ts";
 import { QuestionView } from "../questions/QuestionView.tsx";
@@ -14,7 +14,7 @@ export function SessionSummaryScreen({ completed, masteryBefore, masteryAfter, p
   const [details, setDetails] = useState(false);
   const reviewResults = sessionReviewResults(completed.results, showAll);
   return <section style={{ display: "grid", gap: spacing.md }}>
-    <h2 style={{ margin: 0 }}>{reviewing ? "חזרה על התרגול" : completed.endReason === "stopped" ? "התרגול הסתיים" : "סיימת את התרגול!"}</h2>
+    <h2 style={{ margin: 0 }}>{reviewing ? "חזרה על התרגול" : completed.endReason === "stopped" ? "התרגול הסתיים" : isSuccessfulSessionCompletion(completed) ? "סיימת את התרגול!" : "התרגול הופסק עקב תקלה"}</h2>
     <div><strong>{practiceScopeLabel(completed.session.selectedSkillIds)}</strong><div>{sessionModeLabels[completed.session.settings.mode]}</div></div>
     {!reviewing ? <>
       <p style={{ fontSize: "1.4rem", margin: 0 }}>{sessionResultLabel(completed)}</p>

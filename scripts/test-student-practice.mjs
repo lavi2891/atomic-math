@@ -48,6 +48,7 @@ try {
   assert.equal(activePracticeScopeLabel(domainSkills), `${DOMAINS.find(item => item.id === skill.domainId).nameHe} · ${domainSkills.length} מיומנויות`);
   console.log('PASS compact active scope uses skill, group, or domain with count');
   mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'], now: 1000 });
+  mock.method(performance, 'now', () => Date.now());
   for (const mode of ['timed', 'survival', 'fixed', 'practice']) {
     const settings = mode === 'timed' ? { mode, durationSeconds: 30 } : mode === 'survival' ? { mode, maxErrors: 3 } : mode === 'fixed' ? { mode, questionCount: 5 } : { mode };
     const original = { ...session(settings), assignmentId: 'assignment' };
@@ -88,6 +89,39 @@ try {
     await unmount(tree);
     console.log(`PASS ${mode} feedback, advancement, and session boundaries`);
   }
+  // Production failure shape: two eligible skills followed by a selected skill
+  // with no content after challenge filtering. It must still have a third question.
+  const selectedIds = ['AR_ADD_FACTS', 'AR_SUB_FACTS', 'INT_ADD'];
+  const missingPoolSession = { ...session({ mode: 'timed', durationSeconds: 30 }), selectedSkillIds: selectedIds, startedAt: Date.now() - 24000 };
+  const originalRandom = Math.random;
+  Math.random = () => 0;
+  const recoveryTree = await mount(React.createElement(Game, { session: missingPoolSession, definitions: selectedIds.slice(0, 2).map(id => ({ ...question, id: id + '-question', skillId: id })) }));
+  const actualStart = engine.state.session.startedAt;
+  assert.equal(actualStart, Date.now(), 'setup/load time must not consume the 30-second game');
+  await answer(recoveryTree); await tick(3000);
+  await answer(recoveryTree); await tick(3000);
+  assert.equal(engine.state.results.length, 2);
+  assert.equal(engine.state.status, 'active');
+  assert.ok(engine.state.currentQuestion);
+  assert.deepEqual(engine.state.session.selectedSkillIds, selectedIds);
+  await tick(23999); assert.equal(engine.state.status, 'active');
+  await tick(1); assert.equal(engine.state.endReason, 'timer_expired');
+  assert.equal(engine.state.elapsedDurationMs, 30000);
+  await unmount(recoveryTree); Math.random = originalRandom;
+  console.log('PASS two answers at six seconds plus unavailable next skill cannot end a 30-second session');
+
+  const { SkillQuestionSelector: FailingSelector } = await server.ssrLoadModule('/src/domain/session/skillQuestionSelector.ts');
+  const originalPick = FailingSelector.prototype.pick;
+  let picks = 0;
+  FailingSelector.prototype.pick = function (...args) { if (++picks > 2) throw new Error('temporary selector failure'); return originalPick.apply(this, args); };
+  try {
+    const failTree = await mount(React.createElement(Game, { session: session({ mode: 'timed', durationSeconds: 30 }) }));
+    for (let i = 0; i < 12; i++) { await answer(failTree); await tick(450); }
+    assert.equal(engine.state.status, 'active'); assert.equal(engine.state.results.length, 12);
+    await act(() => engine.actions.stopSession()); assert.equal(engine.state.endReason, 'stopped');
+    await unmount(failTree);
+  } finally { FailingSelector.prototype.pick = originalPick; }
+  console.log('PASS persistent selector exceptions reuse cached instances until explicit stop');
   const { authoredStudentContent } = await server.ssrLoadModule('/src/content/foundations/studentMathContent.ts');
   const comparison = { ...question, type: 'singleChoice', prompt: authoredStudentContent('השלימו את ההשוואה: [[-2]] [[\\square]] [[0]]'), correctOptionId: 'less', options: [{ id: 'less', content: [{ kind: 'math', latex: '<' }] }, { id: 'greater', content: [{ kind: 'math', latex: '>' }] }] };
   let comparisonResult;
@@ -123,7 +157,7 @@ try {
     const tree = await mount(React.createElement(QuestionView, { question: { ...question, type, options: [{ id: 'a', content: [{ kind: 'text', value: 'two' }] }], correctOptionId: 'a', correctOptionIds: ['a'] }, onNext() {} }));
     assert.ok(button(tree, 'אישור')); await unmount(tree);
   }
-  const completed = { session: session({ mode: 'timed', durationSeconds: 30 }), status: 'ended', endReason: 'timer_expired', results: [{ questionId: 'one', isCorrect: false, rawAnswer: { questionType: 'numeric', data: { value: '0' } }, questionSnapshot: question }, { questionId: 'two', isCorrect: true, rawAnswer: { questionType: 'numeric', data: { value: '2' } }, questionSnapshot: { ...question, id: 'two' } }] };
+  const completed = { session: session({ mode: 'timed', durationSeconds: 30 }), status: 'ended', endReason: 'timer_expired', elapsedDurationMs: 30000, results: [{ questionId: 'one', isCorrect: false, rawAnswer: { questionType: 'numeric', data: { value: '0' } }, questionSnapshot: question }, { questionId: 'two', isCorrect: true, rawAnswer: { questionType: 'numeric', data: { value: '2' } }, questionSnapshot: { ...question, id: 'two' } }] };
   let repeats = 0;
   const tree = await mount(React.createElement(SessionSummaryScreen, { completed, masteryBefore: {}, masteryAfter: {}, personalBestUpdate: null, onHome() {}, onRepeat() { repeats++; } }));
   assert.match(text(tree.toJSON()), new RegExp(skill.nameHe));
@@ -162,6 +196,7 @@ try {
   console.log('PASS failed samples reuse eligible instances and avoid unnecessary immediate repeats');
 
 } finally {
+  mock.restoreAll();
   mock.timers.reset();
   await server.close();
 }

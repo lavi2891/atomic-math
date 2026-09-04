@@ -1,6 +1,9 @@
+import { mock } from "node:test";
+import { createSessionClock } from "../src/domain/session/sessionClock.ts";
 import assert from "node:assert/strict";
 import { buildBalancedSkillPlan, pickBalancedSkill } from "../src/domain/session/balancedSkills.ts";
 import {
+  isSuccessfulSessionCompletion,
   createInitialSessionState,
   createPracticeSession,
   practiceSessionReducer,
@@ -168,4 +171,29 @@ run("a no-match category filter fails gracefully at the selector boundary", () =
   const selector = new SkillQuestionSelector([{ id: "C", topicId: "T", skillId: "A", type: "numeric", prompt: [], correctAnswers: ["1"] }], 1, "reasoning");
   assert.equal(selector.hasQuestions("A"), false);
   assert.throws(() => selector.pick("A", 0.5), /No questions available/);
+});
+
+run("timed reducer rejects all legacy non-user stop reasons", () => {
+  const state = started({ mode: "timed", durationSeconds: 30 });
+  for (const reason of ["no_questions", "completed", "errors_exhausted", "timer_expired"]) {
+    const illegal = { type: "STOP_SESSION", at: 6000, reason } as unknown as Parameters<typeof practiceSessionReducer>[1];
+    assert.equal(practiceSessionReducer(state, illegal), state);
+  }
+  assert.equal(practiceSessionReducer(state, { type: "TIMER_EXPIRED", at: 300000, elapsedMs: 6000 }), state, "wall clock cannot override monotonic elapsed time");
+  assert.equal(isSuccessfulSessionCompletion({ ...state, status: "ended", endReason: "timer_expired", endedAt: 6000 }), false);
+  const completed = practiceSessionReducer(state, { type: "TIMER_EXPIRED", at: 30000, elapsedMs: 30000 });
+  assert.equal(isSuccessfulSessionCompletion(completed), true);
+});
+
+run("the session clock ignores forward and backward wall-clock jumps", () => {
+  let elapsed = 0;
+  const perf = mock.method(performance, "now", () => elapsed);
+  const wall = mock.method(Date, "now", () => 100000);
+  try {
+    const clock = createSessionClock();
+    elapsed = 6000; wall.mock.mockImplementation(() => 9999999);
+    assert.equal(clock.elapsedMs(), 6000); assert.equal(clock.timestamp(), 106000);
+    elapsed = 30000; wall.mock.mockImplementation(() => 0);
+    assert.equal(clock.elapsedMs(), 30000); assert.equal(clock.timestamp(), 130000);
+  } finally { perf.mock.restore(); wall.mock.restore(); }
 });

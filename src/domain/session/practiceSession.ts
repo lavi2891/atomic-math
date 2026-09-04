@@ -41,8 +41,8 @@ export type PracticeSessionAction =
   | { type: "START"; questionId: string; skillId: string }
   | { type: "ANSWER_SUBMITTED"; result: AnswerResult; elapsedMs?: number }
   | { type: "NEXT_QUESTION"; questionId: string; skillId: string }
-  | { type: "TIMER_EXPIRED"; at: number }
-  | { type: "STOP_SESSION"; at: number; reason?: SessionEndReason };
+  | { type: "TIMER_EXPIRED"; at: number; elapsedMs?: number }
+  | { type: "STOP_SESSION"; at: number; elapsedMs?: number; reason?: "stopped" };
 
 export function validateSelectedSkills(skillIds: readonly string[]): string[] {
   const normalized = [...new Set(skillIds.filter((id) => id.trim().length > 0))];
@@ -109,10 +109,22 @@ export function practiceSessionReducer(state: PracticeSessionState, action: Prac
       if (state.status !== "active" || state.currentQuestionId !== null) return state;
       return { ...state, currentQuestionId: action.questionId, currentSkillId: action.skillId };
     case "TIMER_EXPIRED":
-      return state.session.settings.mode === "timed" && action.at >= state.session.startedAt + state.session.settings.durationSeconds * 1000
-        ? { ...state, status: "ended", currentQuestionId: null, currentSkillId: null, endedAt: action.at, endReason: "timer_expired" }
+      return state.status === "active" && state.session.settings.mode === "timed" && (action.elapsedMs ?? action.at - state.session.startedAt) >= state.session.settings.durationSeconds * 1000
+        ? { ...state, status: "ended", currentQuestionId: null, currentSkillId: null, endedAt: action.at, elapsedDurationMs: action.elapsedMs ?? action.at - state.session.startedAt, endReason: "timer_expired" }
         : state;
     case "STOP_SESSION":
-      return { ...state, status: "ended", currentQuestionId: null, currentSkillId: null, endedAt: action.at, endReason: action.reason ?? "stopped" };
+      // Reject legacy/internal completion reasons even across an untyped boundary.
+      if (action.reason !== undefined && action.reason !== "stopped") return state;
+      return { ...state, status: "ended", currentQuestionId: null, currentSkillId: null, endedAt: action.at, elapsedDurationMs: action.elapsedMs, endReason: "stopped" };
   }
+}
+
+export function isSuccessfulSessionCompletion(state: PracticeSessionState): boolean {
+  if (state.status !== "ended") return false;
+  const settings = state.session.settings;
+  if (settings.mode === "timed") return state.endReason === "timer_expired"
+    && (state.elapsedDurationMs ?? (state.endedAt ?? state.session.startedAt) - state.session.startedAt) >= settings.durationSeconds * 1000;
+  if (settings.mode === "fixed") return state.endReason === "completed" && state.results.length >= settings.questionCount;
+  if (settings.mode === "survival") return state.endReason === "errors_exhausted" && countIncorrect(state.results) >= settings.maxErrors;
+  return false;
 }

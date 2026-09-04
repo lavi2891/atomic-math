@@ -1,6 +1,6 @@
 import type { AttemptRepository } from "../../domain/attempts/AttemptRepository.ts";
 import { projectMastery, type MasterySnapshot } from "../../domain/mastery/projectMastery.ts";
-import { createPracticeSession, type PracticeSession, type PracticeSessionState, type SessionSettings } from "../../domain/session/practiceSession.ts";
+import { createPracticeSession, isSuccessfulSessionCompletion, type PracticeSession, type PracticeSessionState, type SessionSettings } from "../../domain/session/practiceSession.ts";
 import type { SessionRepository } from "../../domain/sync/types.ts";
 import { getSkillById } from "../../content/catalog/index.ts";
 import type { SyncCoordinator } from "../../infrastructure/sync/SyncCoordinator.ts";
@@ -55,8 +55,8 @@ export class StudentPracticeService {
     const incorrectCount = state.results.length - correctCount;
     const accuracy = state.results.length ? correctCount / state.results.length : 0;
     const durationMs = state.elapsedDurationMs ?? (state.endedAt === undefined ? undefined : Math.max(0, state.endedAt - state.session.startedAt));
-    await this.sessions.saveSession({ ...state.session, source: state.session.source ?? "freePractice", strategy: "balanced", endedAt: state.endedAt, durationMs, status: state.endReason === "stopped" ? "abandoned" : "completed", questionCount: state.results.length, correctCount, incorrectCount, accuracy, gameScore: state.session.settings.mode === "fixed" ? durationMs : state.session.settings.mode === "timed" || state.session.settings.mode === "survival" ? correctCount : undefined });
-    const challengeCompleted = state.endReason === "timer_expired" || state.endReason === "errors_exhausted" || state.endReason === "completed";
+    await this.sessions.saveSession({ ...state.session, source: state.session.source ?? "freePractice", strategy: "balanced", endedAt: state.endedAt, endReason: state.endReason, durationMs, status: isSuccessfulSessionCompletion(state) ? "completed" : "abandoned", questionCount: state.results.length, correctCount, incorrectCount, accuracy, gameScore: state.session.settings.mode === "fixed" ? durationMs : state.session.settings.mode === "timed" || state.session.settings.mode === "survival" ? correctCount : undefined });
+    const challengeCompleted = isSuccessfulSessionCompletion(state);
     const signature = challengeCompleted ? createChallengeSignature(state.session.settings, state.session.selectedSkillIds, DOMAINS, SKILLS) : null;
     const fixedEligible = state.session.settings.mode !== "fixed" || isFixedPersonalBestEligible(accuracy, durationMs);
     const score = state.session.settings.mode === "fixed" ? durationMs : correctCount;

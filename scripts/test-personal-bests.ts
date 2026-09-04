@@ -44,3 +44,16 @@ await run("abandoned fixed sessions do not create a personal best", async () => 
   let state = practiceSessionReducer(createInitialSessionState(session), { type: "START", questionId: "Q", skillId: "INT_ADD" }); state = practiceSessionReducer(state, { type: "STOP_SESSION", at: 10_000 });
   assert.equal((await service.finish(state)).personalBest, null); assert.equal(await bests.get("STUDENT", fixed()), null);
 });
+
+await run("premature timed exits never become completions or personal bests", async () => {
+  const driver = new MemoryPersistenceDriver(); const bests = new DurablePersonalBestRepository(driver); const attempts = new DurableAttemptRepository(driver); const sessions = new DurableSessionRepository(driver);
+  const service = new StudentPracticeService(attempts, sessions, bests, new SyncCoordinator(attempts, sessions, new DurableSyncMetadataRepository(driver), null));
+  for (const endReason of ["no_questions", "completed", "timer_expired"] as const) {
+    const session = createPracticeSession({ id: endReason, studentId: "STUDENT", selectedSkillIds: ["INT_ADD"], settings: { mode: "timed", durationSeconds: 30 }, startedAt: 0 });
+    const state = { ...createInitialSessionState(session), status: "ended" as const, endReason, endedAt: 6000, elapsedDurationMs: 6000 };
+    assert.equal((await service.finish(state)).personalBest, null);
+    const persisted = await sessions.getSession(session.id);
+    assert.equal(persisted?.status, "abandoned");
+    assert.equal(persisted?.endReason, endReason);
+  }
+});
