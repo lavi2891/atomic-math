@@ -131,6 +131,10 @@ export function effectiveReviewRecord(
   record: QuestionReviewRecord | undefined,
 ): QuestionReviewRecord | undefined {
   if (!record || !definition.tags?.includes("requires-rereview")) return record;
+  // The version-aware review UI was introduced after the v3 bank had already been
+  // reviewed. Preserve those authoritative legacy approvals; v4+ content must carry
+  // an explicit matching definitionVersion because it was authored after that point.
+  if (record.definitionVersion === undefined) return (definition.version ?? 1) <= 3 ? record : undefined;
   return record.definitionVersion === definition.version ? record : undefined;
 }
 

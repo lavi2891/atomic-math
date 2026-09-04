@@ -1,91 +1,95 @@
-# Foundational content audit — Phase 7B.2 — 2026-09-04
+# ביקורת תוכן יסודי — Human Review — 2026-09-04
 
-המעבר בדק את כל הבנק הפעיל מול `Content Authoring Standard v1`, בלי לשנות Mastery, persistence של תלמידים, sync או backend. מצב הבנק לפני המעבר היה 197 definitions: 195 generated ו־2 curated. אחריו יש 169 definitions: 167 generated ו־2 curated.
+המעבר השתמש ב־`atomic-math-question-review-2026-09-04 (2).json` כמקור המשוב האנושי המחייב ובדק בעקבותיו גם את כל הבנק הפעיל. לא שונו Mastery, נתוני תלמידים, sync או backend.
 
-## 1. מיקוד פדגוגי ו־Skill drift
+## 1. סיווג ה־export
 
-נמצאו 18 generators מסוג calculation שהפיקו עדות לא נקייה:
+ב־export נמצאו 380 רשומות. בתחילת המעבר 156 התאימו ל־definition פעיל ו־224 היו legacy שכבר הוחלף או הוצא מהבנק.
 
-- שישה definitions של `ALG_SUBSTITUTE` הציגו חישוב מספרי בלי משימת הצבה מפורשת.
-- שישה definitions של `EQ_ADD` הציגו חיבור/חיסור בלי משוואה ונעלם.
-- שישה definitions של `EQ_MUL` הציגו כפל/חילוק בלי משוואה ונעלם.
+| סיווג פעיל בתחילת המעבר | כמות |
+|---|---:|
+| `approved` ללא note | 119 |
+| `approved` עם note בר־פעולה | 8 |
+| `needs-fix` עם note | 22 |
+| `needs-fix` ללא note, בתוך family שנבדקה | 5 |
+| `rejected` | 2 |
 
-המשפחות האלה הוסרו מהבנק הפעיל. משפחות `MVP_ALG_SUBSTITUTE_A/B/C`, `MVP_EQ_ADD_A/B/C` ו־`MVP_EQ_MUL_A/B/C` נשארו והוגדרו כרצף מבני: numerical substitution/equation → symbol אחד → פתרון סימבולי. ב־`EQ_ADD` תוקנה גם שגיאת תשובה ב־Band A: במשוואה `□ + b = a + b` התשובה הנכונה היא `a`, לא `b`.
+224 רשומות ה־legacy לא תוקנו מכנית. הן מופו למשפחות generated פעילות ונבדק שהמשוב שלהן מיושם במבנה החדש.
 
-`AR_FACTORS_MULTIPLES` אינו מציג עוד “חשבו” כללי במשפחות calculation. הניסוח מבקש למצוא כפולה מסוימת או את הכפולה הבאה, והטווחים A/B/C אינם חופפים באופן שמאפשר ל־Band קשה להפיק באופן שגרתי instance קל יותר.
+## 2. מיפוי legacy אל הבנק הפעיל
 
-## 2. Difficulty ו־Bands
+| ID או family ישנים | replacement פעיל |
+|---|---|
+| `MVP_*_CONCEPT_1...18` של place value, facts, contexts, fractions, number line ו־order | משפחות `MVP_*_GEN_*`, `*_MISSING_*`, `*_CONTEXT_*`, `*_SHARING_*`, `*_GROUPING_*`, `FRAC_*`, `INT_NUMBER_LINE_LEFT_*`, `OPS_ORDER_BASIC_FIRST_*` |
+| `MVP_ALG_EQUALITY_COMMUTATIVE_*` | `MVP_ALG_EQUALITY_A/B/C` |
+| `MVP_ALG_SUBSTITUTE_A_*`, `MVP_ALG_SUBSTITUTE_LINEAR_A` | `MVP_ALG_SUBSTITUTE_A/B/C` |
+| `MVP_ALG_VARIABLE_COEFFICIENT_A`, `MVP_ALG_VARIABLE_MEANING_CURATED` | `MVP_ALG_VARIABLE_A/B/C` ושני `MVP_ALG_VARIABLE_CONTEXT_*_CURATED` |
+| `MVP_EQ_ADD_A_*`, `MVP_EQ_ADD_MISSING_A` | `MVP_EQ_ADD_A/B/C` |
+| `MVP_EQ_MUL_A_*`, `MVP_EQ_MUL_MISSING_A` | `MVP_EQ_MUL_A/B/C` |
+| signed IDs כלליים כגון `MVP_INT_ADD_A_*`, `MVP_INT_MUL_A_*` | משפחות sign-pattern מפורשות `NEG_POS`, `POS_NEG`, `NEG_NEG` והמשפחות conceptual המבניות |
+| `MVP_INT_COMPARE_ADJACENT_NEGATIVES_A` | `MVP_INT_COMPARE_SIGNED_B` |
+| `MVP_INT_NEGATION_NEGATIVE_A` | `MVP_INT_NEGATION_NEGATIVE_B` |
 
-- `ALG_SUBSTITUTE`, `EQ_ADD` ו־`EQ_MUL`: הוסרו 18 Bands/definitions שהקשו בעיקר דרך magnitude ולא דרך יעד ה־Skill; שלוש רמות מבניות נשמרו בכל Skill.
-- `OPS_ORDER_BASIC_FIRST_A/B/C`: עוצב מחדש מרצף מספרים גדלים לרצף של שתי פעולות, שלוש פעולות וסוגריים.
-- `AR_ADD_FACTS_COMMUTE_A/B`: A מבקש לזהות ביטוי חילופי; B מבקש להשלים שוויון חילופי.
-- `AR_PLACE_VALUE_GEN_A/B/C`: הוגדר במפורש כ־structure של מספר בן 2/3/4 ספרות.
-- `FRAC_MEANING_PARTS_A/B/C`: גבולות המכנה הופרדו ל־`3–6`, `6–10`, `10–16`, כך שהמעבר מבוסס magnitude הוא דטרמיניסטי.
-- `INT_COMPARE`: שלוש רמות magnitude זהות הוחלפו ב־שלילי מול אפס, שליליים סמוכים ושני גדלים שליליים בלתי תלויים.
-- `INT_NEGATION`: שש הגדרות magnitude צומצמו לשתי רמות אמיתיות—נגדי של חיובי ונגדי של שלילי. `CONTENT_READINESS` דורש עבור Skill זה רק A/B.
-- שאלות חוקי הסימנים של `INT_ADD`, `INT_SUB`, `INT_MUL` ו־`INT_DIV` צומצמו מעותקי magnitude למבני סימנים שונים. מספר ההגדרות המושפעות ירד מ־21 ל־11. משפחות calculation של אותן פעולות נשארו A/B/C, מפני שבהן magnitude מגדיל fluency וחישוב בפועל.
+## 3. משוב `approved` עם note
 
-## 3. מספרים מכוונים ו־Skill invariants
+- `MVP_AR_ADD_FACTS_B_A/B`: נשמרו ללא שינוי; הטווחים כבר מקיימים `hard.min >= easy.max`.
+- `MVP_AR_MUL_F_2_5_10_B_A`: נשמר ללא שינוי; `a` נשאר רק `2, 5, 10` ורק `b` מתקדם.
+- `MVP_AR_ADD_FACTS_COMMUTE_B`: נשמר; נוסף `MVP_AR_ADD_FACTS_COMMUTE_C` סימבולי עם `a,b`.
+- `MVP_FRAC_MEANING_PARTS_C`: נשמר; נוסף Band D סימבולי.
+- `MVP_INT_ADD_OPPOSITES_A`: נשמר; נוסף Band B סימבולי.
+- `MVP_AR_PLACE_VALUE_GEN_A`: המשוב דרש שינוי בתוכן הקיים, ולכן A/B/C הועלו ל־v4 וכעת דוגמים במכוון אחדות, עשרות, מאות ואלפים בהתאם לאורך המספר.
+- `MVP_OPS_ORDER_BASIC_FIRST_B`: נשמר ללא שינוי. C כבר משתמש בסוגריים ובהתקדמות מבנית, ולא במספרים גדולים יותר.
 
-כל משפחות calculation של `INT_ADD`, `INT_SUB`, `INT_MUL` ו־`INT_DIV` עדיין משתמשות בגדלים טבעיים וב־`signPattern` מפורש. משפחות conceptual מבניות רשאיות לשנות `exprTemplate` ו־`signPattern` בין Bands, אך חייבות להצהיר על `structuralStage` ייחודי. validator ממשיך לחסום instance חיובי בלבד ב־Skill מכוון, תוצאה אפס ללא משפחת zero/opposites מפורשת ואובדן של פעולת היעד.
+ארבע notes מאושרות ב־legacy של מספרים מכוונים נבדקו מול ההחלפות: התבניות הנוכחיות מפרידות sign patterns ומשתמשות בסוגריים סביב operand שלילי.
 
-## 4. Math rendering ו־RTL
+## 4. דחיות ותיקוני תוכן
 
-כל הנתונים המתמטיים שנותרו בתוך prose הועברו ל־inline math ב־32 definitions:
+- `MVP_AR_SUB_FACTS_INVERSE_A` נדחה; כל family ה־inverse החלשה הוסרה, כולל Band B שלא נסקר.
+- `MVP_ALG_VARIABLE_CONTEXT_REASONING_CURATED` הוחלף ב־v4 בניסוח שמבהיר שמדובר בשתי בדיקות נפרדות, ולא ב־`n` אחד שמקבל שני ערכים בו־זמנית.
+- `MVP_ALG_VARIABLE_A` משתמש כעת ב־“משתנה; האות `x` מייצגת ערך מספרי”.
+- `MVP_ALG_EQUALITY_A` מבקש במפורש לסמן את משפט השוויון הנכון.
+- `MVP_ALG_SUBSTITUTE_A` כולל מסיח concatenation כגון `212`, מסיח חיבור במקום כפל ומסיח השמטת מקדם, עם `misconceptionId` מתאים.
 
-- `MVP_AR_SUB_FACTS_REMOVE_A/B`;
-- שמונה definitions של context בכפל;
-- 16 definitions של sharing/grouping בחילוק;
-- `MVP_INT_NUMBER_LINE_LEFT_A/B/C`;
-- `MVP_FRAC_MEANING_PARTS_A/B/C`.
+## 5. Bands והפשטה סימבולית
 
-`studentMathContentWarnings` מזהה כעת ספרה בתוך text segment ומעלה אזהרה לבדיקת author. סימון מתמטי גולמי, מספר שלילי גולמי, רצף operators ושבר פגום נשארים שגיאות blocking. options מסוג single/multi choice ממשיכים לעבור דרך `authoredChoiceContent` ו־`ContentRenderer`, ולכן מספר שלילי, שבר, ביטוי אלגברי ושילוב עברית+math מקבלים בידוד LTR בתוך ה־RTL.
+נוספו ארבעה Bands חדשים: `MVP_AR_ADD_FACTS_COMMUTE_C`, `MVP_FRAC_MEANING_PARTS_D`, `MVP_INT_ADD_OPPOSITES_B`, `MVP_INT_SUB_NEGATIVE_REWRITE_B`.
 
-## 5. Curated ומספרים קבועים
+בנוסף:
 
-ההיסטוריה הגלובלית לפני המרת הבנק כללה 142 definitions curated עם מספרים קבועים; כולם הומרו בעבר ל־generators מבניים. במצב הנוכחי יש שני curated בלבד:
+- `MVP_INT_NUMBER_LINE_LEFT_C` הוחלף ב־Band סימבולי עם `n` גלוי.
+- שלושת `MVP_INT_DIV_*_B` הוחלפו בחילוק סימבולי שבו `m` גלוי ומתבטל, במקום הגדלת מספרים.
+- שלושת `MVP_INT_DIV_*_C` הוסרו כ־Bands מלאכותיים.
+- ב־`INT_MUL` נשארו A/B בלבד. B משתמש בגורם mental מכוון מתוך `10, 11, 20, 30` ובגורם נוסף עד 10; שלושת Bands C של כפל דו־ספרתי שרירותי הוסרו.
+- `CONTENT_READINESS` דורש כעת A/B עבור `INT_MUL` ו־`INT_DIV`.
 
-| `definitionId` | `curationReason` | הצדקה קצרה |
-|---|---|---|
-| `MVP_ALG_VARIABLE_CONTEXT_BASIC_CURATED` | `deliberate-example` | הניסוח ההקשרי עצמו מבחין בין אות לבין הכמות שהיא מייצגת; אין מספר קבוע. |
-| `MVP_ALG_VARIABLE_CONTEXT_REASONING_CURATED` | `deliberate-example` | הערכים 18 ו־25 יוצרים שתי קבוצות קונקרטיות שונות כדי להמחיש שערך המשתנה תלוי בהקשר. |
+## 6. בעיות מילוליות וגורמים/כפולות
 
-רק הפריט השני מכיל literals מספריים. אין curated numeric question ואין פריט קבוע ללא `curationReason` ו־`curationJustificationHe`.
+- שמונת contexts של כפל משתמשים רק בעצמים קונקרטיים—כדורים, קלפים, ספרים ועוגיות—ושואלים במפורש איזה תרגיל מוצא את הכמות הכוללת.
+- 16 contexts של חילוק נוסחו מחדש בעברית טבעית. sharing מציין כמה עצמים יקבל כל ילד; grouping שואל כמה שקיות, מדפים, צלחות או סלים דרושים.
+- שישה calculation definitions של `AR_FACTORS_MULTIPLES` שואלים במפורש על כפולה ועל הכפולה הבאה.
+- נוספו שלושה `multiChoice` generators של זיהוי גורמים, כך שה־Skill המשולב מספק כעת עדות גם על factors וגם על multiples.
 
-## 6. Distractors, תשובות וניסוח
-
-- `EQ_ADD_A` קיבל תשובה נכונה מתמטית ומסיח “המחובר הגלוי” מותאם.
-- `EQ_MUL_A/B/C` מציג משוואות אמיתיות ומסיחים של שימוש במכפלה כתשובה, שימוש בגורם הגלוי, כפל במקום חילוק, חיבור גורמים והשמטת גורם.
-- `OPS_ORDER_BASIC` מבדיל בין עבודה משמאל לימין, התעלמות מסוגריים והנחה שכל הפעולות מבוצעות יחד.
-- contexts של כפל וחילוק נשארו קצרים וקונקרטיים ושומרים על ההבחנה בין repeated groups, equal sharing ו־grouping.
-- validator בודק option כפול, מסיח ששווה מתמטית לתשובה הנכונה, תשובה נכונה חסרה ו־misconception metadata חסר.
+כל הנתונים, הביטויים, המשתנים, המספרים המכוונים והאפשרויות המתמטיות עוברים דרך `authoredStudentContent`/`authoredChoiceContent` ו־`ContentRenderer`. סריקת 16,600 samples אינה מוצאת raw mathematical text, רצף סימנים או fraction פגום.
 
 ## 7. Review ו־re-review
 
-`QuestionReviewRecord` שומר כעת `definitionVersion`. עבור definition עם tag בשם `requires-rereview`, רשומה ישנה או רשומה שגרסתה אינה תואמת מוצגת כ־unreviewed ונכללת במסנן re-review. הערה ישנה נשמרת לעיון, אך אינה מעניקה אישור לגרסה החדשה.
+הבנק הסופי כולל 168 definitions: 166 generated ושני curated. שבעה definitions חדשים דורשים review:
 
-בבנק הפעיל 123 definitions מסומנים `requires-rereview`, בקבוצות הבאות:
+- `MVP_AR_ADD_FACTS_COMMUTE_C`
+- `MVP_AR_FACTORS_MULTIPLES_FACTORS_A/B/C`
+- `MVP_FRAC_MEANING_PARTS_D`
+- `MVP_INT_ADD_OPPOSITES_B`
+- `MVP_INT_SUB_NEGATIVE_REWRITE_B`
 
-- כל 36 משפחות calculation של מספרים מכוונים (`MVP_INT_ADD_*`, `MVP_INT_SUB_*`, `MVP_INT_MUL_*`, `MVP_INT_DIV_*`);
-- כל 53 ה־reviewed concept generators של ערך המקום, עובדות בסיס, contexts, גורמים/כפולות, ציר, שברים וסדר פעולות;
-- 11 ה־signed concept generators המבניים;
-- 15 ה־algebra/equation generators המבניים;
-- ששת calculation generators של `AR_FACTORS_MULTIPLES`;
-- שני פריטי `ALG_VARIABLE` curated.
+כל שינוי student-facing קיים הועלה ל־v4. 19 approvals פעילים הפכו במכוון ל־unreviewed: ארבעה `MVP_AR_FACTORS_MULTIPLES_B/C_*`, `MVP_INT_MUL_NEG_POS_B`, שלושת `MVP_AR_PLACE_VALUE_GEN_*`, שלושה multiplication context Bands B, חמישה division context Bands B, `MVP_INT_DIV_POS_NEG_B`, `MVP_INT_DIV_NEG_NEG_B` ו־`MVP_INT_DIV_SIGN_B`.
 
-לפי export שסופק, ההגדרות שאושרו היו `MVP_INT_ADD_B_A`, `MVP_INT_ADD_C_A` ו־`MVP_OPS_ORDER_BASIC_A_A`. שתי הראשונות כבר הוצאו מהבנק הפעיל במעבר signed-number הקודם. `MVP_OPS_ORDER_BASIC_A_A` נשאר ללא שינוי גם במעבר הנוכחי, כולל snapshot של seed 42 (`4+2*2` → `8`). לכן אין definition מאושר פעיל שתוכנו השתנה במעבר 7B.2; מנגנון הגרסה מונע הישנות של אישור שקט בעתיד.
+שלושה approved Bands ישנים של `INT_MUL_*_C` הוצאו מהבנק מפני שהם הפרו את כלל העומס האריתמטי. 105 approvals פעילים נשמרו אפקטיביים. בפרט נשמרו ללא שינוי האישורים ל־`AR_ADD_FACTS_COMMUTE_A/B`, `FRAC_MEANING_PARTS_A/B/C`, `INT_ADD_OPPOSITES_A`, `OPS_ORDER_BASIC_FIRST_A/B/C`, `ALG_EQUALITY_B/C` ושני `EQ_*` B/C.
 
-## 8. Validation שנוסף
+אישורי legacy ללא `definitionVersion` נשמרים עבור v3 ומטה. definition ששונה במעבר זה הוא v4 ולכן דורש אישור בעל `definitionVersion` תואם.
 
-- magnitude Bands דורשים כעת `hard.min >= easy.max` בפרמטר קושי משותף, במקום לקבל טווחים חופפים רק משום ששני הקצוות עלו.
-- כל family מרובת Bands עם `difficultyFeature: "structure"` דורשת `structuralStage` ייחודי.
-- `pedagogicalTargetingIssues` דורש משוואה גלויה ב־`EQ_*`, הצבה מפורשת ב־`ALG_SUBSTITUTE`, שפת גורמים/כפולות ב־`AR_FACTORS_MULTIPLES`, שני ערכים גלויים ב־`INT_COMPARE` ושפת מספר נגדי ב־`INT_NEGATION`.
-- prose number מקבל warning; שאר הפרות math/RTL הן blocking.
-- בדיקות review מוכיחות שאישור בגרסה קודמת חוזר ל־unreviewed ושאישור מחדש עם הגרסה הנוכחית נשמר גם לאחר יצירת repository מחדש.
+## 8. שאלות פתוחות להכרעת מורה
 
-## 9. שאלות פדגוגיות פתוחות להכרעת מורה
-
-1. `AR_FACTORS_MULTIPLES` הוא עדיין Skill משולב, בעוד שהבנק הפעיל עשיר יותר בכפולות מאשר בגורמים. נדרשת החלטה אם לפצל taxonomy או להוסיף משפחת factor-identification מאוזנת.
-2. ב־`FRAC_EQUIV` וב־`INT_NUMBER_LINE` magnitude נשאר ממד קושי. הוא דטרמיניסטי, אך כדאי לאשר בבדיקת מורה אם הוא משקף קושי משמעותי מספיק או שיש לעבור לרצף מבני.
-3. `ALG_VARIABLE_A/B` בודק תחילה משמעות משתנה ואז זיהוי מקדם. יש לאשר אם זהו רצף Difficulty מתאים או שתי קטגוריות evidence נפרדות.
-4. יש לאשר שהערכים הקבועים 18 ו־25 בפריט `MVP_ALG_VARIABLE_CONTEXT_REASONING_CURATED` אכן רצויים כ־deliberate example ולא עדיף ניסוח ללא literals.
+1. האם לפצל בעתיד את `AR_FACTORS_MULTIPLES` לשני Skills אטומיים, אף שכעת יש evidence נפרד לגורמים ולכפולות.
+2. האם Band D הסימבולי של `FRAC_MEANING` מתאים לגיל היעד, או שעדיף לשמור אותו מחוץ ל־Quick Practice הבסיסי.
+3. האם fixed values `18` ו־`25` ב־`MVP_ALG_VARIABLE_CONTEXT_REASONING_CURATED` עדיין רצויים לאחר תיקון הניסוח, או שעדיף generator הקשרי.
+4. האם מבנה `INT_DIV` הסימבולי עם ביטול `m` מתאים ל־Skill היסודי או צריך לעבור בעתיד ל־Skill אלגברי תומך.

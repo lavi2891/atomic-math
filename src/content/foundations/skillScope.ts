@@ -64,7 +64,7 @@ const SIGNED_OPERATORS: Readonly<Record<string, string>> = {
 };
 
 function usesTargetOperation(skillId: string, expression: string): boolean {
-  if (skillId === "INT_SUB") return /(?:\d|\)|\})\s*-\s*(?:\d|\(|\{)/u.test(expression);
+  if (skillId === "INT_SUB") return /(?:\d|[A-Za-z]|\)|\})\s*-\s*(?:\d|[A-Za-z]|\(|\{)/u.test(expression);
   const operator = SIGNED_OPERATORS[skillId];
   return !!operator && expression.includes(operator);
 }
@@ -84,10 +84,10 @@ export function signedSkillDefinitionIssues(definitions: readonly SkillQuestionD
   }
   for (const [family, members] of families) {
     if (members.length < 2) continue;
-    const structuralProgression = members.every((item) => item.metadata?.difficultyFeature === "structure");
+    const structuralProgression = members.some((item) => item.metadata?.difficultyFeature === "structure");
     if (structuralProgression) {
-      const stages = members.map((item) => item.metadata?.structuralStage);
-      if (stages.some((stage) => typeof stage !== "string") || new Set(stages).size !== members.length) issues.push(`${family}: structural signed Bands require distinct structuralStage values`);
+      const stages = members.map((item) => item.metadata?.structuralStage ?? `${item.metadata?.difficultyFeature}:${item.difficultyBand}`);
+      if (new Set(stages).size !== members.length) issues.push(`${family}: structural signed Bands require distinct structuralStage values`);
     } else {
       if (new Set(members.map((item) => item.exprTemplate)).size !== 1) issues.push(`${family}: magnitude-based template changes across Bands`);
       if (new Set(members.map((item) => item.metadata?.signPattern)).size !== 1) issues.push(`${family}: magnitude-based signPattern changes across Bands`);
@@ -101,7 +101,7 @@ export function signedGeneratedInstanceIssues(definition: GeneratedQuestionDefin
   const skillId = definition.skillId;
   if (!skillId || !SIGNED_OPERATORS[skillId]) return [];
   const expression = question.renderedExpression;
-  const hasStructuralNegative = /(?:^-\d|\(-(?:\d|\())/u.test(expression);
+  const hasStructuralNegative = /(?:^-[A-Za-z\d]|\(-(?:[A-Za-z\d]|\())/u.test(expression);
   const issues: string[] = [];
   if (!hasStructuralNegative) issues.push(`${definition.id}: ${skillId} instance does not contain a structurally negative operand`);
   if (!usesTargetOperation(skillId, expression)) issues.push(`${definition.id}: ${skillId} instance does not use its target operation`);

@@ -72,14 +72,29 @@ function studentFacingNotationIssues(definitionId: string, question: GeneratedQu
 /** Small, explicit invariants for Skills whose identity must be visible in the rendered task. */
 export function pedagogicalTargetingIssues(definition: GeneratedQuestionDefinition, question: GeneratedQuestionInstance, seed: number): string[] {
   const promptText = contentSurface(question.prompt);
+  const allStudentText = [promptText, ...(question.type === "numeric" ? [] : question.options.map((option) => contentSurface(option.content)))].join(" ");
   const promptMath = question.prompt.filter((part) => part.kind === "math").map((part) => part.latex).join(" ");
   const issues: string[] = [];
   if ((definition.skillId === "EQ_ADD" || definition.skillId === "EQ_MUL") && !promptMath.includes("=")) issues.push(`${definition.id}: seed ${seed} does not show the equation being solved`);
   if (definition.skillId === "ALG_SUBSTITUTE" && (!/הצב/u.test(promptText) || !promptMath.includes("="))) issues.push(`${definition.id}: seed ${seed} does not explicitly present substitution`);
-  if (definition.skillId === "AR_FACTORS_MULTIPLES" && !/כפול|גורם/u.test(promptText)) issues.push(`${definition.id}: seed ${seed} does not explicitly target factors or multiples`);
+  if (definition.skillId === "AR_FACTORS_MULTIPLES" && !/כפול|גורמ/u.test(promptText)) issues.push(`${definition.id}: seed ${seed} does not explicitly target factors or multiples`);
   if (definition.skillId === "INT_COMPARE" && (!/השוו|השוואה|יחס/u.test(promptText) || question.prompt.filter((part) => part.kind === "math").length < 2)) issues.push(`${definition.id}: seed ${seed} does not explicitly show both signed values being compared`);
   if (definition.skillId === "INT_NEGATION" && !/נגד/u.test(promptText)) issues.push(`${definition.id}: seed ${seed} does not explicitly target opposite-number reasoning`);
+  if (definition.skillId === "INT_MUL" && definition.contentFamily?.includes("sign-rules") && !/מכפלה/u.test(promptText)) issues.push(`${definition.id}: seed ${seed} does not explicitly ask for the product sign`);
+  if (definition.skillId === "INT_DIV" && definition.contentFamily?.includes("sign-rules") && !/מנה|תוצאת החלוקה/u.test(promptText)) issues.push(`${definition.id}: seed ${seed} does not explicitly ask for the quotient sign`);
+  if (definition.skillId === "ALG_VARIABLE" && /(?:משתנה שמייצג מספר|הוא מספר)/u.test(allStudentText)) issues.push(`${definition.id}: seed ${seed} describes a variable imprecisely`);
   return issues;
+}
+
+export function signedMultiplicationLoadIssues(definitions: readonly SkillQuestionDefinition[]): string[] {
+  return definitions.flatMap((definition) => {
+    if (!isGeneratedQuestionDefinition(definition) || definition.skillId !== "INT_MUL" || definition.category !== "calculation") return [];
+    const m = definition.params.m; const n = definition.params.n;
+    if (!m || !n || m.type === "rational" || n.type === "rational") return [];
+    return m.max > 10 && n.max > 10
+      ? [`${definition.id}: signed multiplication permits arbitrary two-digit by two-digit arithmetic`]
+      : [];
+  });
 }
 
 export function studentMathContentIssues(definitionId: string, question: Question, sampleLabel = "curated"): string[] {
@@ -306,6 +321,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
   issues.push(...curatedNumericLiteralIssues(FOUNDATIONAL_QUESTIONS));
   issues.push(...atomicSkillIdentityIssues(FOUNDATIONAL_QUESTIONS));
   issues.push(...signedSkillDefinitionIssues(FOUNDATIONAL_QUESTIONS));
+  issues.push(...signedMultiplicationLoadIssues(FOUNDATIONAL_QUESTIONS));
   for (const skill of SKILLS) for (const issue of validateEvidencePolicy(skill.evidencePolicy)) issues.push(`${skill.id}: ${issue}`);
   for (const entry of CONTENT_READINESS) for (const issue of readinessIssues(entry, FOUNDATIONAL_QUESTIONS)) issues.push(`${entry.skillId}: ${issue}`);
   for (const definition of FOUNDATIONAL_QUESTIONS) {

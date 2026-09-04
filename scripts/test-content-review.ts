@@ -138,7 +138,7 @@ await run("unreviewed filter and progress derive only from author review records
 });
 
 await run("approved content changed under global rules is surfaced for re-review", async () => {
-  const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_EQ_ADD_A")!;
+  const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_ALG_VARIABLE_A")!;
   assert.ok(definition.tags?.includes("requires-rereview") && definition.version);
   const stale = {
     definitionId: definition.id,
@@ -158,6 +158,23 @@ await run("approved content changed under global rules is surfaced for re-review
   const persisted = (await new AuthorReviewRepository(store).list())[0]!;
   assert.equal(persisted.definitionVersion, definition.version);
   assert.equal(effectiveReviewRecord(definition, persisted)?.status, "approved");
+});
+
+await run("approved definitions preserved unchanged keep their versioned approval", () => {
+  const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_OPS_ORDER_BASIC_FIRST_C")!;
+  assert.equal(definition.version, 3);
+  const approval = {
+    definitionId: definition.id,
+    definitionVersion: 3,
+    status: "approved" as const,
+    note: "ה־Band המבני כבר תקין",
+    reviewedAt: "2026-09-04T00:00:00.000Z",
+  } satisfies QuestionReviewRecord;
+  assert.equal(effectiveReviewRecord(definition, approval)?.status, "approved");
+  assert.equal(effectiveReviewRecord(definition, { ...approval, definitionVersion: undefined })?.status, "approved");
+  const changed = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_AR_PLACE_VALUE_GEN_A")!;
+  assert.equal(changed.version, 4);
+  assert.equal(effectiveReviewRecord(changed, { ...approval, definitionId: changed.id, definitionVersion: undefined }), undefined);
 });
 
 await run("expected answer reveal supports numeric and choice questions", () => {
