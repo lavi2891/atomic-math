@@ -9,7 +9,11 @@ import { studentHomeService } from "@app/studentHome/studentHomeServiceInstance"
 import type { PracticeSession, PracticeSessionState, SessionSettings } from "@domain/session/practiceSession";
 import type { MasterySnapshot } from "@domain/mastery/projectMastery";
 import type { StudentHomeData } from "@domain/studentHome/types";
-import type { LearningStageReference } from "../domain/learningPath/types.ts";
+import type { LearningPathId, LearningStageReference } from "../domain/learningPath/types.ts";
+import { LearningPathScreen } from "./learningPath/LearningPathScreen.tsx";
+import { LEARNING_PATHS } from "../content/learningPaths.ts";
+import { LEARNING_STAGE_SETTINGS } from "../domain/learningPath/sessionProgress.ts";
+import { personalBestRepository } from "./persistenceInstances.ts";
 import { studentIdentityProvider } from "../config/runtime.ts";
 import { selectQuestionPool } from "@app/questionPools";
 import { syncCoordinator } from "@app/syncInstance";
@@ -20,12 +24,14 @@ import type { PersonalBest, PersonalBestUpdate } from "@domain/personalBests/typ
 
 import { repeatSessionConfig } from "../domain/session/studentSessionUx.ts";
 
-type Screen = "home" | "freePractice" | "setup" | "session" | "summary";
+type Screen = "home" | "path" | "freePractice" | "setup" | "session" | "summary";
 
 export default function StudentApp() {
   const definitions = useMemo(() => selectQuestionPool("SIGNED_NUMBERS"), []);
   const [screen, setScreen] = useState<Screen>("home");
   const [activeDomainId, setActiveDomainId] = useState<string>();
+  const [activePathId, setActivePathId] = useState<LearningPathId>();
+  const activePath = LEARNING_PATHS.find((path) => path.id === activePathId);
   const [homeData, setHomeData] = useState<StudentHomeData>();
   const [session, setSession] = useState<PracticeSession>();
   const [completed, setCompleted] = useState<PracticeSessionState>();
@@ -60,6 +66,7 @@ export default function StudentApp() {
     if (startingRef.current) return;
     startingRef.current = true;
     setStarting(true);
+    setOperationError(undefined);
     try {
       const started = await studentPracticeService.start({ studentId: studentIdentityProvider.getStudentId(), skillIds, settings, assignmentId, learningStage });
       setOperationError(undefined); setSession(started.session); setCompleted(undefined); setPreviousBest(started.previousBest); setPersonalBestUpdate(null); setMasteryBefore(started.masteryBefore); setMasteryAfter(started.masteryBefore); setScreen("session");
@@ -72,14 +79,20 @@ export default function StudentApp() {
     setCompleted(state); setScreen("summary"); await refreshHome();
   }
 
-  async function returnHome() { await refreshHome(); setSession(undefined); setScreen("home"); }
+  async function returnFromSession() {
+    await refreshHome(); setSession(undefined);
+    const stage = completed?.session.learningStage;
+    if (stage) { setActivePathId(stage.pathId); setScreen("path"); }
+    else setScreen("home");
+  }
 
   return <div className="page" style={styles.page} dir="rtl"><div className="phone" style={{ ...styles.phone, color: theme.colors.text }}><main className="student-main" ref={mainRef} tabIndex={-1} style={styles.content}>
-    {operationError ? <p role="alert">{operationError}</p> : null}
-    {screen === "home" ? homeData ? <StudentHomeScreen data={homeData} definitions={definitions} starting={starting} onContinue={(stage, skillIds) => void startSession(skillIds, { mode: "fixed", questionCount: 5 }, undefined, stage)} onStartQuick={(skillIds) => void startSession(skillIds, { mode: "fixed", questionCount: 5 })} onFreePractice={() => setScreen("freePractice")} /> : <p role="status" aria-live="polite">טוען את המסלולים שלך…</p> : null}
+    {operationError && screen !== "path" ? <p role="alert">{operationError}</p> : null}
+    {screen === "home" ? homeData ? <StudentHomeScreen data={homeData} definitions={definitions} starting={starting} onOpenPath={(pathId) => { setOperationError(undefined); setActivePathId(pathId); setScreen("path"); }} onStartQuick={(skillIds) => void startSession(skillIds, { mode: "fixed", questionCount: 5 })} onFreePractice={() => setScreen("freePractice")} /> : <p role="status" aria-live="polite">טוען את המסלולים שלך…</p> : null}
+    {screen === "path" && activePath && homeData ? <LearningPathScreen key={activePath.id} path={activePath} progress={homeData.learningProgress} definitions={definitions} personalBests={personalBestRepository} starting={starting} error={operationError} onBack={() => { setOperationError(undefined); setScreen("home"); }} onPractice={(stage, skillIds) => void startSession(skillIds, LEARNING_STAGE_SETTINGS, undefined, stage)} /> : null}
     {screen === "freePractice" ? <FreePracticeScreen definitions={definitions} onBack={() => setScreen("home")} onOpenDomain={(domainId) => { setActiveDomainId(domainId); setScreen("setup"); }} /> : null}
     {screen === "setup" && activeDomainId ? <SessionSetupScreen studentId={studentIdentityProvider.getStudentId()} domainId={activeDomainId} definitions={definitions} onBack={() => setScreen("freePractice")} onStart={(skillIds, settings) => void startSession(skillIds, settings)} /> : null}
     {screen === "session" && session ? <SessionView session={session} definitions={definitions} previousBest={previousBest} onSessionEnd={(state) => void finishSession(state)} /> : null}
-    {screen === "summary" && completed ? <SessionSummaryScreen completed={completed} masteryBefore={masteryBefore} masteryAfter={masteryAfter} personalBestUpdate={personalBestUpdate} onHome={() => void returnHome()} onRepeat={() => { const config = repeatSessionConfig(completed.session); void startSession(config.skillIds, config.settings, config.assignmentId, config.learningStage); }} /> : null}
+    {screen === "summary" && completed ? <SessionSummaryScreen completed={completed} masteryBefore={masteryBefore} masteryAfter={masteryAfter} personalBestUpdate={personalBestUpdate} homeLabel={completed.session.learningStage ? "חזרה למסלול" : undefined} onHome={() => void returnFromSession()} onRepeat={() => { const config = repeatSessionConfig(completed.session); void startSession(config.skillIds, config.settings, config.assignmentId, config.learningStage); }} /> : null}
   </main></div></div>;
 }

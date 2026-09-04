@@ -3,7 +3,7 @@ import { DOMAINS, SKILLS } from "../../content/catalog/index.ts";
 import { LEARNING_PATHS } from "../../content/learningPaths.ts";
 import type { SkillQuestionDefinition } from "../../domain/session/skillQuestionSelector.ts";
 import type { StudentHomeData } from "../../domain/studentHome/types.ts";
-import type { LearningStageReference } from "../../domain/learningPath/types.ts";
+import type { LearningPathId } from "../../domain/learningPath/types.ts";
 import { contentBackedCatalog } from "../../domain/studentHome/contentAvailability.ts";
 import { resolveQuickPracticeScope } from "../../domain/studentHome/quickPractice.ts";
 import { learningPathCards } from "../../domain/studentHome/learningPathCards.ts";
@@ -12,12 +12,12 @@ type Props = {
   data: StudentHomeData;
   definitions: readonly SkillQuestionDefinition[];
   starting?: boolean;
-  onContinue: (stage: LearningStageReference, skillIds: string[]) => void;
+  onOpenPath: (pathId: LearningPathId) => void;
   onStartQuick: (skillIds: string[]) => void;
   onFreePractice: () => void;
 };
 
-export function StudentHomeScreen({ data, definitions, starting = false, onContinue, onStartQuick, onFreePractice }: Props) {
+export function StudentHomeScreen({ data, definitions, starting = false, onOpenPath, onStartQuick, onFreePractice }: Props) {
   const available = useMemo(() => new Set(contentBackedCatalog(DOMAINS, SKILLS, definitions)
     .flatMap(({ skills }) => skills.filter((skill) => skill.modes.fixed).map((skill) => skill.id))), [definitions]);
   const cards = learningPathCards(LEARNING_PATHS, data.learningProgress, available);
@@ -39,7 +39,7 @@ export function StudentHomeScreen({ data, definitions, starting = false, onConti
           {card.totalStages > 0 ? <small>{card.completedStages} מתוך {card.totalStages} שלבים בפרק</small> : null}
         </div>
         <button type="button" className="primary-action" aria-label={`${card.pathCompleted ? "תרגול נוסף" : "המשך"} במסלול ${card.path.nameHe}`} disabled={starting || card.availability !== "ready"} onClick={() => {
-          if (card.stage && card.availability === "ready") onContinue({ pathId: card.path.id, stageId: card.stage.id }, [...card.stage.skillIds]);
+          if (card.availability === "ready") onOpenPath(card.path.id);
         }}>{card.pathCompleted ? "תרגול נוסף" : "המשך"}</button>
       </article>)}
     </div>

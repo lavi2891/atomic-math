@@ -46,14 +46,17 @@ for (const width of [320, 390]) test(`Home at ${width}px has a clear vertical hi
   await page.screenshot({ path: `test-results/student-home-${width}.png`, fullPage: true });
 });
 
-test('Continue launches the current stage directly; stopping does not advance it', async ({ page }) => {
+test('Continue opens the map and its current stage; stopping does not advance it', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await open(page);
   await numbers(page).getByRole('button').click();
+  await page.locator('[aria-current="step"]').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'התחלת תרגול' }).click();
   await expect(page.locator('.practice-status')).toHaveText('1 / 5');
   await expect(page.locator('.practice-context')).toContainText('מבנה המספר העשרוני');
   await page.getByRole('button', { name: 'סיום תרגול', exact: true }).click();
-  await page.getByRole('button', { name: 'מסך ראשי', exact: true }).click();
+  await page.getByRole('button', { name: 'חזרה למסלול', exact: true }).click();
+  await page.getByRole('button', { name: 'חזרה לבית', exact: true }).click();
   await expect(numbers(page)).toContainText('השלב הבא: מבנה המספר');
   await page.reload();
   await expect(numbers(page).getByRole('progressbar')).toHaveAttribute('value', '0');
@@ -66,6 +69,8 @@ test('saved completion restores the next cluster and chapter progress after relo
   await page.reload();
   await expect(numbers(page)).toContainText('השלב הבא: חיבור וחיסור');
   await numbers(page).getByRole('button').click();
+  await page.locator('[aria-current="step"]').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'התחלת תרגול' }).click();
   await expect(page.locator('.practice-context')).toContainText('2 מיומנויות');
 });
 
@@ -92,4 +97,125 @@ test('quick check starts five questions and free practice retains its Skill tree
   await page.getByRole('button', { name: 'חזרה לבית', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'המשך במסלול' })).toBeVisible();
   await expect(page.locator('.domain-tree')).toHaveCount(0);
+});
+
+async function openMap(page, query = '?completed=first') {
+  await open(page, query);
+  await numbers(page).getByRole('button').click();
+  await expect(page.locator('[aria-current="step"]')).toBeInViewport();
+}
+const stageNode = (page, id) => page.locator(`[data-stage-id="${id}"] button`);
+
+for (const width of [320, 390]) test(`upward map at ${width}px centers current stage without horizontal overflow`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 844 });
+  await openMap(page);
+  const current = page.locator('[aria-current="step"]');
+  const previous = stageNode(page, 'NA_PLACE_VALUE');
+  const next = stageNode(page, 'NA_DECIMAL_REVIEW');
+  const currentBox = await current.boundingBox();
+  expect((await previous.boundingBox()).y).toBeGreaterThan(currentBox.y);
+  expect((await next.boundingBox()).y).toBeLessThan(currentBox.y);
+  expect(currentBox.width).toBeGreaterThan((await next.boundingBox()).width);
+  expect((await page.locator('.path-chapter-node').first().boundingBox()).width).toBeGreaterThan(currentBox.width);
+  await expect(previous.locator('[data-icon="check"]')).toBeVisible();
+  await expect(next).toBeDisabled();
+  await next.evaluate(button => button.click());
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(await page.locator('.path-scroll').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+  for (const node of await page.locator('.path-stage-node').all()) {
+    const box = await node.boundingBox();
+    expect(box.width).toBeGreaterThanOrEqual(48);
+    expect(box.height).toBeGreaterThanOrEqual(48);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(width);
+  }
+  await page.screenshot({ path: `test-results/learning-path-${width}.png` });
+  const oldScroll = await page.locator('.path-scroll').evaluate(el => el.scrollTop);
+  await page.locator('.path-scroll').evaluate(el => { el.scrollTop -= 320; });
+  expect(await page.locator('.path-scroll').evaluate(el => el.scrollTop)).toBeLessThan(oldScroll);
+  await expect(page.getByRole('button', { name: 'חזרה לבית' })).toBeInViewport();
+});
+
+test('bottom sheet fits narrow and short viewports, traps focus, and restores the tapped node', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await openMap(page);
+  const current = page.locator('[aria-current="step"]');
+  await current.click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('חיבור וחיסור');
+  await expect(dialog.getByRole('img', { name: '0 מתוך 3 כוכבים' })).toBeVisible();
+  await expect(dialog).not.toContainText('השיא שלך');
+  const box = await dialog.boundingBox();
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(320);
+  expect(box.y + box.height).toBeCloseTo(568, 0);
+  await expect(dialog.getByRole('button', { name: 'התחלת תרגול' })).toBeInViewport();
+  for (let i = 0; i < 5; i++) {
+    await page.keyboard.press('Tab');
+    expect(await dialog.evaluate(el => el.contains(document.activeElement))).toBe(true);
+  }
+  await page.screenshot({ path: 'test-results/learning-path-sheet-320.png' });
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(current).toBeFocused();
+  await current.click();
+  await page.getByRole('button', { name: 'סגירה', exact: true }).click();
+  await expect(current).toBeFocused();
+  await current.click();
+  await page.mouse.click(4, 100);
+  await expect(dialog).toHaveCount(0);
+  await expect(current).toBeFocused();
+});
+
+test('completed nodes offer stars, relevant best, replay, and a return to the map', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openMap(page, '?completed=first&best');
+  await stageNode(page, 'NA_PLACE_VALUE').click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('img', { name: '1 מתוך 3 כוכבים' })).toBeVisible();
+  await expect(dialog).toContainText('השיא שלך: 10 שניות');
+  await page.screenshot({ path: 'test-results/learning-path-replay-sheet.png' });
+  await dialog.getByRole('button', { name: 'תרגול חוזר' }).click();
+  await expect(page.locator('.practice-status')).toHaveText('1 / 5');
+  await page.getByRole('button', { name: 'סיום תרגול', exact: true }).click();
+  await page.getByRole('button', { name: 'חזרה למסלול', exact: true }).click();
+  await expect(stageNode(page, 'NA_ADD_SUBTRACT')).toHaveAttribute('aria-current', 'step');
+  await expect(stageNode(page, 'NA_ADD_SUBTRACT')).toBeInViewport();
+});
+
+test('bonus uses a short side branch while the main stage stays current', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await openMap(page, '?completed=multiplication');
+  const current = page.locator('[aria-current="step"]');
+  await expect(stageNode(page, 'NA_OPERATION_ORDER_BASIC')).toHaveAttribute('aria-current', 'step');
+  const bonus = stageNode(page, 'NA_FACTORS_BONUS');
+  await expect(bonus).toBeEnabled();
+  const bonusBox = await bonus.boundingBox();
+  const currentBox = await current.boundingBox();
+  expect(currentBox.x + currentBox.width / 2 - bonusBox.x - bonusBox.width / 2).toBeCloseTo(72, 0);
+  expect((await page.locator('.path-branch').boundingBox()).width).toBeLessThanOrEqual(80);
+  await expect(bonus).toHaveAccessibleName(/לבחירה/);
+  await page.screenshot({ path: 'test-results/learning-path-bonus-320.png' });
+  await bonus.click();
+  await expect(page.getByRole('dialog')).toContainText('גורמים וכפולות');
+  await page.getByRole('button', { name: 'התחלת תרגול', exact: true }).click();
+  await expect(page.locator('.practice-context')).toContainText('גורמים וכפולות');
+});
+
+test('current checkpoint uses a challenge shape and icon with the current-stage emphasis', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openMap(page, '?completed=review');
+  const checkpoint = stageNode(page, 'NA_DECIMAL_CHECKPOINT');
+  await expect(checkpoint).toHaveAttribute('aria-current', 'step');
+  await expect(checkpoint.locator('[data-icon="checkpoint"]')).toBeVisible();
+  expect(await checkpoint.locator('.path-node-shape').evaluate(el => getComputedStyle(el).transform)).not.toBe('none');
+  expect(await checkpoint.locator('.path-node-shape').evaluate(el => getComputedStyle(el).boxShadow)).not.toBe('none');
+  const shape = await checkpoint.locator('.path-node-shape').boundingBox();
+  const label = await page.locator('[data-stage-id="NA_DECIMAL_CHECKPOINT"] .path-node-label > span').last().boundingBox();
+  expect(label.x - shape.x - shape.width).toBeGreaterThanOrEqual(12);
+  await page.screenshot({ path: 'test-results/learning-path-checkpoint.png' });
+  await checkpoint.click();
+  await expect(page.getByRole('dialog')).toContainText('בודקים את היסודות');
 });

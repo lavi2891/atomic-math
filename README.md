@@ -33,7 +33,7 @@ Student UI
 
 `Attempt` is the authoritative learning record. Mastery is a deterministic projection derived from Attempts; the `Mastery` Sheet and cached snapshots are rebuildable views, not primary evidence.
 
-Home's Continue action starts the next main stage directly. Its card shows the current chapter/stage and simple chapter progress; completed stage sessions restore the student's place on this device. Geometry is marked as coming soon until its atomic Skills exist. The existing topic and Skill selection tree is available through “תרגול חופשי”. Home does not display mastery analytics or a path map.
+Home's Continue action opens a narrow vertical learning path centered on the current stage. Later stages sit above completed stages, with chapter landmarks and short optional bonus branches. Tapping an available or completed stage opens a bottom sheet with stars, practice/replay, and a matching personal best when one exists. Completed stage sessions restore the student's place on this device. Geometry is marked as coming soon until its atomic Skills exist. The existing topic and Skill selection tree is available through “תרגול חופשי”; Home keeps its compact cards without mastery analytics.
 
 - `src/app`: React screens, top-level composition, and application services.
 - `src/domain`: framework-independent session, mastery, attempt, and student-home rules.

@@ -6,9 +6,9 @@ import { practiceScopeLabel, sessionModeLabels, sessionResultLabel, sessionRevie
 import { QuestionView } from "../questions/QuestionView.tsx";
 import { colors, radius, spacing } from "../../ui/tokens.ts";
 
-type Props = { completed: PracticeSessionState; masteryBefore: Record<string, MasterySnapshot>; masteryAfter: Record<string, MasterySnapshot>; personalBestUpdate: PersonalBestUpdate | null; onHome: () => void; onRepeat: () => void };
+type Props = { completed: PracticeSessionState; masteryBefore: Record<string, MasterySnapshot>; masteryAfter: Record<string, MasterySnapshot>; personalBestUpdate: PersonalBestUpdate | null; homeLabel?: string; onHome: () => void; onRepeat: () => void };
 
-export function SessionSummaryScreen({ completed, masteryBefore, masteryAfter, personalBestUpdate, onHome, onRepeat }: Props) {
+export function SessionSummaryScreen({ completed, masteryBefore, masteryAfter, personalBestUpdate, homeLabel = "מסך ראשי", onHome, onRepeat }: Props) {
   const [reviewing, setReviewing] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [details, setDetails] = useState(false);
@@ -22,7 +22,7 @@ export function SessionSummaryScreen({ completed, masteryBefore, masteryAfter, p
       <div className="responsive-actions" style={{ display: "flex", gap: spacing.sm, flexWrap: "wrap" }}>
         <button type="button" onClick={onRepeat} style={{ border: 0, background: colors.topicGreen, color: "#08130b", fontWeight: 700 }}>שחק שוב</button>
         <button type="button" onClick={() => setReviewing(true)}>ראה מה טעיתי</button>
-        <button type="button" onClick={onHome}>מסך ראשי</button>
+        <button type="button" onClick={onHome}>{homeLabel}</button>
       </div>
       <button type="button" aria-expanded={details} onClick={() => setDetails(!details)} style={{ justifySelf: "start", background: "none", border: 0, color: colors.textMuted, textDecoration: "underline" }}>דוח מפורט</button>
       {details ? <section><h3>התקדמות לפי מיומנות</h3>{completed.session.selectedSkillIds.map((id) => {

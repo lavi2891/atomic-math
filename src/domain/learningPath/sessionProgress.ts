@@ -1,6 +1,8 @@
 import type { PersistedSession } from "../sync/types.ts";
 import type { LearningPath, LearningStageReference, Stage, StageStars, StudentLearningProgress } from "./types.ts";
 
+export const LEARNING_STAGE_SETTINGS = { mode: "fixed", questionCount: 5 } as const;
+
 export function findLearningStage(paths: readonly LearningPath[], reference: LearningStageReference): Stage | undefined {
   return paths.find((path) => path.id === reference.pathId)?.chapters
     .flatMap((chapter) => chapter.stages).find((stage) => stage.id === reference.stageId);
