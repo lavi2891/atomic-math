@@ -11,7 +11,7 @@ const conceptual = new Set(["AR_PLACE_VALUE", "INT_NUMBER_LINE", "INT_COMPARE", 
 export const CONTENT_READINESS: SkillReadiness[] = SKILLS.map((skill) => ({
   skillId: skill.id,
   strategy: conceptual.has(skill.id) ? "fixedHeavy" : "mixed",
-  requiredCategories: ["AR_PLACE_VALUE", "INT_NUMBER_LINE", "FRAC_MEANING"].includes(skill.id)
+  requiredCategories: skill.id === "AR_PLACE_VALUE" ? ["representation"] : ["INT_NUMBER_LINE", "FRAC_MEANING"].includes(skill.id)
     ? ["conceptual", "representation"]
     : skill.id === "FRAC_EQUIV" ? ["reasoning", "representation"]
     : skill.id.startsWith("AR_MUL_F_") ? ["calculation", "representation"]

@@ -145,7 +145,7 @@ run("active distractors contain specific rationales and no author-review fallbac
 
 run("foundational authoring intent and normalized inventory stay explicit", () => {
   const audit = auditFoundationalContent();
-  assert.deepEqual({ total: audit.total, generated: audit.generated, curatedFixed: audit.curatedFixed, fixedNumeric: audit.fixedNumeric }, { total: 179, generated: 176, curatedFixed: 3, fixedNumeric: 0 });
+  assert.deepEqual({ total: audit.total, generated: audit.generated, curatedFixed: audit.curatedFixed, fixedNumeric: audit.fixedNumeric }, { total: 181, generated: 178, curatedFixed: 3, fixedNumeric: 0 });
   for (const definition of FOUNDATIONAL_QUESTIONS) {
     assert.ok(definition.contentFamily, definition.id);
     if (isGeneratedQuestionDefinition(definition)) {
@@ -190,7 +190,7 @@ run("foundational generators cover exact edge cases deterministically", () => {
 run("full content validation checks configured samples and reports review families", () => {
   const report = validateFoundationalContent(20);
   assert.deepEqual(report.issues, []);
-  assert.equal(report.generatedSamples, 176 * 20);
+  assert.equal(report.generatedSamples, 178 * 20);
   assert.deepEqual(report.warnings, []);
 });
 
@@ -232,9 +232,9 @@ run("all globally audited routine numeric concept families are generated", () =>
 });
 
 run("reviewed place-value and fraction-meaning repetitions are generated", () => {
-  const place = buildGeneratedQuestion(generatedDefinition("MVP_AR_PLACE_VALUE_GEN_A"), { seed: 41 });
+  const place = buildGeneratedQuestion(generatedDefinition("MVP_AR_PLACE_VALUE_EXPANDED_TO_STANDARD_A"), { seed: 41 });
   assert.equal(place.type, "singleChoice");
-  assert.match(renderedText(place.prompt), /מה הערך של ספרת/);
+  assert.match(renderedText(place.prompt), /איזה מספר מתאים לפירוק/);
   assert.equal(place.skillId, "AR_PLACE_VALUE");
   const fraction = buildGeneratedQuestion(generatedDefinition("MVP_FRAC_MEANING_PARTS_B"), { seed: 41 });
   assert.equal(fraction.type, "singleChoice");
@@ -326,31 +326,52 @@ run("factor identification is explicit multiChoice evidence", () => {
   }
 });
 
-run("place-value progression covers repeated digits, zero placeholders, non-leftmost places, and composition", () => {
-  const easy = generatedDefinition("MVP_AR_PLACE_VALUE_GEN_A");
-  const intermediate = generatedDefinition("MVP_AR_PLACE_VALUE_GEN_B");
-  const composition = generatedDefinition("MVP_AR_PLACE_VALUE_GEN_C");
-  assert.equal(easy.metadata?.structuralStage, "two-digit-distinct-nonzero");
-  const intermediateSamples = Array.from({ length: 200 }, (_, index) => buildGeneratedQuestion(intermediate, { seed: index + 1 }));
-  assert.ok(intermediateSamples.some((question) => Object.values(question.sampledParams).includes("0")), "zero placeholder");
-  assert.ok(intermediateSamples.some((question) => {
-    const { a, b, c } = question.sampledParams;
-    return a === b || a === c || b === c;
-  }), "repeated digit");
-  assert.ok(intermediateSamples.every((question) => /האחדות|העשרות/u.test(renderedText(question.prompt))), "non-leftmost position");
-  const composed = buildGeneratedQuestion(composition, { seed: 41 });
-  assert.equal(composition.category, "representation");
-  assert.equal(composition.metadata?.representationKind, "expanded-to-standard-form");
-  assert.match(renderedText(composed.prompt), /פירוק/u);
-  const reverse = generatedDefinition("MVP_AR_PLACE_VALUE_STANDARD_TO_EXPANDED_C");
-  const decomposed = buildGeneratedQuestion(reverse, { seed: 41 });
-  assert.equal(reverse.category, "representation");
-  assert.equal(reverse.metadata?.representationKind, "standard-to-expanded-form");
-  assert.match(renderedText(decomposed.prompt), /פירוק מורחב/u);
-  assert.match(correctOptionTexts(decomposed)[0]!, /0 \\times\s+100/u);
-  const expectedNumber = 1010 * Number(decomposed.sampledParams.a) + Number(decomposed.sampledParams.d);
-  assert.match(renderedText(decomposed.prompt), new RegExp(String(expectedNumber)));
-  assert.equal(new Set(optionTexts(decomposed)).size, 4);
+run("decimal structure covers both directions, structural bands, valid distractors and deterministic generation", () => {
+  const definitions = FOUNDATIONAL_QUESTIONS.filter((item) => item.skillId === "AR_PLACE_VALUE");
+  assert.equal(definitions.length, 6);
+  for (const retired of ["MVP_AR_PLACE_VALUE_GEN_A", "MVP_AR_PLACE_VALUE_GEN_B"]) assert.ok(!definitions.some((item) => item.id === retired));
+  const seenMistakes = new Set<string>();
+  const zeroPositions = new Set<number>();
+  // Independent evaluation of the displayed choices, including equivalent expressions.
+  const valueOf = (text: string) => text.replaceAll("\\times", "*").split("+").reduce((sum, term) => sum + term.trim().split("*").reduce((product, factor) => product * Number(factor.trim()), 1), 0);
+  for (const definition of definitions) {
+    assert.ok(isGeneratedQuestionDefinition(definition));
+    assert.equal(definition.category, "representation");
+    assert.equal(definition.version, 6);
+    const reverse = definition.metadata?.representationKind === "standard-to-expanded-form";
+    assert.equal(definition.metadata?.representationKind, reverse ? "standard-to-expanded-form" : "expanded-to-standard-form");
+    for (let seed = 1; seed <= 200; seed += 1) {
+      const question = buildGeneratedQuestion(definition, { seed });
+      assert.deepEqual(buildGeneratedQuestion(definition, { seed }), question);
+      assert.equal(question.type, "singleChoice");
+      if (question.type !== "singleChoice") throw new Error("Expected single choice");
+      const { a, b, c, position } = question.sampledParams;
+      const digits = definition.difficultyBand === "A" ? [Number(a), Number(b), Number(c)] : definition.difficultyBand === "B" ? [Number(a), Number(b), Number(a)] : [Number(a), Number(b) * Number(position), Number(b) * (1 - Number(position)), Number(c)];
+      const expected = Number(digits.join(""));
+      if (definition.difficultyBand === "A") { assert.equal(new Set(digits).size, 3); assert.ok(!digits.includes(0)); }
+      if (definition.difficultyBand === "B") { assert.equal(new Set(digits).size, 2); assert.ok(!digits.includes(0)); }
+      if (definition.difficultyBand === "C") { assert.equal(digits.length, 4); assert.ok(digits.includes(0)); zeroPositions.add(digits.indexOf(0)); }
+      const prompt = renderedText(question.prompt);
+      assert.doesNotMatch(prompt, /מה הערך|איזו ספרה|איזה מקום/u);
+      const math = question.prompt.filter((segment) => segment.kind === "math").map((segment) => segment.latex).join("");
+      assert.equal(valueOf(math), expected);
+      if (reverse && definition.difficultyBand === "C") assert.match(correctOptionTexts(question)[0]!, /0 \\times\s+10/u);
+      if (!reverse && definition.difficultyBand === "C") assert.match(math, /0 \\times\s+10/u);
+      for (const option of question.options) {
+        const value = valueOf(renderedText(option.content));
+        assert.ok(Number.isFinite(value));
+        assert.equal(value === expected, option.id === question.correctOptionId, `${definition.id} seed ${seed}`);
+        if (option.misconceptionId) seenMistakes.add(option.misconceptionId);
+      }
+      assert.equal(new Set(optionTexts(question).map(valueOf)).size, 4);
+    }
+  }
+  assert.deepEqual([...zeroPositions].sort(), [1, 2]);
+  for (const mistake of ["compresses-zero-place", "swaps-tens-hundreds", "shifts-place-adjacent", "omits-nonzero-place", "incorrect-power-ten"]) assert.ok(seenMistakes.has(`AR_PLACE_VALUE:${mistake}`), mistake);
+  assert.deepEqual(readinessIssues(CONTENT_READINESS.find((entry) => entry.skillId === "AR_PLACE_VALUE")!, FOUNDATIONAL_QUESTIONS), []);
+  assert.ok(readySkillIds(FOUNDATIONAL_QUESTIONS).has("AR_PLACE_VALUE"));
+  assert.deepEqual(skill("AR_PLACE_VALUE").evidencePolicy.requiredCategoryEvidence, { representation: 10 });
+  for (const band of ["A", "B", "C"]) assert.equal(definitions.filter((item) => item.difficultyBand === band).length, 2);
 });
 
 run("direct equality misconception item treats equals as a relation", () => {
@@ -695,7 +716,7 @@ run("zero signed-operation results occur only in an explicit family", () => {
 run("reviewed conceptual generators preserve attribution, determinism, and unique options", () => {
   const reviewedSkills = new Set(["AR_PLACE_VALUE", "AR_ADD_FACTS", "AR_SUB_FACTS", "AR_FACTORS_MULTIPLES", "OPS_ORDER_BASIC", "INT_NUMBER_LINE", "FRAC_MEANING", "FRAC_EQUIV"]);
   const definitions = FOUNDATIONAL_QUESTIONS.filter((item): item is GeneratedQuestionDefinition & { skillId: string } => isGeneratedQuestionDefinition(item) && !!item.choiceBuilder && (reviewedSkills.has(item.skillId) || item.skillId.startsWith("AR_MUL_F_") || item.skillId.startsWith("AR_DIV_F_")));
-  assert.equal(definitions.length, 62);
+  assert.equal(definitions.length, 64);
   for (const definition of definitions) {
     const first = buildGeneratedQuestion(definition, { seed: 73 }); const repeat = buildGeneratedQuestion(definition, { seed: 73 });
     assert.equal(first.id, repeat.id, definition.id);

@@ -206,71 +206,61 @@ function conceptualGenerator(input: {
   };
 }
 
-function distinctIncorrectNumbers(correct: number, candidates: readonly number[]): number[] {
-  const values = candidates.filter((candidate, index, all) => Number.isInteger(candidate) && candidate >= 0 && candidate !== correct && all.indexOf(candidate) === index);
-  for (let delta = 1; values.length < 3; delta += 1) {
-    for (const candidate of [correct + delta, Math.max(0, correct - delta)]) if (candidate !== correct && !values.includes(candidate)) values.push(candidate);
-  }
-  return values.slice(0, 3);
+type PlaceTerm = { digit: number; power: number };
+const placeTerms = (digits: number[]): PlaceTerm[] => digits.map((digit, index) => ({ digit, power: digits.length - index - 1 }));
+const placeTotal = (terms: PlaceTerm[]): number => terms.reduce((total, term) => total + term.digit * 10 ** term.power, 0);
+const expandedForm = (terms: PlaceTerm[]): string => terms.map(({ digit, power }) => power === 0 ? `${digit}` : `${digit} × ${10 ** power}`).join(" + ");
+
+function decimalStructureQuestion(digits: number[], reverse: boolean): GeneratedChoiceDraft {
+  const terms = placeTerms(digits);
+  const number = placeTotal(terms);
+  const candidates: Array<{ terms: PlaceTerm[]; misconception: string }> = [];
+  if (digits.includes(0)) candidates.push({ terms: placeTerms(digits.filter((digit) => digit !== 0)), misconception: "compresses-zero-place" });
+  const swapped = [...digits];
+  [swapped[digits.length - 3], swapped[digits.length - 2]] = [swapped[digits.length - 2]!, swapped[digits.length - 3]!];
+  candidates.push({ terms: placeTerms(swapped), misconception: "swaps-tens-hundreds" });
+  terms.forEach((term, index) => {
+    if (term.digit === 0) return;
+    candidates.push({ terms: terms.map((other, i) => i === index ? { ...other, power: Math.max(0, other.power - 1) } : other), misconception: "shifts-place-adjacent" });
+    candidates.push({ terms: terms.filter((_, i) => i !== index), misconception: "omits-nonzero-place" });
+  });
+  candidates.push({ terms: terms.map((term, i) => i === 0 ? { ...term, power: term.power + 1 } : term), misconception: "incorrect-power-ten" });
+  const offset = number % candidates.length;
+  const rotated = [...candidates.slice(offset), ...candidates.slice(0, offset)];
+  const seen = new Set([number]);
+  const wrong = rotated.filter((candidate) => {
+    const value = placeTotal(candidate.terms);
+    if (seen.has(value)) return false;
+    seen.add(value);
+    return true;
+  }).slice(0, 3);
+  if (wrong.length !== 3) throw new Error("Insufficient distinct decimal-structure distractors");
+  return generatedChoiceDraft("AR_PLACE_VALUE", reverse
+    ? `איזה פירוק מורחב מתאים למספר [[${number}]]?`
+    : `איזה מספר מתאים לפירוק [[${expandedForm(terms)}]]?`, [
+    { value: reverse ? expandedForm(terms) : String(number), correct: true, misconception: "composes-expanded-form" },
+    ...wrong.map((candidate) => ({ value: reverse ? expandedForm(candidate.terms) : String(placeTotal(candidate.terms)), misconception: candidate.misconception })),
+  ], number);
 }
 
-function placeValueQuestion(params: SampledParams, digits: number[], allowedPositions: number[]): GeneratedChoiceDraft {
-  const positionIndex = sampledInteger(params, "position") % allowedPositions.length;
-  const position = allowedPositions[positionIndex]!;
-  const number = digits.reduce((value, digit) => value * 10 + digit, 0);
-  const reversedDigits = [...digits].reverse();
-  const digit = reversedDigits[position]!;
-  const place = 10 ** position;
-  const value = digit * place;
-  const placeName = ["האחדות", "העשרות", "המאות", "האלפים"][position]!;
-  const wrongValues = distinctIncorrectNumbers(value, [digit, digit * 10, digit * 100, digit * 1000, place, place * 10, number]);
-  return generatedChoiceDraft("AR_PLACE_VALUE", `מה הערך של ספרת ${placeName} במספר [[${number}]]?`, [
-    { value: `${value}`, correct: true, misconception: "identifies-place-value" },
-    { value: `${wrongValues[0]}`, misconception: "uses-digit-not-place-value" },
-    { value: `${wrongValues[1]}`, misconception: "uses-adjacent-place-value" },
-    { value: `${wrongValues[2]}`, misconception: digit === 0 ? "misunderstands-zero-placeholder" : "misplaces-digit" },
-  ], number + position);
-}
-
-const PLACE_VALUE_GENERATORS: Array<GeneratedQuestionDefinition & { skillId: string }> = [
-  conceptualGenerator({
-    id: "MVP_AR_PLACE_VALUE_GEN_A", skillId: "AR_PLACE_VALUE", family: "identify-digit-value", category: "conceptual", band: "A",
-    exprTemplate: "10*{a}+{b}", params: { a: { type: "natural", min: 1, max: 9 }, b: { type: "natural", min: 1, max: 9 }, position: { type: "integer", min: 0, max: 1 } }, constraints: ["a != b"], difficultyFeature: "structure", structuralStage: "two-digit-distinct-nonzero", version: 5,
-    choiceBuilder: (params) => placeValueQuestion(params, [sampledInteger(params, "a"), sampledInteger(params, "b")], [0, 1]),
-  }),
-  conceptualGenerator({
-    id: "MVP_AR_PLACE_VALUE_GEN_B", skillId: "AR_PLACE_VALUE", family: "identify-digit-value", category: "conceptual", band: "B",
-    exprTemplate: "100*{a}+10*{b}+{c}", params: { a: { type: "natural", min: 1, max: 9 }, b: { type: "integer", min: 0, max: 9 }, c: { type: "integer", min: 0, max: 9 }, position: { type: "integer", min: 0, max: 1 } }, difficultyFeature: "structure", structuralStage: "three-digit-repeat-or-zero-nonleading-place", version: 5,
-    choiceBuilder: (params) => placeValueQuestion(params, [sampledInteger(params, "a"), sampledInteger(params, "b"), sampledInteger(params, "c")], [0, 1]),
-  }),
-  conceptualGenerator({
-    id: "MVP_AR_PLACE_VALUE_GEN_C", skillId: "AR_PLACE_VALUE", family: "compose-expanded-number", category: "representation", band: "C",
-    exprTemplate: "{a}*1000+{b}*100+{c}*10+{d}", params: { a: { type: "natural", min: 1, max: 9 }, b: { type: "integer", min: 0, max: 9 }, c: { type: "integer", min: 0, max: 9 }, d: { type: "integer", min: 0, max: 9 } }, difficultyFeature: "structure", structuralStage: "expanded-to-standard-with-repeat-or-zero", representationKind: "expanded-to-standard-form", version: 5,
-    choiceBuilder: (params) => {
-      const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); const c = sampledInteger(params, "c"); const d = sampledInteger(params, "d");
-      const number = 1000 * a + 100 * b + 10 * c + d;
-      const wrongValues = distinctIncorrectNumbers(number, [1000 * a + 100 * c + 10 * b + d, 1000 * a + 10 * b + 100 * c + d, 100 * a + 10 * b + c + d, number + 90, number - 90]);
-      return generatedChoiceDraft("AR_PLACE_VALUE", `איזה מספר מתאים לפירוק [[${a} × 1000 + ${b} × 100 + ${c} × 10 + ${d}]]?`, [
-        { value: `${number}`, correct: true, misconception: "composes-expanded-form" },
-        ...wrongValues.map((value) => ({ value: `${value}`, misconception: "misplaces-digit-in-composition" })),
-      ], number);
+const PLACE_VALUE_GENERATORS: Array<GeneratedQuestionDefinition & { skillId: string }> = (["A", "B", "C"] as const).flatMap((band) => {
+  const nonzero = { type: "natural" as const, min: 1, max: 9 };
+  const params: ParamsSpec = { a: nonzero, b: nonzero, c: nonzero, position: { type: "integer", min: 0, max: 1 } };
+  return [false, true].map((reverse) => conceptualGenerator({
+    id: reverse ? `MVP_AR_PLACE_VALUE_STANDARD_TO_EXPANDED_${band}` : band === "C" ? "MVP_AR_PLACE_VALUE_GEN_C" : `MVP_AR_PLACE_VALUE_EXPANDED_TO_STANDARD_${band}`,
+    skillId: "AR_PLACE_VALUE", family: reverse ? "decompose-standard-number" : "compose-expanded-number",
+    category: "representation", band, params,
+    exprTemplate: band === "A" ? "100*{a}+10*{b}+{c}" : band === "B" ? "100*{a}+10*{b}+{a}" : "1000*{a}+100*{b}*{position}+10*{b}*(1-{position})+{c}",
+    constraints: band === "A" ? ["a != b", "a != c", "b != c"] : ["a != b"],
+    difficultyFeature: "structure", structuralStage: band === "A" ? "three-distinct-nonzero-digits" : band === "B" ? "three-digits-repeated-across-places" : "four-digits-internal-zero-varied-position",
+    representationKind: reverse ? "standard-to-expanded-form" : "expanded-to-standard-form", version: 6,
+    choiceBuilder: (sampled) => {
+      const a = sampledInteger(sampled, "a"); const b = sampledInteger(sampled, "b"); const c = sampledInteger(sampled, "c");
+      const position = sampledInteger(sampled, "position");
+      return decimalStructureQuestion(band === "A" ? [a, b, c] : band === "B" ? [a, b, a] : [a, b * position, b * (1 - position), c], reverse);
     },
-  }),
-  conceptualGenerator({
-    id: "MVP_AR_PLACE_VALUE_STANDARD_TO_EXPANDED_C", skillId: "AR_PLACE_VALUE", family: "decompose-standard-number", category: "representation", band: "C",
-    exprTemplate: "{a}*1000+0*100+{a}*10+{d}", params: { a: { type: "natural", min: 1, max: 9 }, d: { type: "integer", min: 0, max: 9 } }, constraints: ["d != a"], difficultyFeature: "structure", structuralStage: "standard-to-expanded-with-zero-and-repeat", representationKind: "standard-to-expanded-form", version: 1,
-    choiceBuilder: (params) => {
-      const a = sampledInteger(params, "a"); const d = sampledInteger(params, "d");
-      const number = 1000 * a + 10 * a + d;
-      return generatedChoiceDraft("AR_PLACE_VALUE", `איזה פירוק מורחב מתאים למספר [[${number}]]?`, [
-        { value: `${a} × 1000 + 0 × 100 + ${a} × 10 + ${d}`, correct: true, misconception: "composes-expanded-form" },
-        { value: `${a} × 1000 + ${a} × 100 + 0 × 10 + ${d}`, misconception: "misplaces-digit-in-composition" },
-        { value: `${a} × 1000 + 0 × 100 + ${d} × 10 + ${a}`, misconception: "misplaces-digit-in-composition" },
-        { value: `${a} × 100 + 0 × 10 + ${a} + ${d}`, misconception: "misplaces-digit-in-composition" },
-      ], number);
-    },
-  }),
-];
+  }));
+});
 
 function basicFactConceptGenerators(skillId: "AR_ADD_FACTS" | "AR_SUB_FACTS"): Array<GeneratedQuestionDefinition & { skillId: string }> {
   return (["A", "B"] as DifficultyBand[]).flatMap((band) => {
@@ -515,6 +505,11 @@ const misconceptionRationales: Record<string, string> = {
   "keeps-original-sign": "The learner repeats the original number instead of changing to its opposite.",
   "larger-absolute-value-is-greater": "The learner compares absolute values and ignores how negative numbers are ordered.",
   "misplaces-digit": "The learner places a digit in the wrong positional column.",
+  "compresses-zero-place": "The learner removes a zero placeholder and shifts the remaining digits into lower places.",
+  "swaps-tens-hundreds": "The learner exchanges the tens and hundreds contributions.",
+  "shifts-place-adjacent": "The learner assigns a nonzero digit to the adjacent lower place.",
+  "omits-nonzero-place": "The learner omits a nonzero contribution from the expanded number.",
+  "incorrect-power-ten": "The learner uses a power-of-ten multiplier one place too large.",
   "misplaces-digit-in-composition": "The learner reconstructs an expanded number with a place shifted left or right.",
   "movement-does-not-change-value": "The learner assumes a number-line move leaves the numerical value unchanged.",
   "moves-right-instead-of-left": "The learner reverses the stated number-line direction.",

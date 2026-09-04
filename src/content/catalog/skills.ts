@@ -10,7 +10,7 @@ const reasoning = P.REASONING_OPERATION_V1 as EvidencePolicy;
 const s = (id: string, domainId: string, nameHe: string, order: number, prerequisites: string[], masteryTarget: number, evidencePolicy: EvidencePolicy, modes: SkillModes, options: Partial<Skill> = {}): Skill => ({ id, domainId, nameHe, order, prerequisites, masteryTarget, evidencePolicy, modes, active: true, ...options });
 
 export const SKILLS = [
-  s("AR_PLACE_VALUE", "ARITHMETIC", "ערך המקום", 10, [], 85, concept, quick),
+  s("AR_PLACE_VALUE", "ARITHMETIC", "מבנה המספר העשרוני", 10, [], 85, P.DECIMAL_STRUCTURE_V1, quick, { descriptionHe: "הרכבה ופירוק של מספרים שלמים בבסיס עשרוני, כולל אפסים שומרי מקום וספרות חוזרות." }),
   s("AR_ADD_FACTS", "ARITHMETIC", "חיבור מהיר", 20, [], 90, fact, fluent, { fluency: { enabled: true, targetMedianMs: 5_000 } }),
   s("AR_SUB_FACTS", "ARITHMETIC", "חיסור מהיר", 30, [], 90, fact, fluent, { supportingSkills: ["AR_ADD_FACTS"], fluency: { enabled: true, targetMedianMs: 5_000 } }),
   s("AR_MUL_F_2_5_10", "ARITHMETIC", "כפל ב־2, 5 ו־10", 41, [], 95, fact, fluent, { supportingSkills: ["AR_ADD_FACTS"], fluency: { enabled: true, targetMedianMs: 5_000 } }),

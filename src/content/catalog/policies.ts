@@ -12,6 +12,11 @@ export const EVIDENCE_POLICIES = {
     requiredCategoryEvidence: { calculation: 6, conceptual: 2 },
     requiredBandEvidence: { A: 2, B: 3, C: 2 },
   },
+  DECIMAL_STRUCTURE_V1: {
+    id: "DECIMAL_STRUCTURE", version: 1, minimumAttempts: 10,
+    requiredCategoryEvidence: { representation: 10 },
+    requiredBandEvidence: { A: 3, B: 3, C: 2 },
+  },
   CONCEPT_REP_V1: {
     id: "CONCEPT_REP", version: 1, minimumAttempts: 10,
     requiredCategoryEvidence: { conceptual: 4, representation: 3 },

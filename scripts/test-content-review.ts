@@ -161,7 +161,7 @@ await run("approved content changed under global rules is surfaced for re-review
 });
 
 await run("final refinement definitions start or return to unreviewed", () => {
-  for (const id of ["MVP_FRAC_EQUIV_FORWARD_C", "MVP_FRAC_EQUIV_REVERSE_C", "MVP_INT_ADD_OPPOSITES_B"]) {
+  for (const id of ["MVP_FRAC_EQUIV_FORWARD_C", "MVP_FRAC_EQUIV_REVERSE_C", "MVP_INT_ADD_OPPOSITES_B", ...FOUNDATIONAL_QUESTIONS.filter((item) => item.skillId === "AR_PLACE_VALUE").map((item) => item.id)]) {
     const definition = FOUNDATIONAL_QUESTIONS.find((item) => item.id === id)!;
     assert.equal(definition.version, 6, id);
     assert.ok(definition.tags?.includes("requires-rereview"), id);
@@ -187,8 +187,8 @@ await run("approved definitions preserved unchanged keep their versioned approva
   } satisfies QuestionReviewRecord;
   assert.equal(effectiveReviewRecord(definition, approval)?.status, "approved");
   assert.equal(effectiveReviewRecord(definition, { ...approval, definitionVersion: undefined })?.status, "approved");
-  const changed = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_AR_PLACE_VALUE_GEN_A")!;
-  assert.equal(changed.version, 5);
+  const changed = FOUNDATIONAL_QUESTIONS.find((item) => item.id === "MVP_AR_PLACE_VALUE_GEN_C")!;
+  assert.equal(changed.version, 6);
   assert.equal(effectiveReviewRecord(changed, { ...approval, definitionId: changed.id, definitionVersion: undefined }), undefined);
 });
 

@@ -115,3 +115,21 @@
 2. האם Band D הסימבולי של `FRAC_MEANING` מתאים לגיל היעד, או שעדיף לשמור אותו מחוץ ל־Quick Practice הבסיסי.
 3. האם fixed values `18` ו־`25` ב־`MVP_ALG_VARIABLE_CONTEXT_REASONING_CURATED` עדיין רצויים לאחר תיקון הניסוח, או שעדיף generator הקשרי.
 4. האם מבנה `INT_DIV` הסימבולי עם ביטול `m` מתאים ל־Skill היסודי או צריך לעבור בעתיד ל־Skill אלגברי תומך.
+
+
+## 2026-09-04: Decimal positional structure supersedes digit-value drills
+
+AR_PLACE_VALUE remains the same catalog Skill, now labelled **מבנה המספר העשרוני**: understanding how digits compose a base-10 whole number. This decision supersedes the earlier place-value recommendations in this audit.
+
+Retired from the active MVP bank: `MVP_AR_PLACE_VALUE_GEN_A` and `MVP_AR_PLACE_VALUE_GEN_B` (identify-digit-value). No replacement digit/place terminology drills or diagnostic items were added.
+
+Reworked from version 5 to 6: `MVP_AR_PLACE_VALUE_GEN_C` and `MVP_AR_PLACE_VALUE_STANDARD_TO_EXPANDED_C`.
+New definitions, each version 6: `MVP_AR_PLACE_VALUE_EXPANDED_TO_STANDARD_A`, `MVP_AR_PLACE_VALUE_EXPANDED_TO_STANDARD_B`, `MVP_AR_PLACE_VALUE_STANDARD_TO_EXPANDED_A`, `MVP_AR_PLACE_VALUE_STANDARD_TO_EXPANDED_B`.
+
+Final active coverage: six generated representation definitions, two directions (expanded-to-standard-form and standard-to-expanded-form), each with A/B/C progression. A uses three distinct nonzero digits; B uses three digits with a repeated digit in different places; C uses four digits with a guaranteed internal zero in either hundreds or tens, with repeated digits also possible. This changes structure, not only magnitude.
+
+Distractors model compressed zero placeholders, adjacent place shifts, exchanged tens/hundreds, omitted nonzero terms and incorrect powers of ten. Every distractor is numerically unequal to the answer, and choices have distinct values. Simply omitting a zero term is equivalent and is never graded incorrect.
+
+All six active definitions require re-review. Version-scoped review handling invalidates previous approvals only for the two reworked definitions; unrelated definition versions and approvals are unchanged. Structural content readiness remains satisfied. AR_PLACE_VALUE now uses its own DECIMAL_STRUCTURE evidence policy requiring 10 representation attempts and A/B/C coverage, rather than requiring conceptual terminology evidence. Historical attempt records are retained; no global mastery algorithm or unrelated Skill policy changes.
+
+Future connections: this Skill supports multiplication/division by 10, decimals, and decimal place value. Those curriculum areas are intentionally not implemented in this pass.
