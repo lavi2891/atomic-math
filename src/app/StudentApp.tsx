@@ -23,6 +23,7 @@ import { theme } from "../theme/theme";
 import type { PersonalBest, PersonalBestUpdate } from "@domain/personalBests/types";
 
 import { repeatSessionConfig } from "../domain/session/studentSessionUx.ts";
+import { totalEarnedStars } from "../domain/learningPath/progression.ts";
 
 type Screen = "home" | "path" | "freePractice" | "setup" | "session" | "summary";
 
@@ -41,6 +42,8 @@ export default function StudentApp() {
   const [previousBest, setPreviousBest] = useState<PersonalBest | null>(null);
   const [personalBestUpdate, setPersonalBestUpdate] = useState<PersonalBestUpdate | null>(null);
   const [stageStars, setStageStars] = useState<StageStars>();
+  const [previousStageBestStars, setPreviousStageBestStars] = useState<StageStars>(0);
+  const [totalStarsBefore, setTotalStarsBefore] = useState(0);
   const [shortcutPassed, setShortcutPassed] = useState<boolean>();
   const [starting, setStarting] = useState(false);
   const startingRef = useRef(false);
@@ -69,6 +72,9 @@ export default function StudentApp() {
     startingRef.current = true;
     setStarting(true);
     setOperationError(undefined);
+    const progress = homeData?.learningProgress;
+    setPreviousStageBestStars(learningStage ? progress?.bestStarsByStage[learningStage.stageId] ?? 0 : 0);
+    setTotalStarsBefore(totalEarnedStars(LEARNING_PATHS, progress));
     try {
       const started = await studentPracticeService.start({ studentId: studentIdentityProvider.getStudentId(), skillIds, settings, assignmentId, learningStage, learningShortcut });
       setOperationError(undefined); setSession(started.session); setCompleted(undefined); setPreviousBest(started.previousBest); setPersonalBestUpdate(null); setStageStars(undefined); setShortcutPassed(undefined); setMasteryBefore(started.masteryBefore); setMasteryAfter(started.masteryBefore); setScreen("session");
@@ -78,7 +84,7 @@ export default function StudentApp() {
 
   async function finishSession(state: PracticeSessionState) {
     const finished = await studentPracticeService.finish(state); setMasteryAfter(finished.masteryAfter); setPersonalBestUpdate(finished.personalBest); setStageStars(finished.stageStars); setShortcutPassed(finished.shortcutPassed);
-    setCompleted(state); setScreen("summary"); await refreshHome();
+    await refreshHome(); setCompleted(state); setScreen("summary");
   }
 
   async function returnFromSession() {
@@ -91,10 +97,10 @@ export default function StudentApp() {
   return <div className="page" style={styles.page} dir="rtl"><div className="phone" style={{ ...styles.phone, color: theme.colors.text }}><main className="student-main" ref={mainRef} tabIndex={-1} style={styles.content}>
     {operationError && screen !== "path" ? <p className="student-state student-state--error" role="alert">{operationError}</p> : null}
     {screen === "home" ? homeData ? <StudentHomeScreen data={homeData} definitions={definitions} starting={starting} onOpenPath={(pathId) => { setOperationError(undefined); setActivePathId(pathId); setScreen("path"); }} onStartQuick={(skillIds) => void startSession(skillIds, { mode: "fixed", questionCount: 5 })} onFreePractice={() => setScreen("freePractice")} /> : <p className="student-state" role="status" aria-live="polite">טוען את המסלולים שלך…</p> : null}
-    {screen === "path" && activePath && homeData ? <LearningPathScreen key={activePath.id} path={activePath} progress={homeData.learningProgress} definitions={definitions} personalBests={personalBestRepository} starting={starting} error={operationError} onBack={() => { setOperationError(undefined); setScreen("home"); }} onPractice={(stage, skillIds) => void startSession(skillIds, LEARNING_STAGE_SETTINGS, undefined, stage)} onShortcut={(shortcut, skillIds) => void startSession(skillIds, LEARNING_STAGE_SETTINGS, undefined, undefined, shortcut)} /> : null}
+    {screen === "path" && activePath && homeData ? <LearningPathScreen key={activePath.id} path={activePath} progress={homeData.learningProgress} totalStars={totalEarnedStars(LEARNING_PATHS, homeData.learningProgress)} definitions={definitions} personalBests={personalBestRepository} starting={starting} error={operationError} onBack={() => { setOperationError(undefined); setScreen("home"); }} onPractice={(stage, skillIds) => void startSession(skillIds, LEARNING_STAGE_SETTINGS, undefined, stage)} onShortcut={(shortcut, skillIds) => void startSession(skillIds, LEARNING_STAGE_SETTINGS, undefined, undefined, shortcut)} /> : null}
     {screen === "freePractice" ? <FreePracticeScreen definitions={definitions} onBack={() => setScreen("home")} onOpenDomain={(domainId) => { setActiveDomainId(domainId); setScreen("setup"); }} /> : null}
     {screen === "setup" && activeDomainId ? <SessionSetupScreen studentId={studentIdentityProvider.getStudentId()} domainId={activeDomainId} definitions={definitions} onBack={() => setScreen("freePractice")} onStart={(skillIds, settings) => void startSession(skillIds, settings)} /> : null}
     {screen === "session" && session ? <SessionView session={session} definitions={definitions} previousBest={previousBest} onSessionEnd={(state) => void finishSession(state)} /> : null}
-    {screen === "summary" && completed ? <SessionSummaryScreen completed={completed} masteryBefore={masteryBefore} masteryAfter={masteryAfter} personalBestUpdate={personalBestUpdate} stageStars={stageStars} shortcutPassed={shortcutPassed} homeLabel={completed.session.learningStage || completed.session.learningShortcut ? "חזרה למסלול" : undefined} onHome={() => void returnFromSession()} onRepeat={() => { const config = repeatSessionConfig(completed.session); void startSession(config.skillIds, config.settings, config.assignmentId, config.learningStage, config.learningShortcut); }} /> : null}
+    {screen === "summary" && completed ? <SessionSummaryScreen completed={completed} masteryBefore={masteryBefore} masteryAfter={masteryAfter} personalBestUpdate={personalBestUpdate} stageStars={stageStars} previousStageBestStars={previousStageBestStars} totalStarsBefore={totalStarsBefore} shortcutPassed={shortcutPassed} homeLabel={completed.session.learningStage || completed.session.learningShortcut ? "חזרה למסלול" : undefined} onHome={() => void returnFromSession()} onRepeat={() => { const config = repeatSessionConfig(completed.session); void startSession(config.skillIds, config.settings, config.assignmentId, config.learningStage, config.learningShortcut); }} /> : null}
   </main></div></div>;
 }

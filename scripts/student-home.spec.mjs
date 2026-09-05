@@ -28,6 +28,7 @@ for (const width of [320, 360, 390]) test(`Home at ${width}px has a clear vertic
   await expect(page.locator('.learning-path-card')).toHaveCount(2);
   await expect(numbers(page)).toContainText('השלב הבא: מבנה המספר');
   await expect(numbers(page).getByRole('progressbar')).toHaveAttribute('value', '0');
+  await expect(page.getByRole('status', { name: '0 כוכבים בסך הכול' })).toBeVisible();
   await expect(geometry(page)).toContainText('המסלול ייפתח בקרוב');
   await expect(geometry(page).getByRole('button')).toBeDisabled();
   await expect(page.locator('.domain-tree, table, .mastery-row, .assignment-card, .quick-presets')).toHaveCount(0);
@@ -77,6 +78,7 @@ test('saved completion restores the next cluster and chapter progress after relo
   await open(page, '?completed=first');
   await expect(numbers(page)).toContainText('השלב הבא: חיבור וחיסור');
   await expect(numbers(page)).toContainText('1 מתוך 4 שלבים בפרק');
+  await expect(page.getByRole('status', { name: '1 כוכבים בסך הכול' })).toBeVisible();
   await page.reload();
   await expect(numbers(page)).toContainText('השלב הבא: חיבור וחיסור');
   await numbers(page).getByRole('button').click();
@@ -120,6 +122,7 @@ const stageNode = (page, id) => page.locator(`[data-stage-id="${id}"] button`);
 for (const width of [320, 360, 390]) test(`upward map at ${width}px centers current stage without horizontal overflow`, async ({ page }) => {
   await page.setViewportSize({ width, height: 844 });
   await openMap(page);
+  await expect(page.getByRole('status', { name: '1 כוכבים בסך הכול' })).toBeVisible();
   const current = page.locator('[aria-current="step"]');
   const previous = stageNode(page, 'NA_PLACE_VALUE');
   const next = stageNode(page, 'NA_DECIMAL_REVIEW');
@@ -130,6 +133,7 @@ for (const width of [320, 360, 390]) test(`upward map at ${width}px centers curr
   expect((await page.locator('.path-chapter-node').first().boundingBox()).width).toBeGreaterThan(currentBox.width);
   await expect(previous.locator('[data-icon="check"]')).toBeVisible();
   await expect(next).toBeDisabled();
+  expect(await page.locator('.path-row[data-status="locked"] .path-node-status').count()).toBeLessThanOrEqual(2);
   await next.evaluate(button => button.click());
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(await page.locator('.path-scroll').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
@@ -247,6 +251,7 @@ test('current checkpoint uses a challenge shape and icon with the current-stage 
   await expect(checkpoint.locator('[data-icon="checkpoint"]')).toBeVisible();
   expect(await checkpoint.locator('.path-node-shape').evaluate(el => getComputedStyle(el).transform)).not.toBe('none');
   expect(await checkpoint.locator('.path-node-shape').evaluate(el => getComputedStyle(el).boxShadow)).not.toBe('none');
+  expect(await checkpoint.evaluate(el => getComputedStyle(el).animationName)).toBe('path-unlock');
   const shape = await checkpoint.locator('.path-node-shape').boundingBox();
   const label = await page.locator('[data-stage-id="NA_DECIMAL_CHECKPOINT"] .path-node-label > span').last().boundingBox();
   expect(label.x - shape.x - shape.width).toBeGreaterThanOrEqual(12);
@@ -258,15 +263,23 @@ test('current checkpoint uses a challenge shape and icon with the current-stage 
 test('chapter shortcut is touch friendly and launches its five-question atomic Skill cluster', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 700 });
   await openMap(page, '');
-  const shortcut = page.getByRole('button', { name: /פרק 1.*בדיקת קיצור/ });
+  const shortcut = page.getByRole('button', { name: /בדיקת קיצור לבחירה.*פרק 1/ });
   await expect(shortcut).toBeEnabled();
   const box = await shortcut.boundingBox();
   expect(box.width).toBeGreaterThanOrEqual(48);
   expect(box.height).toBeGreaterThanOrEqual(48);
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(320);
+  const mainNodeBox = await shortcut.locator('xpath=..').locator('.path-chapter-node').boundingBox();
+  expect(Math.abs((box.x + box.width / 2) - (mainNodeBox.x + mainNodeBox.width / 2))).toBeGreaterThanOrEqual(48);
+  await expect(shortcut.locator('[data-icon="key"]')).toBeVisible();
+  await expect(shortcut.locator('xpath=..').locator('.path-shortcut-branch')).toBeVisible();
+  await expect(page.locator('button.path-chapter-node')).toHaveCount(0);
   await shortcut.click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toContainText('5 שאלות קצרות');
-  await expect(dialog).toContainText('80% מספיקים למעבר');
+  await expect(dialog).toContainText('הבדיקה לבחירה');
+  await expect(dialog).not.toContainText('%');
   await page.screenshot({ path: 'test-results/learning-path-shortcut-320.png' });
   await dialog.getByRole('button', { name: 'התחלת בדיקה' }).click();
   await expect(page.locator('.practice-status')).toHaveText('1 / 5');

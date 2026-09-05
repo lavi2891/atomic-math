@@ -97,8 +97,13 @@ await run("Continue sessions persist stage identity, advance Home, and preserve 
   assert.deepEqual((await sessions.getSession(started.session.id))?.learningStage, started.session.learningStage);
   assert.deepEqual((await home()).learningProgress, freshProgress);
   const results = Array.from({ length: 5 }, (_, i) => ({ questionId: `q-${i}`, topicId: "FOUNDATIONS", attemptIndex: 0, isCorrect: i < 4, rawAnswer: { questionType: "numeric" as const, data: { value: "0" } }, responseTimeMs: 1000, timestamp: i * 1000 }));
-  await practice.finish({ ...createInitialSessionState(started.session), status: "ended", endReason: "completed", endedAt: Date.now() + 5000, results });
-  assert.equal((await sessions.getSession(started.session.id))?.stageStars, 2);
+  const endedAt = Date.now() + 5000;
+  await practice.finish({ ...createInitialSessionState(started.session), status: "ended", endReason: "completed", endedAt, results });
+  const persisted = await sessions.getSession(started.session.id);
+  assert.equal(persisted?.learningStage?.stageId, "NA_PLACE_VALUE");
+  assert.equal(persisted?.stageStars, 2);
+  assert.equal(persisted?.status, "completed");
+  assert.equal(persisted?.endedAt, endedAt);
   const restored = await home();
   assert.equal(learningPathCards(LEARNING_PATHS, restored.learningProgress, allSkillIds)[0]!.stage?.id, "NA_ADD_SUBTRACT");
   assert.equal(restored.masteryBySkill.AR_PLACE_VALUE!.attemptCount, 0);

@@ -48,7 +48,7 @@ try {
     assert.equal(node(tree, 'first').props['aria-current'], 'step');
     assert.equal(node(tree, 'first').props.disabled, false);
     for (const id of ['review', 'checkpoint', 'bonus', 'last']) assert.equal(node(tree, id).props.disabled, true);
-    for (const kind of ['normal', 'review', 'checkpoint', 'bonus', 'chapter', 'lock']) assert.ok(tree.root.findAllByProps({ 'data-icon': kind }).length);
+    for (const kind of ['normal', 'review', 'checkpoint', 'bonus', 'chapter', 'lock', 'key']) assert.ok(tree.root.findAllByProps({ 'data-icon': kind }).length);
     assert.equal(tree.root.findAllByType('dialog').length, 0);
     await unmount(tree);
   });
@@ -96,13 +96,15 @@ try {
 
   await run('current chapter shortcut opens a compact assessment sheet with exact atomic Skill scope', async () => {
     const tree = await mount();
-    const chapterButton = tree.root.findAllByProps({ className: 'path-chapter-node' }).find(item => item.type === 'button');
-    assert.ok(chapterButton);
-    assert.match(chapterButton.props['aria-label'], /בדיקת קיצור/);
-    await click(chapterButton);
+    const shortcutButton = tree.root.findByProps({ className: 'path-shortcut-node' });
+    assert.match(shortcutButton.props['aria-label'], /בדיקת קיצור לבחירה/);
+    assert.ok(tree.root.findByProps({ className: 'path-shortcut-branch' }));
+    assert.equal(tree.root.findAllByProps({ className: 'path-chapter-node' }).some(item => item.type === 'button'), false);
+    await click(shortcutButton);
     assert.equal(sheet(tree).props['aria-labelledby'], 'shortcut-sheet-title');
     assert.match(text(sheet(tree)), /5 שאלות קצרות/);
-    assert.match(text(sheet(tree)), /80%/);
+    assert.match(text(sheet(tree)), /לבחירה/);
+    assert.doesNotMatch(text(sheet(tree)), /%/);
     await click(action(tree));
     assert.deepEqual(shortcutLaunches, [[{ pathId: 'NUMBERS_ALGEBRA', chapterId: 'chapter-a', shortcutId: 'shortcut-a' }, ['AR_PLACE_VALUE', 'AR_ADD_FACTS', 'AR_SUB_FACTS']]]);
     await unmount(tree);
@@ -138,11 +140,11 @@ try {
     await unmount(tree);
     const empty = await mount({ path: { ...definition, chapters: [] } });
     assert.match(text(empty.toJSON()), /ייפתח בקרוב/);
-    assert.equal(empty.root.findByProps({ role: 'status' }).props.className, 'student-state');
+    assert.equal(empty.root.findByProps({ className: 'student-state' }).props.role, 'status');
     await unmount(empty);
     const missing = await mount({ progress: undefined });
     assert.match(text(missing.toJSON()), /לא ניתן לטעון/);
-    assert.match(missing.root.findByProps({ role: 'status' }).props.className, /student-state--error/);
+    assert.equal(missing.root.findByProps({ className: 'student-state student-state--error' }).props.role, 'status');
     assert.equal(missing.root.findAllByType('li').length, 0);
     await unmount(missing);
   });

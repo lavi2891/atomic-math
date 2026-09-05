@@ -38,3 +38,10 @@ export function recordStageResult(
     bestStarsByStage: { ...progress.bestStarsByStage, [stageId]: stars },
   };
 }
+
+/** Sum authored stage bests once; replays and unknown stale IDs cannot inflate the total. */
+export function totalEarnedStars(paths: readonly LearningPath[], progress: StudentLearningProgress | undefined): number {
+  if (!progress) return 0;
+  const stageIds = new Set(paths.flatMap((path) => path.chapters.flatMap((chapter) => chapter.stages.map((stage) => stage.id))));
+  return [...stageIds].reduce((total, stageId) => total + (progress.bestStarsByStage[stageId] ?? 0), 0);
+}

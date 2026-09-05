@@ -7,6 +7,8 @@ import type { LearningPathId } from "../../domain/learningPath/types.ts";
 import { contentBackedCatalog } from "../../domain/studentHome/contentAvailability.ts";
 import { resolveQuickPracticeScope } from "../../domain/studentHome/quickPractice.ts";
 import { learningPathCards } from "../../domain/studentHome/learningPathCards.ts";
+import { totalEarnedStars } from "../../domain/learningPath/progression.ts";
+import { TotalStars } from "../learningPath/TotalStars.tsx";
 
 type Props = {
   data: StudentHomeData;
@@ -23,9 +25,10 @@ export function StudentHomeScreen({ data, definitions, starting = false, onOpenP
   const cards = learningPathCards(LEARNING_PATHS, data.learningProgress, available);
   const quick = useMemo(() => resolveQuickPracticeScope({ assignments: data.assignments, masteryBySkill: data.masteryBySkill, domains: DOMAINS, skills: SKILLS, definitions }), [data.assignments, data.masteryBySkill, definitions]);
   const quickIds = quick.skillIds.filter((id) => available.has(id));
+  const totalStars = totalEarnedStars(LEARNING_PATHS, data.learningProgress);
 
   return <section className="home-screen student-home" aria-busy={starting}>
-    <h1>המשך במסלול</h1>
+    <header className="student-home-header"><h1>המשך במסלול</h1>{data.learningProgress ? <TotalStars count={totalStars} /> : null}</header>
     <div className="learning-path-cards">
       {cards.map((card) => <article key={card.path.id} className="learning-path-card" data-path={card.path.id} aria-labelledby={`path-${card.path.id}`}>
         <h2 id={`path-${card.path.id}`}>{card.path.nameHe}</h2>

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { SKILLS, getSkillById } from "../src/content/catalog/index.ts";
 import { LEARNING_PATHS } from "../src/content/learningPaths.ts";
-import { derivePathProgress, recordStageResult } from "../src/domain/learningPath/progression.ts";
+import { derivePathProgress, recordStageResult, totalEarnedStars } from "../src/domain/learningPath/progression.ts";
 import type { Chapter, LearningPath, Stage, StageStars, StudentLearningProgress } from "../src/domain/learningPath/types.ts";
 import { projectMastery } from "../src/domain/mastery/projectMastery.ts";
 import { createPracticeSession } from "../src/domain/session/practiceSession.ts";
@@ -82,6 +82,15 @@ run("each reward from one to three stars completes and unlocks the next main sta
   }
 });
 
+run("a one-star path unlock leaves attempt-based Skill mastery authoritative", () => {
+  const progress = recordStageResult(sequence, fresh(), "normal", 1);
+  assert.equal(derivePathProgress(sequence, progress).find((entry) => entry.stageId === "review")?.status, "available");
+  const mastery = projectMastery({ studentId: progress.studentId, skillId: "AR_PLACE_VALUE", attempts: [], evidencePolicy: getSkillById("AR_PLACE_VALUE")!.evidencePolicy });
+  assert.equal(mastery.attemptCount, 0);
+  assert.equal(mastery.mastery, 0);
+  assert.equal(mastery.evidenceLevel, "insufficient");
+});
+
 run("replays preserve the best stars and cannot revoke an unlock", () => {
   let progress = recordStageResult(sequence, fresh(), "normal", 1);
   progress = recordStageResult(sequence, progress, "normal", 2);
@@ -92,6 +101,17 @@ run("replays preserve the best stars and cannot revoke an unlock", () => {
   progress = recordStageResult(sequence, progress, "normal", 0);
   assert.equal(progress.bestStarsByStage.normal, 3);
   assert.equal(derivePathProgress(sequence, progress).find((entry) => entry.stageId === "review")?.status, "available");
+});
+
+run("total stars sum authored bests once and a two-to-three replay adds only one", () => {
+  let progress = recordStageResult(sequence, fresh(), "normal", 2);
+  progress = recordStageResult(sequence, progress, "bonus", 3);
+  const before = totalEarnedStars([sequence], { ...progress, bestStarsByStage: { ...progress.bestStarsByStage, staleStage: 3 } });
+  assert.equal(before, 5, "unknown stale stage IDs are not visible rewards");
+  progress = recordStageResult(sequence, progress, "normal", 3);
+  assert.equal(totalEarnedStars([sequence], progress) - before, 1);
+  progress = recordStageResult(sequence, progress, "normal", 1);
+  assert.equal(totalEarnedStars([sequence], progress), 6, "a worse replay cannot reduce the total");
 });
 
 run("review and checkpoint stages gate progression across chapter boundaries", () => {

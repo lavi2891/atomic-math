@@ -39,6 +39,7 @@ type ReviewData = {
   rawAnswer: AnyRawAnswer;
   isCorrect: boolean;
   showCorrectAnswer?: boolean;
+  tone?: "default" | "neutral";
 };
 
 type Props = {
@@ -513,7 +514,7 @@ export function QuestionView({
           }}
         >
           <strong>
-            {reviewData.isCorrect ? he.feedback.correct : he.feedback.incorrect}
+            {reviewData.isCorrect ? he.feedback.correct : reviewData.tone === "neutral" ? "כדאי לבדוק שוב ◇" : he.feedback.incorrect}
           </strong>
 
           <div>

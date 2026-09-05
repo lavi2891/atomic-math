@@ -146,6 +146,44 @@ test('desktop keeps inline submit and full header despite focus and resize', asy
   await expect(page.locator('form button[type="submit"]')).toHaveText('אישור');
 });
 
+for (const outcome of ['passed', 'retry']) test(`stage completion ${outcome} keeps its result and actions visible at 320px`, async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto(`${url}?completion=${outcome}`);
+  const completion = page.locator('.stage-completion');
+  await expect(completion).toBeVisible();
+  const primaryLabel = outcome === 'passed' ? 'המשך' : 'ניסיון נוסף';
+  await expect(page.getByRole('button', { name: primaryLabel, exact: true })).toBeVisible();
+  expect(await page.getByRole('button', { name: primaryLabel, exact: true }).evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(34, 197, 94)');
+  await expect(page.getByRole('button', { name: 'סיכום שלב', exact: true })).toBeVisible();
+  await expect(page.getByRole('img', { name: `${outcome === 'passed' ? 3 : 0} מתוך 3 כוכבים` })).toBeVisible();
+  if (outcome === 'passed') {
+    await expect(page.getByText('פתחת את השלב הבא')).toBeVisible();
+    await expect.poll(() => page.locator('.stage-completion__stars [data-earned="true"]').count()).toBe(3);
+    expect(await page.locator('.stage-completion__stars [data-earned="true"]').first().evaluate(el => getComputedStyle(el).color)).toBe('rgb(255, 212, 95)');
+    await expect(page.getByRole('status', { name: '37 כוכבים בסך הכול' })).toBeVisible();
+  } else {
+    await expect(page.getByText('השלב הבא עדיין מחכה')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'חזרה למסלול', exact: true })).toBeVisible();
+  }
+  for (const action of await page.locator('.stage-completion__actions button').all()) {
+    const box = await action.boundingBox();
+    expect(box.height).toBeGreaterThanOrEqual(48);
+    expect(box.y + box.height).toBeLessThanOrEqual(640);
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  await page.screenshot({ path: `test-results/stage-completion-${outcome}-320.png` });
+  if (outcome === 'retry') {
+    await page.getByRole('button', { name: 'סיכום שלב', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'סיכום שלב', exact: true })).toBeVisible();
+    await expect(page.locator('.stage-summary__questions article')).toHaveCount(3);
+    await expect(page.locator('.stage-summary')).toContainText('התשובה שלך:');
+    await expect(page.locator('.stage-summary')).toContainText('התשובה הנכונה:');
+    await expect(page.locator('.stage-summary')).not.toContainText(/mastery|evidence|supportingSkills|contentFamily|difficulty/i);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+    await page.screenshot({ path: 'test-results/stage-summary-retry-320.png', fullPage: true });
+  }
+});
+
 test('30-second game survives two answers at six seconds and a missing next skill', async ({ page }) => {
   await page.clock.install();
   await page.clock.pauseAt(new Date(Date.now() + 1000));

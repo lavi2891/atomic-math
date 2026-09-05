@@ -8,18 +8,42 @@ import { colors, radius, spacing } from "../../ui/tokens.ts";
 import type { StageStars } from "../../domain/learningPath/types.ts";
 import { learningSessionContext } from "../../domain/learningPath/sessionProgress.ts";
 import { LEARNING_PATHS } from "../../content/learningPaths.ts";
+import { StageCompletionScreen } from "./StageCompletionScreen.tsx";
+import { StageStars as StageStarsDisplay } from "../learningPath/PathNodeIcon.tsx";
 
-type Props = { completed: PracticeSessionState; masteryBefore: Record<string, MasterySnapshot>; masteryAfter: Record<string, MasterySnapshot>; personalBestUpdate: PersonalBestUpdate | null; stageStars?: StageStars; shortcutPassed?: boolean; homeLabel?: string; onHome: () => void; onRepeat: () => void };
+type Props = { completed: PracticeSessionState; masteryBefore: Record<string, MasterySnapshot>; masteryAfter: Record<string, MasterySnapshot>; personalBestUpdate: PersonalBestUpdate | null; stageStars?: StageStars; previousStageBestStars?: StageStars; totalStarsBefore?: number; shortcutPassed?: boolean; homeLabel?: string; onHome: () => void; onRepeat: () => void };
 
 const starLabels = ["כמעט שם — עוד סיבוב קצר וננסה שוב.", "עברת את השלב", "תוצאה חזקה", "מצוין"] as const;
 
-export function SessionSummaryScreen({ completed, masteryBefore, masteryAfter, personalBestUpdate, stageStars, shortcutPassed, homeLabel = "מסך ראשי", onHome, onRepeat }: Props) {
+export function SessionSummaryScreen({ completed, masteryBefore, masteryAfter, personalBestUpdate, stageStars, previousStageBestStars = 0, totalStarsBefore = 0, shortcutPassed, homeLabel = "מסך ראשי", onHome, onRepeat }: Props) {
   const [reviewing, setReviewing] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [details, setDetails] = useState(false);
   const reviewResults = sessionReviewResults(completed.results, showAll);
   const pathContext = learningSessionContext(LEARNING_PATHS, completed.session);
   const contextTitle = pathContext?.titleHe ?? activePracticeScopeLabel(completed.session.selectedSkillIds);
+
+  if (pathContext?.kind === "stage" && stageStars !== undefined) {
+    if (!reviewing) return <StageCompletionScreen stageName={pathContext.titleHe} chapterName={pathContext.chapterNameHe} stars={stageStars} previousBestStars={previousStageBestStars} totalStarsBefore={totalStarsBefore} personalBestUpdate={personalBestUpdate} onContinue={onHome} onRepeat={onRepeat} onSummary={() => setReviewing(true)} />;
+    return <section className="stage-summary">
+      <header><div><p>{pathContext.chapterNameHe}</p><h2>סיכום שלב</h2></div><button type="button" onClick={() => setReviewing(false)}>חזרה לתוצאה</button></header>
+      <h3>{pathContext.titleHe}</h3>
+      <dl className="stage-summary__facts">
+        <div><dt>תוצאה</dt><dd>{sessionResultLabel(completed)}</dd></div>
+        <div><dt>כוכבים</dt><dd><StageStarsDisplay stars={stageStars} /></dd></div>
+        <div><dt>שאלות שנענו</dt><dd>{completed.results.length}</dd></div>
+      </dl>
+      <label className="stage-summary__all"><input type="checkbox" checked={showAll} onChange={(event) => setShowAll(event.target.checked)} />כל השאלות</label>
+      {!reviewResults.length ? <p>{completed.results.length ? "כל הכבוד, אין תשובות שגויות!" : "לא נענו שאלות בתרגול הזה."}</p> : null}
+      <div className="stage-summary__questions">
+        {reviewResults.map((result, index) => <article key={`${index}:${result.questionId}`}>
+          {result.questionSnapshot ? <QuestionView question={result.questionSnapshot} mode="review" review={{ rawAnswer: result.rawAnswer as NonNullable<Parameters<typeof QuestionView>[0]["review"]>["rawAnswer"], isCorrect: result.isCorrect, tone: "neutral" }} /> : <p>השאלה אינה זמינה להצגה.</p>}
+          {/* A future “הסבר לי את הטעות” action belongs here, beside one reviewed answer. */}
+        </article>)}
+      </div>
+    </section>;
+  }
+
   return <section style={{ display: "grid", gap: spacing.md }}>
     <h2 style={{ margin: 0 }}>{reviewing ? "חזרה על התרגול" : completed.endReason === "stopped" ? "התרגול הסתיים" : isSuccessfulSessionCompletion(completed) ? "סיימת את התרגול!" : "התרגול הופסק עקב תקלה"}</h2>
     <div><strong>{contextTitle}</strong>{pathContext ? <div>{pathContext.chapterNameHe}</div> : null}<div>{sessionModeLabels[completed.session.settings.mode]}</div></div>
