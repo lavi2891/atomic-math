@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Atomic Math</title>
+  </head>
+  <body>
+    <script>
+      (function () {
+        var base = "/atomic-math/";
+        var route = location.pathname.slice(base.length - 1) + location.search + location.hash;
+        location.replace(base + "?__spa=" + encodeURIComponent(route));
+      }());
+    </script>
+  </body>
+</html>

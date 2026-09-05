@@ -184,6 +184,28 @@ for (const outcome of ['passed', 'retry']) test(`stage completion ${outcome} kee
   }
 });
 
+for (const outcome of ['passed', 'retry']) test(`shortcut completion ${outcome} uses the focused mobile result layout`, async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto(`${url}?shortcutCompletion=${outcome}`);
+  const completion = page.locator('.shortcut-completion');
+  await expect(completion).toBeVisible();
+  const primaryLabel = outcome === 'passed' ? 'המשך במסלול' : 'חזרה למסלול';
+  await expect(page.getByRole('button', { name: primaryLabel, exact: true })).toBeVisible();
+  expect(await page.getByRole('button', { name: primaryLabel, exact: true }).evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(34, 197, 94)');
+  await expect(page.getByRole('button', { name: 'נסה שוב', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'סיכום מבחן', exact: true })).toBeVisible();
+  await expect(page.getByRole('img', { name: `${outcome === 'passed' ? 2 : 0} מתוך 3 כוכבים` })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  for (const action of await page.locator('.stage-completion__actions button').all()) {
+    const box = await action.boundingBox();
+    expect(box.height).toBeGreaterThanOrEqual(48);
+    expect(box.y + box.height).toBeLessThanOrEqual(640);
+  }
+  await page.getByRole('button', { name: 'סיכום מבחן', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'סיכום מבחן', exact: true })).toBeVisible();
+  await expect(page.locator('.shortcut-summary')).not.toContainText(/mastery|evidence|supportingSkills|contentFamily|difficulty|דוח מפורט/i);
+});
+
 test('30-second game survives two answers at six seconds and a missing next skill', async ({ page }) => {
   await page.clock.install();
   await page.clock.pauseAt(new Date(Date.now() + 1000));

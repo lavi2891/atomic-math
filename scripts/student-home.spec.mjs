@@ -5,13 +5,15 @@ let server;
 let url;
 test.beforeAll(async () => {
   server = await createServer({ envFile: false, define: { 'import.meta.env.VITE_APPS_SCRIPT_URL': JSON.stringify(''), 'import.meta.env.VITE_STUDENT_ID': JSON.stringify('home-test') }, server: { port: 0, host: '127.0.0.1' }, plugins: [{ name: 'home-test-page', configureServer(vite) {
-    vite.middlewares.use('/atomic-math/__home-test', async (_req, res) => {
-      const html = await vite.transformIndexHtml('/atomic-math/__home-test', '<!doctype html><html lang="he" dir="rtl"><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><div id="root"></div><script type="module" src="/scripts/fixtures/student-home.tsx"></script></body></html>');
+    vite.middlewares.use(async (req, res, next) => {
+      const pathname = new URL(req.url, 'http://localhost').pathname;
+      if (!['/atomic-math/', '/atomic-math/course/numbers-algebra', '/atomic-math/course/geometry'].includes(pathname)) return next();
+      const html = await vite.transformIndexHtml(pathname, '<!doctype html><html lang="he" dir="rtl"><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><div id="root"></div><script type="module" src="/scripts/fixtures/student-home.tsx"></script></body></html>');
       res.setHeader('Content-Type', 'text/html'); res.end(html);
     });
   } }] });
   await server.listen();
-  url = `http://127.0.0.1:${server.httpServer.address().port}/atomic-math/__home-test`;
+  url = `http://127.0.0.1:${server.httpServer.address().port}/atomic-math/`;
 });
 test.afterAll(async () => { await server?.close(); });
 const numbers = page => page.getByRole('article', { name: 'מספרים ואלגברה' });
@@ -21,6 +23,56 @@ async function open(page, query = '') {
   await expect(page.getByRole('heading', { level: 1, name: 'המשך במסלול' })).toBeVisible();
   await expect(numbers(page).getByRole('button')).toBeEnabled();
 }
+
+test('direct Home URL survives refresh', async ({ page }) => {
+  await page.goto(url);
+  await expect(page).toHaveURL(/\/atomic-math\/$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'המשך במסלול' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1, name: 'המשך במסלול' })).toBeVisible();
+});
+
+test('direct Numbers and Algebra URL restores the current stage after refresh', async ({ page }) => {
+  await page.goto(`${url}course/numbers-algebra`);
+  await expect(page.getByRole('heading', { level: 1, name: 'מספרים ואלגברה' })).toBeVisible();
+  await expect(page.locator('[aria-current="step"]')).toBeVisible();
+  await page.reload();
+  await expect(page).toHaveURL(/\/atomic-math\/course\/numbers-algebra$/);
+  await expect(page.locator('[aria-current="step"]')).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/atomic-math\/$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'המשך במסלול' })).toBeVisible();
+});
+
+test('direct Geometry URL survives refresh', async ({ page }) => {
+  await page.goto(`${url}course/geometry`);
+  await expect(page.getByRole('heading', { level: 1, name: 'גיאומטריה' })).toBeVisible();
+  await expect(page.getByText('המסלול ייפתח בקרוב')).toBeVisible();
+  await page.reload();
+  await expect(page).toHaveURL(/\/atomic-math\/course\/geometry$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'גיאומטריה' })).toBeVisible();
+});
+
+test('browser Back returns from a course to Home', async ({ page }) => {
+  await open(page);
+  await numbers(page).getByRole('button').click();
+  await expect(page).toHaveURL(/\/atomic-math\/course\/numbers-algebra$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/atomic-math\/$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'המשך במסלול' })).toBeVisible();
+});
+
+test('browser Back from a course session restores its originating course', async ({ page }) => {
+  await open(page);
+  await numbers(page).getByRole('button').click();
+  await page.locator('[aria-current="step"]').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'התחלת תרגול' }).click();
+  await expect(page.locator('.practice-status')).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/atomic-math\/course\/numbers-algebra$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'מספרים ואלגברה' })).toBeVisible();
+  await expect(page.locator('[aria-current="step"]')).toBeVisible();
+});
 
 for (const width of [320, 360, 390]) test(`Home at ${width}px has a clear vertical hierarchy and large touch targets`, async ({ page }) => {
   await page.setViewportSize({ width, height: 844 });
