@@ -39,15 +39,23 @@ export function LearningPathScreen({ path, progress, definitions, personalBests,
   const selectedChapter = path.chapters.find((chapter) => chapter.id === selectedChapterId);
 
   useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      const scroller = scrollRef.current;
-      const current = currentRef.current;
-      if (scroller && current) {
-        const top = current.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
-        scroller.scrollTo({ top: top - (scroller.clientHeight - current.clientHeight) / 2, behavior: "instant" });
-      }
-    });
-    return () => cancelAnimationFrame(frame);
+    if (typeof window === "undefined") return;
+    let frame = 0;
+    const centerCurrent = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const scroller = scrollRef.current;
+        const current = currentRef.current;
+        if (scroller && current) {
+          const top = current.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+          const centered = top - (scroller.clientHeight - current.clientHeight) / 2;
+          scroller.scrollTo({ top: Math.max(0, Math.min(centered, scroller.scrollHeight - scroller.clientHeight)), behavior: "instant" });
+        }
+      });
+    };
+    centerCurrent();
+    window.addEventListener("resize", centerCurrent);
+    return () => { cancelAnimationFrame(frame); window.removeEventListener("resize", centerCurrent); };
   }, [path.id, focusStageId]);
 
   function stageNode(stage: Stage) {
@@ -74,7 +82,7 @@ export function LearningPathScreen({ path, progress, definitions, personalBests,
     const status = completed ? "completed" : current ? "available" : "locked";
     const shortcutAvailable = !!chapter.shortcutTest && status !== "locked";
     return [<li key={chapter.id} className="path-row path-chapter-row" data-kind="chapter" data-status={status}>
-      {shortcutAvailable ? <button type="button" className="path-chapter-node" aria-haspopup="dialog" aria-label={`פרק ${index + 1}: ${chapter.nameHe} · בדיקת קיצור`} disabled={starting} onClick={() => setSelectedChapterId(chapter.id)}><PathNodeIcon kind={completed ? "check" : "chapter"} /><span>{index + 1}</span><small>בדיקת קיצור</small></button>
+      {shortcutAvailable ? <button type="button" className="path-chapter-node" aria-haspopup="dialog" aria-label={`פרק ${index + 1}: ${chapter.nameHe} · בדיקת קיצור`} disabled={starting} onClick={() => setSelectedChapterId(chapter.id)}><PathNodeIcon kind={completed ? "check" : "chapter"} /><span>{index + 1}</span><small>קיצור</small></button>
         : <div className="path-chapter-node" aria-hidden="true"><PathNodeIcon kind={completed ? "check" : current ? "chapter" : "lock"} /><span>{index + 1}</span></div>}
       <h2 className="path-node-label"><small>פרק {index + 1}{completed ? " · הושלם" : ""}</small>{chapter.nameHe}</h2>
     </li>, ...chapter.stages.map(stageNode)];
@@ -82,7 +90,7 @@ export function LearningPathScreen({ path, progress, definitions, personalBests,
 
   return <section className="learning-path-screen">
     <header className="path-screen-header"><button type="button" className="quiet-button" disabled={starting} onClick={onBack}>חזרה לבית</button><div><h1>{path.nameHe}</h1><p>מתקדמים למעלה, שלב אחרי שלב ↑</p></div></header>
-    {!progress ? <p role="status">לא ניתן לטעון את ההתקדמות כרגע</p> : !stages.length ? <p role="status">המסלול ייפתח בקרוב</p> :
+    {!progress ? <p className="student-state student-state--error" role="status">לא ניתן לטעון את ההתקדמות כרגע</p> : !stages.length ? <p className="student-state" role="status">המסלול ייפתח בקרוב</p> :
       <div ref={scrollRef} className="path-scroll" role="region" aria-label="מפת המסלול, מתקדמים מלמטה למעלה" tabIndex={0}>
         <ol className="path-route" aria-label="פרקים ושלבים, מהיעד אל ההתחלה">{rows}</ol>
       </div>}

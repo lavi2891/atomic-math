@@ -138,9 +138,11 @@ try {
     await unmount(tree);
     const empty = await mount({ path: { ...definition, chapters: [] } });
     assert.match(text(empty.toJSON()), /ייפתח בקרוב/);
+    assert.equal(empty.root.findByProps({ role: 'status' }).props.className, 'student-state');
     await unmount(empty);
     const missing = await mount({ progress: undefined });
     assert.match(text(missing.toJSON()), /לא ניתן לטעון/);
+    assert.match(missing.root.findByProps({ role: 'status' }).props.className, /student-state--error/);
     assert.equal(missing.root.findAllByType('li').length, 0);
     await unmount(missing);
   });

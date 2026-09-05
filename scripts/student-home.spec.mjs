@@ -22,7 +22,7 @@ async function open(page, query = '') {
   await expect(numbers(page).getByRole('button')).toBeEnabled();
 }
 
-for (const width of [320, 390]) test(`Home at ${width}px has a clear vertical hierarchy and large touch targets`, async ({ page }) => {
+for (const width of [320, 360, 390]) test(`Home at ${width}px has a clear vertical hierarchy and large touch targets`, async ({ page }) => {
   await page.setViewportSize({ width, height: 844 });
   await open(page);
   await expect(page.locator('.learning-path-card')).toHaveCount(2);
@@ -42,6 +42,16 @@ for (const width of [320, 390]) test(`Home at ${width}px has a clear vertical hi
     bottom = box.y + box.height;
   }
   for (const button of await page.locator('.student-home button').all()) expect((await button.boundingBox()).height).toBeGreaterThanOrEqual(48);
+  const phonePadding = await page.locator('.phone').evaluate(el => ({
+    inlineStart: parseFloat(getComputedStyle(el).paddingInlineStart),
+    inlineEnd: parseFloat(getComputedStyle(el).paddingInlineEnd),
+    top: parseFloat(getComputedStyle(el).paddingTop),
+    bottom: parseFloat(getComputedStyle(el).paddingBottom),
+  }));
+  expect(phonePadding.inlineStart).toBeGreaterThanOrEqual(10);
+  expect(phonePadding.inlineEnd).toBeGreaterThanOrEqual(10);
+  expect(phonePadding.top).toBeGreaterThanOrEqual(14);
+  expect(phonePadding.bottom).toBeGreaterThanOrEqual(16);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   await page.screenshot({ path: `test-results/student-home-${width}.png`, fullPage: true });
 });
@@ -107,7 +117,7 @@ async function openMap(page, query = '?completed=first') {
 }
 const stageNode = (page, id) => page.locator(`[data-stage-id="${id}"] button`);
 
-for (const width of [320, 390]) test(`upward map at ${width}px centers current stage without horizontal overflow`, async ({ page }) => {
+for (const width of [320, 360, 390]) test(`upward map at ${width}px centers current stage without horizontal overflow`, async ({ page }) => {
   await page.setViewportSize({ width, height: 844 });
   await openMap(page);
   const current = page.locator('[aria-current="step"]');
@@ -131,6 +141,8 @@ for (const width of [320, 390]) test(`upward map at ${width}px centers current s
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(width);
   }
+  await page.setViewportSize({ width, height: 640 });
+  await expect(current).toBeInViewport();
   await page.screenshot({ path: `test-results/learning-path-${width}.png` });
   const oldScroll = await page.locator('.path-scroll').evaluate(el => el.scrollTop);
   await page.locator('.path-scroll').evaluate(el => { el.scrollTop -= 320; });
@@ -153,6 +165,9 @@ test('bottom sheet fits narrow and short viewports, traps focus, and restores th
   expect(box.x + box.width).toBeLessThanOrEqual(320);
   expect(box.y + box.height).toBeCloseTo(568, 0);
   await expect(dialog.getByRole('button', { name: 'התחלת תרגול' })).toBeInViewport();
+  expect((await dialog.getByRole('button', { name: 'התחלת תרגול' }).boundingBox()).height).toBeGreaterThanOrEqual(48);
+  expect((await dialog.getByRole('button', { name: 'סגירה' }).boundingBox()).height).toBeGreaterThanOrEqual(48);
+  expect(parseFloat(await dialog.locator('.path-stars').evaluate(el => getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(30);
   for (let i = 0; i < 5; i++) {
     await page.keyboard.press('Tab');
     expect(await dialog.evaluate(el => el.contains(document.activeElement))).toBe(true);
@@ -176,6 +191,8 @@ test('completed nodes offer stars, relevant best, replay, and a return to the ma
   await stageNode(page, 'NA_PLACE_VALUE').click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('img', { name: '1 מתוך 3 כוכבים' })).toBeVisible();
+  const starColors = await dialog.locator('.path-stars > span').evaluateAll(stars => stars.map(star => getComputedStyle(star).color));
+  expect(starColors[0]).not.toBe(starColors[1]);
   await expect(dialog).toContainText('השיא שלך: 10 שניות');
   await page.screenshot({ path: 'test-results/learning-path-replay-sheet.png' });
   await dialog.getByRole('button', { name: 'תרגול חוזר' }).click();
@@ -184,6 +201,23 @@ test('completed nodes offer stars, relevant best, replay, and a return to the ma
   await page.getByRole('button', { name: 'חזרה למסלול', exact: true }).click();
   await expect(stageNode(page, 'NA_ADD_SUBTRACT')).toHaveAttribute('aria-current', 'step');
   await expect(stageNode(page, 'NA_ADD_SUBTRACT')).toBeInViewport();
+});
+
+test('desktop fallback keeps the student hierarchy centered and the path vertically usable', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await open(page, '?completed=first');
+  const phone = await page.locator('.phone').boundingBox();
+  expect(phone.width).toBeLessThanOrEqual(760);
+  expect(phone.x).toBeGreaterThan(0);
+  expect(phone.x + phone.width).toBeLessThan(1280);
+  const firstCard = await numbers(page).boundingBox();
+  const secondCard = await geometry(page).boundingBox();
+  expect(secondCard.y).toBeGreaterThanOrEqual(firstCard.y + firstCard.height);
+  await numbers(page).getByRole('button').click();
+  await expect(page.locator('[aria-current="step"]')).toBeInViewport();
+  expect(await page.locator('.path-scroll').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1280);
+  await page.screenshot({ path: 'test-results/student-path-desktop.png' });
 });
 
 test('bonus uses a short side branch while the main stage stays current', async ({ page }) => {

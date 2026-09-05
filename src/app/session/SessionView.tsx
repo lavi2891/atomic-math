@@ -56,7 +56,7 @@ export function SessionView({ session, definitions, initialTargetDifficulty = 0,
   }, [engine.state, onSessionEnd]);
 
   if (engine.state.status === "ended" || !engine.state.currentQuestion) {
-    return <div>מסיים…</div>;
+    return <div className="student-state" role="status" aria-live="polite">מסיים…</div>;
   }
 
   async function saveAttempt(result: AnswerResult): Promise<void> {
