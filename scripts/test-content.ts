@@ -12,7 +12,7 @@ import type { Attempt } from "../src/domain/attempts/types.ts";
 import { isAssignmentComplete } from "../src/domain/studentHome/deriveStudentHome.ts";
 import { createChallengeSignature, challengeSignatureKey } from "../src/domain/personalBests/challengeSignature.ts";
 import { resolveQuickPracticeScope } from "../src/domain/studentHome/quickPractice.ts";
-import { auditFoundationalContent, curatedNumericLiteralIssues, curatedNumericLiteralItems, deprecatedStudentTerminologyIssues, factorMultipleSemanticIssues, generatedInstanceMetadataIssues, magnitudeBandProgressionIssues, pedagogicalTargetingIssues, questionCategorySemanticsIssues, signedMultiplicationLoadIssues, structuralBandProgressionIssues, studentFacingVariableSupportIssues, studentMathContentIssues, studentMathContentWarnings, supportingSkillMetadataIssues, symbolicAuthoringIssues, validateFoundationalContent } from "../src/content/validateContent.ts";
+import { auditFoundationalContent, curatedNumericLiteralIssues, curatedNumericLiteralItems, deprecatedStudentTerminologyIssues, factorMultipleSemanticIssues, generatedInstanceMetadataIssues, literacyDemandIssues, magnitudeBandProgressionIssues, pedagogicalTargetingIssues, questionCategorySemanticsIssues, signedMultiplicationLoadIssues, structuralBandProgressionIssues, studentFacingVariableSupportIssues, studentMathContentIssues, studentMathContentWarnings, supportingSkillMetadataIssues, symbolicAuthoringIssues, validateFoundationalContent } from "../src/content/validateContent.ts";
 import { atomicSkillIdentityIssues } from "../src/content/foundations/skillScope.ts";
 import { signedGeneratedInstanceIssues, signedSkillDefinitionIssues } from "../src/content/foundations/skillScope.ts";
 import type { GeneratedQuestionInstance, OptionContent } from "../src/domain/questions/types.ts";
@@ -797,4 +797,22 @@ run("all signed comparison variants preserve authored operand order for RTL rend
       assert.equal(renderedText(correct.content), expected);
     }
   }
+});
+
+run("every active definition has valid authored literacy demand", () => {
+  const valid = new Set(["none", "light", "moderate", "high"]);
+  assert.ok(FOUNDATIONAL_QUESTIONS.every((definition) => valid.has(definition.literacyDemand ?? "")));
+  assert.ok(FOUNDATIONAL_QUESTIONS.some((definition) => definition.category === "calculation" && definition.literacyDemand === "none"));
+  assert.ok(FOUNDATIONAL_QUESTIONS.some((definition) => definition.category === "conceptual" && definition.literacyDemand === "moderate"));
+  assert.ok(FOUNDATIONAL_QUESTIONS.filter((definition) => definition.literacyDemand === "high").length <= 2);
+});
+
+run("generated instances inherit literacy demand and invalid values are rejected", () => {
+  const definition = generatedDefinition("MVP_AR_MUL_F_2_5_10_CONTEXT_A");
+  const question = buildGeneratedQuestion(definition, { seed: 17 });
+  assert.equal(question.literacyDemand, definition.literacyDemand);
+  assert.deepEqual(generatedInstanceMetadataIssues(definition, question), []);
+  assert.ok(literacyDemandIssues({ ...definition, literacyDemand: "invalid" as never }).length > 0);
+  assert.ok(literacyDemandIssues({ ...definition, literacyDemand: undefined } as GeneratedQuestionDefinition & { skillId: string }).length > 0);
+  assert.ok(literacyDemandIssues({ ...definition, literacyDemand: "none" }).some((issue) => issue.includes("contextual")));
 });

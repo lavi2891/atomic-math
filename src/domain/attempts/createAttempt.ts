@@ -42,6 +42,7 @@ export function createAttemptFromAnswer(input: {
     difficulty: question.difficulty ?? 0.5,
     difficultyBand: question.difficultyBand,
     category: question.category ?? "calculation",
+    literacyDemand: question.literacyDemand,
     submittedAnswer: result.rawAnswer,
     normalizedAnswer: result.normalizedAnswer,
     correct: result.isCorrect,

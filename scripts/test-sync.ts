@@ -7,7 +7,7 @@ import type { Attempt } from "../src/domain/attempts/types.ts";
 import type { PersistedSession } from "../src/domain/sync/types.ts";
 
 async function run(name: string, fn: () => void | Promise<void>) { await fn(); process.stdout.write(`PASS ${name}\n`); }
-function attempt(id: string): Attempt { return { attemptId:id,sessionId:"S",studentId:"STUDENT",questionId:"Q",skillId:"SKILL",difficulty:0.5,submittedAnswer:{questionType:"numeric",data:{value:"1"}},correct:true,supportLevel:"independent",scoreValue:1,responseTimeMs:1000,submittedAt:"2026-01-01T00:00:00.000Z",sequenceNumber:Number(id.replace(/\D/g,""))||1 }; }
+function attempt(id: string): Attempt { return { attemptId:id,sessionId:"S",studentId:"STUDENT",questionId:"Q",skillId:"SKILL",difficulty:0.5,literacyDemand:"moderate",submittedAnswer:{questionType:"numeric",data:{value:"1"}},correct:true,supportLevel:"independent",scoreValue:1,responseTimeMs:1000,submittedAt:"2026-01-01T00:00:00.000Z",sequenceNumber:Number(id.replace(/\D/g,""))||1 }; }
 function session(): PersistedSession { return { id:"S",studentId:"STUDENT",selectedSkillIds:["SKILL"],settings:{mode:"fixed",questionCount:5},startedAt:1,source:"freePractice",strategy:"balanced",status:"active",questionCount:0,correctCount:0,incorrectCount:0,accuracy:0 }; }
 
 await run("attempt is durable across repository recreation and pending before sync", async () => {
@@ -16,6 +16,7 @@ await run("attempt is durable across repository recreation and pending before sy
   const recreated = new DurableAttemptRepository(driver);
   assert.equal((await recreated.getPendingAttempts()).length, 1);
   assert.equal((await recreated.getAttemptsForSkill("STUDENT","SKILL")).length, 1);
+  assert.equal((await recreated.getPendingAttempts())[0]?.literacyDemand, "moderate");
 });
 
 await run("marking synced clears pending without deleting history", async () => {
@@ -50,7 +51,8 @@ await run("sync sees locally saved data, uploads it, and marks it synced", async
   let observedLocal=false;
   const client=new AppsScriptClient("https://example.test", async (_input, init) => {
     observedLocal=(await attempts.getPendingAttempts()).length===1;
-    const request=JSON.parse(String(init?.body)) as {requestId:string};
+    const request=JSON.parse(String(init?.body)) as {requestId:string;payload:{attempts:Attempt[]}};
+    assert.equal(request.payload.attempts[0]?.literacyDemand, "moderate");
     return new Response(JSON.stringify({ok:true,requestId:request.requestId,serverTime:"x",data:{acceptedAttemptIds:["A1"],duplicateAttemptIds:[]}}),{status:200});
   });
   await new SyncCoordinator(attempts,sessions,new DurableSyncMetadataRepository(driver),client).flush();

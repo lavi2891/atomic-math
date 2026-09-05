@@ -2,6 +2,7 @@ import type { QuestionCategory } from "./categories.ts";
 import type { DifficultyBand, SkillId } from "../../content/catalog/types.ts";
 
 export type QuestionType = "numeric" | "singleChoice" | "multiChoice"; // TODO: expression, drag & drop, desmos?, geometry?
+export type LiteracyDemand = "none" | "light" | "moderate" | "high";
 
 export type QuestionAuthoringMode = "generated" | "curated";
 export type QuestionCurationReason =
@@ -30,6 +31,8 @@ export interface BaseQuestion {
   type: QuestionType;
   /** Optional only for backwards-compatible content; omitted values migrate to calculation. */
   category?: QuestionCategory;
+  /** Reading/language demand, independent of mathematical category and difficulty. */
+  literacyDemand?: LiteracyDemand;
   difficulty?: number;
   difficultyBand?: DifficultyBand;
   prompt: OptionContent[]; // what the student sees

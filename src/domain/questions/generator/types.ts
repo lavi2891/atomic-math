@@ -1,4 +1,4 @@
-import type { ChoiceOption, NumericAnswerSemantics, NumericInputFormat, OptionContent, QuestionAuthoringMode } from "../types.ts";
+import type { ChoiceOption, LiteracyDemand, NumericAnswerSemantics, NumericInputFormat, OptionContent, QuestionAuthoringMode } from "../types.ts";
 import type { QuestionCategory } from "../categories.ts";
 import type { DifficultyBand, SkillId } from "../../../content/catalog/types.ts";
 
@@ -82,6 +82,8 @@ export interface GeneratedQuestionDefinition {
   contentFamily?: string;
   /** Optional only for backwards-compatible content; omitted values migrate to calculation. */
   category?: QuestionCategory;
+  /** Explicit author classification; optional only for inactive legacy generators. */
+  literacyDemand?: LiteracyDemand;
   difficultyBand?: DifficultyBand;
   exprTemplate: string;
   promptTemplate: OptionContent[];

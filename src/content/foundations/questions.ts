@@ -3,7 +3,7 @@ import { ATOMIC_FACT_SKILL_VALUES, SIGNED_SKILL_INVARIANTS } from "./skillScope.
 import type { DifficultyBand, SkillId } from "../catalog/types.ts";
 import type { GeneratedChoiceDraft, GeneratedQuestionDefinition, ParamsSpec, SampledParams } from "../../domain/questions/generator/types.ts";
 import type { QuestionCategory } from "../../domain/questions/categories.ts";
-import type { ChoiceOption, OptionContent, QuestionCurationReason } from "../../domain/questions/types.ts";
+import type { ChoiceOption, LiteracyDemand, OptionContent, QuestionCurationReason } from "../../domain/questions/types.ts";
 import { authoredChoiceContent, authoredStudentContent } from "./studentMathContent.ts";
 
 type GeneratorRecipe = { skillId: string; expr: string; secondExpr: string; structures: [string, string]; min: number; max: number; factValues?: readonly number[]; constraints?: [string[], string[]] };
@@ -35,7 +35,7 @@ function generator(recipe: GeneratorRecipe, band: DifficultyBand, alternate: boo
   ).filter((value) => factFamily && !recipe.factValues?.includes(value));
   return {
     id: `MVP_${recipe.skillId}_${band}_${alternate ? "B" : "A"}`,
-    topicId: "FOUNDATIONS", skillId: recipe.skillId, kind: "generated", authoringMode: "generated", contentFamily: `${recipe.skillId}:${structure}`, category: "calculation", difficultyBand: band,
+    topicId: "FOUNDATIONS", skillId: recipe.skillId, kind: "generated", authoringMode: "generated", contentFamily: `${recipe.skillId}:${structure}`, category: "calculation", literacyDemand: factorsAndMultiples ? "light" : "none", difficultyBand: band,
     exprTemplate: expr,
     promptTemplate: factorsAndMultiples
       ? alternate
@@ -103,6 +103,7 @@ const SIGNED_CALCULATION_GENERATORS: Array<GeneratedQuestionDefinition & { skill
     authoringMode: "generated",
     contentFamily: `${family.skillId}:${family.family}`,
     category: "calculation",
+    literacyDemand: "none",
     difficultyBand: band,
     exprTemplate: family.exprTemplate,
     promptTemplate: [{ kind: "text", value: "חשבו:" }, { kind: "math", latex: family.exprTemplate, display: true }],
@@ -158,6 +159,7 @@ function conceptualGenerator(input: {
   skillId: string;
   family: string;
   category: QuestionCategory;
+  literacyDemand?: LiteracyDemand;
   band: DifficultyBand;
   exprTemplate: string;
   params: ParamsSpec;
@@ -184,6 +186,7 @@ function conceptualGenerator(input: {
     authoringMode: "generated",
     contentFamily: `${input.skillId}:${input.family}`,
     category: input.category,
+    literacyDemand: input.literacyDemand ?? "light",
     difficultyBand: input.band,
     exprTemplate: input.exprTemplate,
     promptTemplate: [{ kind: "text", value: "הנוסח נבנה מהפרמטרים המוגרלים." }],
@@ -279,7 +282,7 @@ function basicFactConceptGenerators(skillId: "AR_ADD_FACTS" | "AR_SUB_FACTS"): A
       }),
     ];
     return [
-      conceptualGenerator({ id: `MVP_AR_SUB_FACTS_REMOVE_${band}`, skillId, family: "subtraction-as-removal", category: "conceptual", band, exprTemplate: "{a}+{b}-{b}", params: common, difficultyFeature: "magnitude", choiceBuilder: (params) => { const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); const total = a + b; return generatedChoiceDraft(skillId, `היו [[${total}]] פריטים והוציאו [[${b}]]. כמה נשארו?`, [{ value: `${a}`, correct: true, misconception: "subtraction-as-removal" }, { value: `${-a}`, misconception: "sign-confusion" }, { value: `${total}`, misconception: "ignores-operation" }, { value: `${total + 1}`, misconception: "off-by-one-generalization" }], total); } }),
+      conceptualGenerator({ id: `MVP_AR_SUB_FACTS_REMOVE_${band}`, skillId, family: "subtraction-as-removal", category: "conceptual", literacyDemand: "moderate", band, exprTemplate: "{a}+{b}-{b}", params: common, difficultyFeature: "magnitude", choiceBuilder: (params) => { const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); const total = a + b; return generatedChoiceDraft(skillId, `היו [[${total}]] פריטים והוציאו [[${b}]]. כמה נשארו?`, [{ value: `${a}`, correct: true, misconception: "subtraction-as-removal" }, { value: `${-a}`, misconception: "sign-confusion" }, { value: `${total}`, misconception: "ignores-operation" }, { value: `${total + 1}`, misconception: "off-by-one-generalization" }], total); } }),
     ];
   });
 }
@@ -291,11 +294,11 @@ const FACT_CONTEXT_GENERATORS = Object.entries(factFamilies).flatMap(([skillId, 
     const omitted = Array.from({ length: Math.max(...values) - Math.min(...values) + 1 }, (_, index) => Math.min(...values) + index).filter((value) => !values.includes(value));
     const params: ParamsSpec = { a: { type: "integer", min: Math.min(...values), max: Math.max(...values), exclude: omitted }, b: { type: "natural", ...bRange } };
     if (isMultiplication) return [conceptualGenerator({
-      id: `MVP_${skillId}_CONTEXT_${band}`, skillId, family: "concrete-equal-groups", category: "representation", band, exprTemplate: "{a}*{b}", params, constraints: ["a != 2 || b != 2"], difficultyFeature: "magnitude", representationKind: "context-to-expression", version: 5,
+      id: `MVP_${skillId}_CONTEXT_${band}`, skillId, family: "concrete-equal-groups", category: "representation", literacyDemand: "moderate", band, exprTemplate: "{a}*{b}", params, constraints: ["a != 2 || b != 2"], difficultyFeature: "magnitude", representationKind: "context-to-expression", version: 5,
       choiceBuilder: (sampled) => { const a = sampledInteger(sampled, "a"); const b = sampledInteger(sampled, "b"); const product = a * b; const contexts = [["שקיות", "שקית", "כדורים"], ["קופסאות", "קופסה", "קלפים"], ["מדפים", "מדף", "ספרים"], ["צלחות", "צלחת", "עוגיות"]] as const; const [groups, group, items] = contexts[(a + b) % contexts.length]!; return generatedChoiceDraft(skillId, `יש [[${a}]] ${groups}, ובכל ${group} [[${b}]] ${items}. איזה תרגיל מתאים למציאת מספר ה${items} הכולל?`, [{ value: `${a} × ${b}`, correct: true, misconception: "equal-groups-product" }, { value: `${a} + ${b}`, misconception: "uses-addition-for-equal-groups" }, { value: `${product} ÷ ${a}`, misconception: "uses-inverse-operation" }, { value: `${product} - ${b}`, misconception: "confuses-operation-or-symbol" }], product); },
     })];
     return ["equal-sharing", "grouping"].map((meaning) => conceptualGenerator({
-      id: `MVP_${skillId}_${meaning === "equal-sharing" ? "SHARING" : "GROUPING"}_${band}`, skillId, family: meaning, category: meaning === "equal-sharing" ? "conceptual" : "reasoning", band, exprTemplate: "({a}*{b})/{a}", params, constraints: ["a != b"], difficultyFeature: "magnitude", version: 4,
+      id: `MVP_${skillId}_${meaning === "equal-sharing" ? "SHARING" : "GROUPING"}_${band}`, skillId, family: meaning, category: meaning === "equal-sharing" ? "conceptual" : "reasoning", literacyDemand: "moderate", band, exprTemplate: "({a}*{b})/{a}", params, constraints: ["a != b"], difficultyFeature: "magnitude", version: 4,
       choiceBuilder: (sampled) => { const a = sampledInteger(sampled, "a"); const b = sampledInteger(sampled, "b"); const product = a * b; const contexts = [{ items: "כדורים", container: "שקית", containers: "שקיות", placement: "בכל שקית מכניסים" }, { items: "ספרים", container: "מדף", containers: "מדפים", placement: "על כל מדף מניחים" }, { items: "עוגיות", container: "צלחת", containers: "צלחות", placement: "בכל צלחת מניחים" }, { items: "תפוחים", container: "סל", containers: "סלים", placement: "בכל סל מניחים" }] as const; const context = contexts[(a + b) % contexts.length]!; const prompt = meaning === "equal-sharing" ? `מחלקים [[${product}]] ${context.items} שווה בשווה בין [[${a}]] ילדים. כמה ${context.items} יקבל כל ילד?` : `יש [[${product}]] ${context.items}. ${context.placement} [[${a}]] ${context.items}. כמה ${context.containers} צריך כדי לסדר את כולם?`; return generatedChoiceDraft(skillId, prompt, [{ value: `${b}`, correct: true, misconception: meaning }, { value: `${a}`, misconception: "reverses-divisor-and-quotient" }, { value: `${product}`, misconception: "uses-dividend-as-answer" }, { value: `${product - a}`, misconception: "subtracts-once" }], product + (meaning === "equal-sharing" ? 0 : context.container.length)); },
     }));
   });
@@ -329,11 +332,11 @@ const FACTOR_IDENTIFICATION_GENERATORS = (["A", "B", "C"] as DifficultyBand[]).m
 
 const NUMBER_LINE_GENERATORS = (["A", "B", "C"] as DifficultyBand[]).map((band, index) => {
   if (band === "C") return conceptualGenerator({
-    id: "MVP_INT_NUMBER_LINE_LEFT_C", skillId: "INT_NUMBER_LINE", family: "cross-zero-left-move", category: "representation", band, exprTemplate: "{start}-{steps}", params: { wordingVariant: { type: "integer", min: 0, max: 2 }, start: { type: "natural", min: 2, max: 12 }, steps: { type: "natural", min: 4, max: 25 } }, constraints: ["steps > start"], difficultyFeature: "structure", structuralStage: "multi-step-crosses-zero", representationKind: "number-line-to-number", version: 6,
+    id: "MVP_INT_NUMBER_LINE_LEFT_C", skillId: "INT_NUMBER_LINE", family: "cross-zero-left-move", category: "representation", literacyDemand: "moderate", band, exprTemplate: "{start}-{steps}", params: { wordingVariant: { type: "integer", min: 0, max: 2 }, start: { type: "natural", min: 2, max: 12 }, steps: { type: "natural", min: 4, max: 25 } }, constraints: ["steps > start"], difficultyFeature: "structure", structuralStage: "multi-step-crosses-zero", representationKind: "number-line-to-number", version: 6,
     choiceBuilder: (params) => { const start = sampledInteger(params, "start"); const steps = sampledInteger(params, "steps"); const result = start - steps; return generatedChoiceDraft("INT_NUMBER_LINE", sampledWording(params, [`מתחילים בנקודה [[${start}]] על ציר המספרים ונעים [[${steps}]] צעדים שמאלה. לאיזה מספר מגיעים?`, `על ציר המספרים מתחילים ב־[[${start}]] ומתקדמים [[${steps}]] יחידות שמאלה. היכן נעצרים?`, `נקודה נמצאת ב־[[${start}]]. מזיזים אותה [[${steps}]] יחידות שמאלה על ציר המספרים. מה מיקומה החדש?`]), [{ value: `${result}`, correct: true, misconception: "moves-left-by-subtraction" }, { value: `${steps - start}`, misconception: "drops-negative-result" }, { value: `${start + steps}`, misconception: "moves-right-instead-of-left" }, { value: `${-steps}`, misconception: "starts-from-zero" }], start + steps + sampledInteger(params, "wordingVariant")); },
   });
   const ranges = [{ min: 1, max: 6 }, { min: 7, max: 15 }, { min: 16, max: 30 }]; const range = ranges[index]!;
-  return conceptualGenerator({ id: `MVP_INT_NUMBER_LINE_LEFT_${band}`, skillId: "INT_NUMBER_LINE", family: "left-of-zero", category: "representation", band, exprTemplate: "-{n}", params: { wordingVariant: { type: "integer", min: 0, max: 2 }, n: { type: "natural", ...range } }, difficultyFeature: "magnitude", representationKind: "number-line-to-number", version: 6, choiceBuilder: (params) => { const n = sampledInteger(params, "n"); return generatedChoiceDraft("INT_NUMBER_LINE", sampledWording(params, [`איזה מספר נמצא [[${n}]] צעדים משמאל לאפס על ציר המספרים?`, `מתחילים באפס ונעים [[${n}]] יחידות שמאלה. לאיזה מספר מגיעים?`, `איזו נקודה על ציר המספרים נמצאת [[${n}]] יחידות משמאל ל־[[0]]?`]), [{ value: `${-n}`, correct: true, misconception: "left-is-negative" }, { value: `${n}`, misconception: "reverses-representation" }, { value: "0", misconception: "uses-origin" }, { value: `${-(n + 1)}`, misconception: "off-by-one-generalization" }], n + sampledInteger(params, "wordingVariant")); } });
+  return conceptualGenerator({ id: `MVP_INT_NUMBER_LINE_LEFT_${band}`, skillId: "INT_NUMBER_LINE", family: "left-of-zero", category: "representation", literacyDemand: "moderate", band, exprTemplate: "-{n}", params: { wordingVariant: { type: "integer", min: 0, max: 2 }, n: { type: "natural", ...range } }, difficultyFeature: "magnitude", representationKind: "number-line-to-number", version: 6, choiceBuilder: (params) => { const n = sampledInteger(params, "n"); return generatedChoiceDraft("INT_NUMBER_LINE", sampledWording(params, [`איזה מספר נמצא [[${n}]] צעדים משמאל לאפס על ציר המספרים?`, `מתחילים באפס ונעים [[${n}]] יחידות שמאלה. לאיזה מספר מגיעים?`, `איזו נקודה על ציר המספרים נמצאת [[${n}]] יחידות משמאל ל־[[0]]?`]), [{ value: `${-n}`, correct: true, misconception: "left-is-negative" }, { value: `${n}`, misconception: "reverses-representation" }, { value: "0", misconception: "uses-origin" }, { value: `${-(n + 1)}`, misconception: "off-by-one-generalization" }], n + sampledInteger(params, "wordingVariant")); } });
 });
 
 const NUMBER_LINE_CONCEPT_GENERATOR = conceptualGenerator({
@@ -343,7 +346,7 @@ const NUMBER_LINE_CONCEPT_GENERATOR = conceptualGenerator({
 
 const FRACTION_MEANING_GENERATORS = (["A", "B", "C"] as DifficultyBand[]).map((band, index) => {
   const max = [6, 10, 16][index]!;
-  return conceptualGenerator({ id: `MVP_FRAC_MEANING_PARTS_${band}`, skillId: "FRAC_MEANING", family: "selected-equal-parts", category: "conceptual", band, exprTemplate: "{b}/{a}", params: { a: { type: "natural", min: [3, 6, 10][index]!, max }, b: { type: "natural", min: 1, max: max - 1 } }, constraints: ["b < a"], difficultyFeature: "magnitude", version: 4, choiceBuilder: (params) => { const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); const contexts = [["שלם", "חולק"], ["מלבן", "חולק"], ["עוגה", "חולקה"]] as const; const [context, verb] = contexts[(a + b) % contexts.length]!; return generatedChoiceDraft("FRAC_MEANING", `${context} ${verb} ל־[[${a}]] חלקים שווים ונבחרו [[${b}]] חלקים. איזה שבר מתאר את החלק שנבחר?`, [{ value: `${b}/${a}`, correct: true, misconception: "part-over-whole" }, { value: `${a}/${b}`, misconception: "reverses-part-and-whole" }, { value: `${b}/${a + 1}`, misconception: "changes-whole-size" }, { value: `${b + 1}/${a}`, misconception: "changes-selected-parts" }], a + b); } });
+  return conceptualGenerator({ id: `MVP_FRAC_MEANING_PARTS_${band}`, skillId: "FRAC_MEANING", family: "selected-equal-parts", category: "conceptual", literacyDemand: "moderate", band, exprTemplate: "{b}/{a}", params: { a: { type: "natural", min: [3, 6, 10][index]!, max }, b: { type: "natural", min: 1, max: max - 1 } }, constraints: ["b < a"], difficultyFeature: "magnitude", version: 4, choiceBuilder: (params) => { const a = sampledInteger(params, "a"); const b = sampledInteger(params, "b"); const contexts = [["שלם", "חולק"], ["מלבן", "חולק"], ["עוגה", "חולקה"]] as const; const [context, verb] = contexts[(a + b) % contexts.length]!; return generatedChoiceDraft("FRAC_MEANING", `${context} ${verb} ל־[[${a}]] חלקים שווים ונבחרו [[${b}]] חלקים. איזה שבר מתאר את החלק שנבחר?`, [{ value: `${b}/${a}`, correct: true, misconception: "part-over-whole" }, { value: `${a}/${b}`, misconception: "reverses-part-and-whole" }, { value: `${b}/${a + 1}`, misconception: "changes-whole-size" }, { value: `${b + 1}/${a}`, misconception: "changes-selected-parts" }], a + b); } });
 });
 
 function fractionNumberLineLatex(numerator: number, denominator: number): string {
@@ -768,6 +771,7 @@ const CURATED_WORDING_ITEMS: SkillQuestionDefinition[] = [
     curationReason: "edge-case" satisfies QuestionCurationReason,
     curationJustificationHe: "הערך המדויק 0 חיוני כאן: אפס הוא המספר היחיד ששווה לנגדי שלו, ולכן זהו מקרה קצה מכוון ולא דוגמה מספרית שרירותית.",
     category: "conceptual",
+    literacyDemand: "light",
     difficultyBand: "A",
     difficulty: 0.08,
     prompt: authoredStudentContent("מהו המספר הנגדי של [[0]]?"),
@@ -791,6 +795,7 @@ const CURATED_WORDING_ITEMS: SkillQuestionDefinition[] = [
     curationReason: "deliberate-example" satisfies QuestionCurationReason,
     curationJustificationHe: "הניסוח ההקשרי עצמו הוא האובייקט הפדגוגי ומבחין בין אות מתמטית לבין הכמות שהיא מייצגת.",
     category: "conceptual",
+    literacyDemand: "moderate",
     difficultyBand: "A",
     difficulty: 0.12,
     prompt: authoredStudentContent("בקבוצה יש [[n]] תלמידים. מה מייצגת האות [[n]]?"),
@@ -814,6 +819,7 @@ const CURATED_WORDING_ITEMS: SkillQuestionDefinition[] = [
     curationReason: "deliberate-example" satisfies QuestionCurationReason,
     curationJustificationHe: "הערכים 18 ו־25 מתארים שתי הפעלות נפרדות של אותו סימון, וממחישים שערך המשתנה תלוי במקרה שנבדק.",
     category: "reasoning",
+    literacyDemand: "high",
     difficultyBand: "B",
     difficulty: 0.38,
     prompt: authoredStudentContent("בכל פעם בודקים קבוצה אחת, והאות [[n]] מייצגת את מספר התלמידים בקבוצה שנבדקת. פעם בודקים קבוצה של [[18]] תלמידים ובפעם אחרת קבוצה של [[25]] תלמידים. מה נכון לגבי [[n]] בשני המקרים הנפרדים?"),

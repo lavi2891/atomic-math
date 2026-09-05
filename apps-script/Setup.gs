@@ -1,6 +1,6 @@
 var AM_SHEETS = {
   Students: ["studentId","displayName","classId","groupId","active","createdAt","updatedAt"],
-  Attempts: ["submittedAt","attemptId","sessionId","studentId","questionId","questionInstanceId","generatorId","generatorSeed","skillId","difficulty","answerJson","normalizedAnswerJson","correct","supportLevel","scoreValue","responseTimeMs","sequenceNumber","tagsJson","misconceptionIdsJson","supportingSkillsJson"],
+  Attempts: ["submittedAt","attemptId","sessionId","studentId","questionId","questionInstanceId","generatorId","generatorSeed","skillId","difficulty","answerJson","normalizedAnswerJson","correct","supportLevel","scoreValue","responseTimeMs","sequenceNumber","tagsJson","misconceptionIdsJson","supportingSkillsJson","literacyDemand"],
   Sessions: ["sessionId","studentId","source","assignmentId","mode","selectedSkillIdsJson","strategy","startedAt","endedAt","status","questionCount","correctCount","incorrectCount","accuracy","gameScore","syncedAt"],
   Mastery: ["studentId","skillId","mastery","accuracy","fluencyMedianMs","attemptCount","recentAverage","historyAverage","evidenceLevel","lastAttemptAt","calculatedAt","updatedAt"],
   Assignments: ["assignmentId","studentId","skillId","targetMastery","priority","active","createdAt","dueAt","completedAt"],

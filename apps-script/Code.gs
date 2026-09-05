@@ -29,7 +29,7 @@ function amSubmitAttempts_(payload) {
     var partition = amPartitionAttempts_(payload.attempts, existingIds);
     if (partition.accepted.length) {
       var rows = partition.accepted.map(function(a) { return amRow_(headerInfo.values, {
-        submittedAt:a.submittedAt,attemptId:a.attemptId,sessionId:a.sessionId,studentId:a.studentId,questionId:a.questionId,questionInstanceId:a.questionInstanceId,generatorId:a.generatorId,generatorSeed:a.generatorSeed,skillId:a.skillId,difficulty:a.difficulty,answerJson:JSON.stringify(a.submittedAnswer),normalizedAnswerJson:JSON.stringify(a.normalizedAnswer),correct:a.correct,supportLevel:a.supportLevel,scoreValue:a.scoreValue,responseTimeMs:a.responseTimeMs,sequenceNumber:a.sequenceNumber,tagsJson:JSON.stringify(a.tags || []),misconceptionIdsJson:JSON.stringify(a.misconceptionIds || []),supportingSkillsJson:JSON.stringify(a.supportingSkills || [])
+        submittedAt:a.submittedAt,attemptId:a.attemptId,sessionId:a.sessionId,studentId:a.studentId,questionId:a.questionId,questionInstanceId:a.questionInstanceId,generatorId:a.generatorId,generatorSeed:a.generatorSeed,skillId:a.skillId,difficulty:a.difficulty,answerJson:JSON.stringify(a.submittedAnswer),normalizedAnswerJson:JSON.stringify(a.normalizedAnswer),correct:a.correct,supportLevel:a.supportLevel,scoreValue:a.scoreValue,responseTimeMs:a.responseTimeMs,sequenceNumber:a.sequenceNumber,tagsJson:JSON.stringify(a.tags || []),misconceptionIdsJson:JSON.stringify(a.misconceptionIds || []),supportingSkillsJson:JSON.stringify(a.supportingSkills || []),literacyDemand:a.literacyDemand
       }); });
       sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, headerInfo.values.length).setValues(rows);
     }
@@ -38,7 +38,7 @@ function amSubmitAttempts_(payload) {
   } finally { lock.releaseLock(); }
 }
 
-function amReadAttempts_(sheet) { return amObjects_(sheet).map(function(a) { return { submittedAt:String(a.submittedAt),studentId:String(a.studentId),skillId:String(a.skillId),scoreValue:Number(a.scoreValue),correct:a.correct === true || String(a.correct).toUpperCase() === "TRUE",sequenceNumber:Number(a.sequenceNumber),supportLevel:String(a.supportLevel),responseTimeMs:Number(a.responseTimeMs) }; }); }
+function amReadAttempts_(sheet) { return amObjects_(sheet).map(function(a) { return { submittedAt:String(a.submittedAt),studentId:String(a.studentId),skillId:String(a.skillId),scoreValue:Number(a.scoreValue),correct:a.correct === true || String(a.correct).toUpperCase() === "TRUE",sequenceNumber:Number(a.sequenceNumber),supportLevel:String(a.supportLevel),responseTimeMs:Number(a.responseTimeMs),literacyDemand:a.literacyDemand ? String(a.literacyDemand) : undefined }; }); }
 function amRebuildAffectedMastery_(spreadsheet, keys) {
   var allAttempts = amReadAttempts_(spreadsheet.getSheetByName("Attempts")); var now = new Date().toISOString();
   var updated = keys.map(function(key) { var parts = key.split("||"); return amProjectMastery_(parts[0], parts[1], allAttempts, now); });

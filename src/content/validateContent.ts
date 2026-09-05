@@ -8,7 +8,7 @@ import { buildGeneratedQuestion } from "../domain/questions/generator/buildGener
 import { evaluateExpression } from "../domain/questions/generator/evaluateExpression.ts";
 import type { GeneratedQuestionDefinition, ParamSpec } from "../domain/questions/generator/types.ts";
 import type { SkillQuestionDefinition } from "../domain/session/skillQuestionSelector.ts";
-import type { OptionContent, Question, QuestionCurationReason } from "../domain/questions/types.ts";
+import type { LiteracyDemand, OptionContent, Question, QuestionCurationReason } from "../domain/questions/types.ts";
 import type { GeneratedQuestionInstance } from "../domain/questions/types.ts";
 import { atomicSkillIdentityIssues, signedGeneratedInstanceIssues, signedSkillDefinitionIssues } from "./foundations/skillScope.ts";
 import { hasAmbiguousProseNumber, mathLookingText } from "./foundations/studentMathContent.ts";
@@ -56,6 +56,18 @@ const APPROVED_FIXED_NUMERIC_REASONS = new Set<QuestionCurationReason>([
 ]);
 const NUMERIC_LITERAL_PATTERN = /(?:^|[^\p{L}\p{N}_])[-−–]?\d+(?:[.,/]\d+)?/gu;
 const GENERIC_JUSTIFICATION_PATTERN = /(?:convenient|arbitrary|magic number|דוגמה נוחה|מספר שרירותי)/iu;
+const LITERACY_DEMANDS = new Set<LiteracyDemand>(["none", "light", "moderate", "high"]);
+
+export function literacyDemandIssues(definition: SkillQuestionDefinition): string[] {
+  const value = definition.literacyDemand;
+  const issues = !value || !LITERACY_DEMANDS.has(value)
+    ? [`${definition.id}: literacyDemand must be none, light, moderate, or high`]
+    : [];
+  if (isGeneratedQuestionDefinition(definition) && definition.metadata?.representationKind === "context-to-expression" && value === "none") {
+    issues.push(`${definition.id}: contextual interpretation cannot have literacyDemand none`);
+  }
+  return issues;
+}
 
 function contentSurface(content: readonly OptionContent[]): string {
   return content.map((part) => part.kind === "text" ? part.value : part.latex).join(" ");
@@ -177,6 +189,7 @@ function mathematicallyDuplicateChoiceIssues(definitionId: string, question: Gen
 export function generatedInstanceMetadataIssues(definition: GeneratedQuestionDefinition, question: GeneratedQuestionInstance): string[] {
   const issues: string[] = [];
   if (question.templateId !== definition.id || question.baseId !== definition.id) issues.push(`${definition.id}: generated instance identity does not match its definition`);
+  if (question.literacyDemand !== definition.literacyDemand) issues.push(`${definition.id}: generated instance does not preserve literacyDemand`);
   if (JSON.stringify(question.supportingSkills ?? []) !== JSON.stringify(definition.supportingSkills ?? [])) issues.push(`${definition.id}: generated instance does not preserve supportingSkills`);
   const reconstructed = definition.exprTemplate.replace(/\{([A-Za-z_]\w*)\}/g, (match, name: string) => question.sampledParams[name] ?? match);
   if (reconstructed !== question.renderedExpression) issues.push(`${definition.id}: rendered expression does not match template and sampled params`);
@@ -440,6 +453,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
     if (!definition.category) issues.push(`${definition.id}: category is missing`);
     if (!definition.difficultyBand) issues.push(`${definition.id}: difficulty band is missing`);
     if (!definition.contentFamily) issues.push(`${definition.id}: content family is missing`);
+    issues.push(...literacyDemandIssues(definition));
     issues.push(...supportingSkillMetadataIssues(definition));
     if (isGeneratedQuestionDefinition(definition)) {
       const authoringMode: string | undefined = definition.authoringMode;

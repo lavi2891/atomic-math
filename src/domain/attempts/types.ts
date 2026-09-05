@@ -1,6 +1,7 @@
 import type { RawAnswer } from "../questions/types.ts";
 import type { DifficultyBand, SkillId } from "../../content/catalog/types.ts";
 import type { QuestionCategory } from "../questions/categories.ts";
+import type { LiteracyDemand } from "../questions/types.ts";
 
 export type SupportLevel = "independent" | "hint" | "guided";
 
@@ -18,6 +19,8 @@ export interface Attempt {
   difficulty: number;
   difficultyBand?: DifficultyBand;
   category?: QuestionCategory;
+  /** Definition-level reading demand; optional only for attempts created before this field existed. */
+  literacyDemand?: LiteracyDemand;
   submittedAnswer: RawAnswer;
   normalizedAnswer?: unknown;
   correct: boolean;

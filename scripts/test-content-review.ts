@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { appRouteFromSearch } from "../src/app/routing.ts";
 import { DOMAINS, SKILLS, SKILL_GROUPS } from "../src/content/catalog/index.ts";
 import { FOUNDATIONAL_QUESTIONS } from "../src/content/foundations/questions.ts";
@@ -89,6 +90,14 @@ await run("question type and curationReason filters use definition metadata", ()
   assert.ok(filter({ questionType: "numeric" }).every(isGeneratedQuestionDefinition));
   const deliberate = filter({ questionType: "singleChoice", curationReason: "deliberate-example" });
   assert.ok(deliberate.length > 0 && deliberate.every((item) => !isGeneratedQuestionDefinition(item) && item.curationReason === "deliberate-example"));
+});
+
+await run("literacy demand is visible and filterable in Question Review", () => {
+  const moderate = filter({ literacyDemand: "moderate" });
+  assert.ok(moderate.length > 0 && moderate.every((item) => item.literacyDemand === "moderate"));
+  const screen = readFileSync(new URL("../src/app/contentReview/QuestionReviewScreen.tsx", import.meta.url), "utf8");
+  assert.match(screen, /דרישת אוריינות/);
+  assert.match(screen, /currentDefinition\.literacyDemand/);
 });
 
 await run("curated navigation is deterministic and bounded", () => {
@@ -200,13 +209,15 @@ await run("expected answer reveal supports numeric and choice questions", () => 
   assert.ok(expectedAnswer(choice).startsWith("o"));
 });
 
-await run("deep links parse and serialize Skill, category, family, and status", () => {
-  const parsed = parseReviewDeepLink("?review=questions&skill=INT_ADD&category=conceptual&contentFamily=INT_ADD%3Aconceptual&status=needs-fix");
+await run("deep links parse and serialize Skill, category, literacy, family, and status", () => {
+  const parsed = parseReviewDeepLink("?review=questions&skill=INT_ADD&category=conceptual&literacy=moderate&contentFamily=INT_ADD%3Aconceptual&status=needs-fix");
   assert.equal(parsed.skillId, "INT_ADD");
   assert.equal(parsed.category, "conceptual");
+  assert.equal(parsed.literacyDemand, "moderate");
   assert.equal(parsed.contentFamily, "INT_ADD:conceptual");
   assert.equal(parsed.reviewStatus, "needs-fix");
   assert.match(reviewDeepLink(parsed), /skill=INT_ADD/);
+  assert.match(reviewDeepLink(parsed), /literacy=moderate/);
 });
 
 await run("deep link initializes filter ownership once", () => {

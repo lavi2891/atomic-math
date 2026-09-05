@@ -154,6 +154,7 @@ export function QuestionReviewScreen() {
   const groupLabels = Object.fromEntries(SKILL_GROUPS.map((group) => [group.id, group.nameHe]));
   const skillLabels = Object.fromEntries(SKILLS.map((skill) => [skill.id, `${skill.nameHe} — ${skill.id}`]));
   const categoryLabels = { calculation: "חישוב", conceptual: "מושגי", reasoning: "הנמקה", representation: "ייצוג" };
+  const literacyLabels = { none: "ללא", light: "קלה", moderate: "בינונית", high: "גבוהה" };
   const authoringLabels = { generated: "generated", curated: "curated" };
   const reviewLabels = { unreviewed: "רק לא נבדקו", approved: "רק מאושרות", "needs-fix": "רק דורשות תיקון", rejected: "רק נדחו" };
   const currentSkill = currentDefinition ? SKILLS.find((skill) => skill.id === currentDefinition.skillId) : undefined;
@@ -185,6 +186,7 @@ export function QuestionReviewScreen() {
         <FilterSelect label="Skill Group" value={filters.skillGroupId} values={availableGroups.map((item) => item.id)} labels={groupLabels} onChange={(value) => updateFilter("skillGroupId", value)} />
         <FilterSelect label="Skill אטומי" value={filters.skillId} values={availableSkills.map((item) => item.id)} labels={skillLabels} onChange={(value) => updateFilter("skillId", value)} />
         <FilterSelect label="קטגוריה" value={filters.category} values={uniqueValues(FOUNDATIONAL_QUESTIONS.map((item) => item.category))} labels={categoryLabels} onChange={(value) => updateFilter("category", value)} />
+        <FilterSelect label="דרישת אוריינות" value={filters.literacyDemand} values={["none", "light", "moderate", "high"]} labels={literacyLabels} onChange={(value) => updateFilter("literacyDemand", value)} />
         <FilterSelect label="סוג קלט" value={filters.questionType} values={["numeric", "singleChoice", "multiChoice"]} onChange={(value) => updateFilter("questionType", value)} />
         <FilterSelect label="Difficulty Band" value={filters.difficultyBand} values={["A", "B", "C", "D"]} onChange={(value) => updateFilter("difficultyBand", value)} />
         <FilterSelect label="Authoring mode" value={filters.authoringMode} values={["generated", "curated"]} labels={authoringLabels} onChange={(value) => updateFilter("authoringMode", value)} />
@@ -201,7 +203,7 @@ export function QuestionReviewScreen() {
       </>}</section>
 
       <aside className="review-panel review-sidebar review-details-pane">{currentDefinition && currentQuestion ? <>
-        {showDetails ? <div className="review-details"><section className="review-human-summary"><h2>איך השאלה בנויה</h2><p><strong>{currentSkill?.nameHe}</strong> · {currentDefinition.category} · Band {currentDefinition.difficultyBand}</p><p><strong>סוג תשובה:</strong> {answerSemanticsLabel(currentQuestion)}</p>{supportingSkillLabels.length ? <p><strong>Skills תומכים (אבחוני בלבד):</strong> {supportingSkillLabels.join(" · ")}</p> : null}{familyNote?.rationaleHe ? <p><strong>מטרה פדגוגית:</strong> {familyNote.rationaleHe}</p> : null}
+        {showDetails ? <div className="review-details"><section className="review-human-summary"><h2>איך השאלה בנויה</h2><p><strong>{currentSkill?.nameHe}</strong> · {currentDefinition.category} · Band {currentDefinition.difficultyBand}</p><p><strong>דרישת אוריינות:</strong> {currentDefinition.literacyDemand ? literacyLabels[currentDefinition.literacyDemand] : "לא סווגה"}</p><p><strong>סוג תשובה:</strong> {answerSemanticsLabel(currentQuestion)}</p>{supportingSkillLabels.length ? <p><strong>Skills תומכים (אבחוני בלבד):</strong> {supportingSkillLabels.join(" · ")}</p> : null}{familyNote?.rationaleHe ? <p><strong>מטרה פדגוגית:</strong> {familyNote.rationaleHe}</p> : null}
           {isGeneratedQuestionDefinition(currentDefinition) ? <>
             {structure ? <section className="review-structure" aria-label="מבנה השאלה שנוצרת">
               <div><strong>תבנית:</strong><ReviewMath latex={structure.template} /></div>

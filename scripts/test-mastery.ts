@@ -137,10 +137,16 @@ await run("local repository stores authoritative attempts by student and skill",
 
 await run("session answer creates an attempt with the actual skill", () => {
   const session = createPracticeSession({ id: "SESSION", studentId: "student", selectedSkillIds: ["A", "B"], settings: { mode: "practice" }, startedAt: 0 });
-  const question: Question = { id: "Q", topicId: "SIGNED_NUMBERS", skillId: "B", type: "numeric", difficulty: 0.4, prompt: [], correctAnswers: ["1"] };
+  const question: Question = { id: "Q", topicId: "SIGNED_NUMBERS", skillId: "B", type: "numeric", category: "calculation", literacyDemand: "none", difficulty: 0.4, prompt: [], correctAnswers: ["1"] };
   const created = createAttemptFromAnswer({ session, question, result: { questionId: "Q", topicId: "SIGNED_NUMBERS", attemptIndex: 0, isCorrect: true, rawAnswer: { questionType: "numeric", data: { value: "1" } }, normalizedAnswer: 1, responseTimeMs: 500, timestamp: 1000 }, sequenceNumber: 1, attemptId: "ATTEMPT" });
   assert.equal(created.skillId, "B");
   assert.equal(created.normalizedAnswer, 1);
+  assert.equal(created.literacyDemand, "none");
+});
+
+await run("literacy metadata does not change mastery projection", () => {
+  const baseline = [attempt(1), attempt(2, { correct: false, scoreValue: 0 }), attempt(3)];
+  assert.deepEqual(mastery(baseline.map((item) => ({ ...item, literacyDemand: "high" }))), mastery(baseline));
 });
 
 await run("multi-skill session creates attempts under each presented skill", () => {

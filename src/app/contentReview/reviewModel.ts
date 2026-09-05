@@ -12,6 +12,7 @@ export interface ReviewFilters {
   skillGroupId: string;
   skillId: string;
   category: string;
+  literacyDemand: string;
   questionType: string;
   difficultyBand: string;
   authoringMode: string;
@@ -21,7 +22,7 @@ export interface ReviewFilters {
 }
 
 export const EMPTY_REVIEW_FILTERS: ReviewFilters = {
-  domainId: "", skillGroupId: "", skillId: "", category: "", questionType: "", difficultyBand: "", authoringMode: "", curationReason: "", contentFamily: "", reviewStatus: "all",
+  domainId: "", skillGroupId: "", skillId: "", category: "", literacyDemand: "", questionType: "", difficultyBand: "", authoringMode: "", curationReason: "", contentFamily: "", reviewStatus: "all",
 };
 
 export interface ReviewNavigationState {
@@ -100,6 +101,7 @@ export function parseReviewDeepLink(search: string): ReviewFilters {
     skillGroupId: params.get("group") ?? "",
     skillId: params.get("skill") ?? "",
     category: params.get("category") ?? "",
+    literacyDemand: params.get("literacy") ?? "",
     questionType: params.get("type") ?? "",
     difficultyBand: params.get("band") ?? "",
     authoringMode: params.get("authoringMode") ?? "",
@@ -112,7 +114,7 @@ export function parseReviewDeepLink(search: string): ReviewFilters {
 export function reviewDeepLink(filters: ReviewFilters): string {
   const params = new URLSearchParams({ review: "questions" });
   const entries: Array<[string, string]> = [
-    ["domain", filters.domainId], ["group", filters.skillGroupId], ["skill", filters.skillId], ["category", filters.category], ["type", filters.questionType], ["band", filters.difficultyBand], ["authoringMode", filters.authoringMode], ["curationReason", filters.curationReason], ["contentFamily", filters.contentFamily], ["status", filters.reviewStatus === "all" ? "" : filters.reviewStatus],
+    ["domain", filters.domainId], ["group", filters.skillGroupId], ["skill", filters.skillId], ["category", filters.category], ["literacy", filters.literacyDemand], ["type", filters.questionType], ["band", filters.difficultyBand], ["authoringMode", filters.authoringMode], ["curationReason", filters.curationReason], ["contentFamily", filters.contentFamily], ["status", filters.reviewStatus === "all" ? "" : filters.reviewStatus],
   ];
   for (const [key, value] of entries) if (value) params.set(key, value);
   return `?${params.toString()}`;
@@ -152,6 +154,7 @@ export function filterReviewDefinitions(
       && (!groupSkills || groupSkills.has(definition.skillId))
       && (!filters.skillId || definition.skillId === filters.skillId)
       && (!filters.category || definition.category === filters.category)
+      && (!filters.literacyDemand || definition.literacyDemand === filters.literacyDemand)
       && (!filters.questionType || definitionType(definition) === filters.questionType)
       && (!filters.difficultyBand || definition.difficultyBand === filters.difficultyBand)
       && (!filters.authoringMode || definition.authoringMode === filters.authoringMode)
