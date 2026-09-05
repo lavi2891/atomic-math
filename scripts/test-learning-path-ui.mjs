@@ -17,6 +17,9 @@ const definition = { id: 'NUMBERS_ALGEBRA', nameHe: 'מספרים ואלגברה
   { id: 'chapter-a', nameHe: 'ראשון', shortcutTest: { id: 'shortcut-a', skillIds: ['AR_PLACE_VALUE', 'AR_ADD_FACTS', 'AR_SUB_FACTS'], passingAccuracy: 0.8 }, stages: [stage('first'), stage('review', 'review', ['AR_ADD_FACTS', 'AR_SUB_FACTS']), stage('checkpoint', 'checkpoint'), stage('bonus', 'bonus')] },
   { id: 'chapter-b', nameHe: 'שני', stages: [stage('last')] },
 ] };
+const longDefinition = { id: 'NUMBERS_ALGEBRA', nameHe: 'מסלול ארוך', chapters: [
+  { id: 'long-chapter', nameHe: 'פרק ארוך', stages: Array.from({ length: 24 }, (_, index) => stage(`long-${index}`)) },
+] };
 const progress = stars => ({ studentId: 'learner', bestStarsByStage: stars });
 const text = node => typeof node === 'string' ? node : Array.isArray(node) ? node.map(text).join('') : node?.children ? text(node.children) : '';
 const node = (tree, id) => tree.root.findByProps({ 'data-stage-id': id }).findByType('button');
@@ -129,6 +132,39 @@ try {
     assert.equal(node(tree, 'inserted').props['aria-current'], 'step');
     assert.equal(node(tree, 'review').props.disabled, false);
     assert.equal(node(tree, 'checkpoint').props.disabled, true);
+    await unmount(tree);
+  });
+
+  await run('long paths mount only the local past and future window around the current stage', async () => {
+    const bestStarsByStage = Object.fromEntries(Array.from({ length: 12 }, (_, index) => [`long-${index}`, 1]));
+    const tree = await mount({ path: longDefinition, progress: progress(bestStarsByStage) });
+    const renderedIds = tree.root.findAllByProps({ className: 'path-row' }).map(row => row.props['data-stage-id']).filter(Boolean);
+    assert.deepEqual(renderedIds.sort(), Array.from({ length: 9 }, (_, index) => `long-${index + 8}`).sort());
+    assert.equal(tree.root.findAllByProps({ 'data-stage-id': 'long-12' })[0].findByType('button').props['aria-current'], 'step');
+    assert.equal(tree.root.findAllByProps({ 'data-stage-id': 'long-7' }).length, 0);
+    assert.equal(tree.root.findAllByProps({ 'data-stage-id': 'long-17' }).length, 0);
+    assert.equal(tree.root.findAllByProps({ className: 'path-continuation-node' }).length, 1);
+    assert.equal(tree.root.findAllByProps({ className: 'path-history-node' }).length, 1);
+    await unmount(tree);
+  });
+
+  await run('older completed stages load incrementally and remain replayable', async () => {
+    const bestStarsByStage = Object.fromEntries(Array.from({ length: 12 }, (_, index) => [`long-${index}`, 1]));
+    const tree = await mount({ path: longDefinition, progress: progress(bestStarsByStage) });
+    await click(tree.root.findByProps({ className: 'path-history-node' }));
+    assert.equal(tree.root.findAllByProps({ 'data-stage-id': 'long-4' }).length, 1);
+    assert.equal(tree.root.findAllByProps({ 'data-stage-id': 'long-3' }).length, 0);
+    await click(node(tree, 'long-4'));
+    assert.equal(text(action(tree)), 'תרגול חוזר');
+    await unmount(tree);
+  });
+
+  await run('the continuation marker disappears at the actual end of a long path', async () => {
+    const bestStarsByStage = Object.fromEntries(Array.from({ length: 24 }, (_, index) => [`long-${index}`, 1]));
+    const tree = await mount({ path: longDefinition, progress: progress(bestStarsByStage) });
+    assert.equal(node(tree, 'long-23').props.disabled, false);
+    assert.equal(tree.root.findAllByProps({ className: 'path-continuation-node' }).length, 0);
+    assert.equal(tree.root.findAllByProps({ 'data-stage-id': 'long-18' }).length, 0);
     await unmount(tree);
   });
 

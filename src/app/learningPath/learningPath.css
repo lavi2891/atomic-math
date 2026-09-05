@@ -47,6 +47,13 @@
 .path-row[data-kind="checkpoint"][data-current="true"] .path-node-label { padding-inline-end: 24px; }
 .path-type-label { font-size: 11px; color: #aab8ca; }
 .path-row[data-status="locked"] .path-node-label { color: #a2aec0; }
+.path-continuation-row, .path-history-row { min-height: 88px; }
+.path-continuation-node { grid-column: 2; grid-row: 1; z-index: 1; justify-self: center; width: 40px; height: 40px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 3px; border: 2px dashed #68768a; border-radius: 50%; background: #253143; color: #aab5c5; animation: path-grow 320ms ease-out both; }
+.path-continuation-node span { width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+.path-continuation-label { grid-column: 3; direction: rtl; padding-inline-end: 12px; color: #8997aa; font-size: 11px; }
+.path-history-node { grid-column: 2; grid-row: 1; z-index: 1; justify-self: center; min-width: 80px; min-height: 48px; padding: 5px 8px; display: grid; place-items: center; gap: 1px; border: 1px solid #526176; border-radius: 999px; background: #1d2a3d; color: #b7c3d3; font-size: 10px; line-height: 1.2; }
+.path-history-node span:first-child { direction: ltr; letter-spacing: 2px; color: #8795a8; }
+.path-history-node:focus-visible { outline: 3px solid white; outline-offset: 4px; }
 .path-chapter-row { min-height: 156px; }
 .path-chapter-node { grid-column: 2; grid-row: 1; justify-self: center; position: relative; z-index: 1; box-sizing: border-box; display: grid; justify-items: center; align-content: center; gap: 3px; width: 88px; height: 88px; padding: 6px; border: 4px double #637086; border-radius: 50%; background: #29354a; color: #bac6d7; font-weight: 700; }
 .path-chapter-node small { font-size: 10px; line-height: 1.15; }
@@ -108,6 +115,12 @@
   to { transform: scale(1); opacity: 1; }
 }
 
+@keyframes path-grow {
+  from { transform: scale(.72); opacity: .45; }
+  to { transform: scale(1); opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .path-row[data-current="true"] .path-stage-node { animation: none; }
+  .path-continuation-node { animation: none; }
 }

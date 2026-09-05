@@ -9,6 +9,7 @@ import { PathNodeIcon, StageStars } from "./PathNodeIcon.tsx";
 import { StageSheet } from "./StageSheet.tsx";
 import { ShortcutSheet } from "./ShortcutSheet.tsx";
 import { TotalStars } from "./TotalStars.tsx";
+import { DEFAULT_PAST_STAGE_COUNT, derivePathViewport } from "./pathViewport.ts";
 import "./learningPath.css";
 
 type Props = {
@@ -28,12 +29,15 @@ const typeLabels: Record<StageType, string> = { normal: "שלב", review: "חז�
 export function LearningPathScreen({ path, progress, totalStars, definitions, personalBests, starting = false, error, onBack, onPractice, onShortcut }: Props) {
   const [selectedStageId, setSelectedStageId] = useState<string>();
   const [selectedChapterId, setSelectedChapterId] = useState<string>();
+  const [historyWindow, setHistoryWindow] = useState<{ focusStageId?: string; count: number }>({ count: DEFAULT_PAST_STAGE_COUNT });
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentRef = useRef<HTMLLIElement>(null);
   const stages = path.chapters.flatMap((chapter) => chapter.stages);
   const states = new Map(progress ? derivePathProgress(path, progress).map((state) => [state.stageId, state]) : []);
   const currentStage = stages.find((stage) => stage.type !== "bonus" && states.get(stage.id)?.status === "available");
   const focusStageId = currentStage?.id ?? [...stages].reverse().find((stage) => stage.type !== "bonus" && states.get(stage.id)?.status === "completed")?.id;
+  const pastStageCount = historyWindow.focusStageId === focusStageId ? historyWindow.count : DEFAULT_PAST_STAGE_COUNT;
+  const viewport = derivePathViewport(path, focusStageId, pastStageCount);
   const available = useMemo(() => new Set(contentBackedCatalog(DOMAINS, SKILLS, definitions)
     .flatMap(({ skills }) => skills.filter((skill) => skill.modes.fixed).map((skill) => skill.id))), [definitions]);
   const selectedStage = stages.find((stage) => stage.id === selectedStageId);
@@ -82,19 +86,35 @@ export function LearningPathScreen({ path, progress, totalStars, definitions, pe
   }
 
   // Reverse DOM order as well as visual order: later stages are physically above.
-  const rows = path.chapters.flatMap((chapter, index) => {
+  const pathRows = path.chapters.flatMap((chapter, index) => {
+    const visibleStages = chapter.stages.filter((stage) => viewport.visibleStageIds.has(stage.id));
+    if (visibleStages.length === 0) return [];
     const main = chapter.stages.filter((stage) => stage.type !== "bonus");
     const completed = main.length > 0 && main.every((stage) => states.get(stage.id)?.status === "completed");
     const current = chapter.stages.some((stage) => stage.id === currentStage?.id);
     const status = completed ? "completed" : current ? "available" : "locked";
     const shortcutAvailable = !!chapter.shortcutTest && status !== "locked";
     const shortcutPassed = chapter.shortcutTest ? progress?.passedShortcutIds?.includes(chapter.shortcutTest.id) === true : false;
-    return [<li key={chapter.id} className="path-row path-chapter-row" data-kind="chapter" data-status={status}>
+    const showsChapterBoundary = main[0] ? viewport.visibleStageIds.has(main[0].id) : false;
+    const chapterRow = <li key={chapter.id} className="path-row path-chapter-row" data-kind="chapter" data-status={status}>
       {shortcutAvailable ? <><span className="path-shortcut-branch" aria-hidden="true" /><button type="button" className="path-shortcut-node" data-passed={shortcutPassed} aria-haspopup="dialog" aria-label={`בדיקת קיצור לבחירה לפרק ${index + 1}: ${chapter.nameHe}`} disabled={starting} onClick={() => setSelectedChapterId(chapter.id)}><span className="path-shortcut-icon"><PathNodeIcon kind="key" /></span><span><strong>{shortcutPassed ? "הקיצור פתוח" : "כבר מכיר?"}</strong><small>{shortcutPassed ? "אפשר לנסות שוב" : "בדיקה קצרה לדילוג"}</small></span></button></> : null}
       <div className="path-chapter-node" aria-hidden="true"><PathNodeIcon kind={completed ? "check" : "chapter"} /><span>{index + 1}</span>{chapter.id === firstLockedChapterId ? <span className="path-node-status"><PathNodeIcon kind="lock" /></span> : null}</div>
       <h2 className="path-node-label"><small>פרק {index + 1}{completed ? " · הושלם" : ""}</small>{chapter.nameHe}</h2>
-    </li>, ...chapter.stages.map(stageNode)];
-  }).reverse();
+    </li>;
+    return [...(showsChapterBoundary ? [chapterRow] : []), ...visibleStages.map(stageNode)];
+  });
+  const rows = [
+    ...(viewport.hasOlderRequiredStages ? [<li key="older" className="path-row path-history-row">
+      <button type="button" className="path-history-node" onClick={() => setHistoryWindow({ focusStageId, count: pastStageCount + DEFAULT_PAST_STAGE_COUNT })}>
+        <span aria-hidden="true">•••</span><span>שלבים קודמים</span>
+      </button>
+    </li>] : []),
+    ...pathRows,
+    ...(viewport.hasFutureRequiredStages ? [<li key="continuation" className="path-row path-continuation-row" aria-label="המסלול ממשיך">
+      <div className="path-continuation-node" role="img" aria-label="עוד בדרך"><span /><span /><span /></div>
+      <span className="path-continuation-label" aria-hidden="true">עוד בדרך</span>
+    </li>] : []),
+  ].reverse();
 
   return <section className="learning-path-screen">
     <header className="path-screen-header"><button type="button" className="quiet-button" disabled={starting} onClick={onBack}>חזרה לבית</button><div><h1>{path.nameHe}</h1><p>מתקדמים למעלה, שלב אחרי שלב ↑</p></div>{progress ? <TotalStars count={totalStars ?? totalEarnedStars([path], progress)} /> : null}</header>

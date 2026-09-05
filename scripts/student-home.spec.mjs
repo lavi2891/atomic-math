@@ -123,6 +123,7 @@ for (const width of [320, 360, 390]) test(`upward map at ${width}px centers curr
   await page.setViewportSize({ width, height: 844 });
   await openMap(page);
   await expect(page.getByRole('status', { name: '1 כוכבים בסך הכול' })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'עוד בדרך' })).toBeVisible();
   const current = page.locator('[aria-current="step"]');
   const previous = stageNode(page, 'NA_PLACE_VALUE');
   const next = stageNode(page, 'NA_DECIMAL_REVIEW');
@@ -137,6 +138,9 @@ for (const width of [320, 360, 390]) test(`upward map at ${width}px centers curr
   await next.evaluate(button => button.click());
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(await page.locator('.path-scroll').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  const continuation = await page.locator('.path-continuation-node').boundingBox();
+  expect(continuation.x).toBeGreaterThanOrEqual(0);
+  expect(continuation.x + continuation.width).toBeLessThanOrEqual(width);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   for (const node of await page.locator('.path-stage-node').all()) {
     const box = await node.boundingBox();
