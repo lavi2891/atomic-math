@@ -1,4 +1,4 @@
-import type { PersistenceDriver, StoredAttempt, StoredSession, SyncState } from "./driver.ts";
+import type { PersistenceDriver, StoredAttempt, StoredRiddleSubmission, StoredSession, SyncState } from "./driver.ts";
 import type { SyncMetadata } from "../../domain/sync/types.ts";
 import type { CachedStudentHome } from "../../domain/studentHome/types.ts";
 import type { PersonalBest } from "../../domain/personalBests/types.ts";
@@ -7,6 +7,7 @@ import { isBetterPersonalBest } from "../../domain/personalBests/compare.ts";
 export class MemoryPersistenceDriver implements PersistenceDriver {
   readonly attempts = new Map<string, StoredAttempt>();
   readonly sessions = new Map<string, StoredSession>();
+  readonly riddleSubmissions = new Map<string, StoredRiddleSubmission>();
   metadata: SyncMetadata = { retryCount: 0 };
   readonly homes = new Map<string, CachedStudentHome>();
   readonly personalBests = new Map<string, PersonalBest>();
@@ -23,6 +24,11 @@ export class MemoryPersistenceDriver implements PersistenceDriver {
   async listSessions() { return [...this.sessions.values()].map((value) => structuredClone(value)); }
   async updateSessionSyncState(ids: readonly string[], state: SyncState) {
     for (const id of ids) { const record = this.sessions.get(id); if (record) record.syncState = state; }
+  }
+  async putRiddleSubmission(record: StoredRiddleSubmission) { if (!this.riddleSubmissions.has(record.value.submissionId)) this.riddleSubmissions.set(record.value.submissionId, structuredClone(record)); }
+  async listRiddleSubmissions() { return [...this.riddleSubmissions.values()].map((value) => structuredClone(value)); }
+  async updateRiddleSubmissionSyncState(ids: readonly string[], state: SyncState) {
+    for (const id of ids) { const record = this.riddleSubmissions.get(id); if (record) record.syncState = state; }
   }
   async getMetadata() { return structuredClone(this.metadata); }
   async putMetadata(metadata: SyncMetadata) { this.metadata = structuredClone(metadata); }

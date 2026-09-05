@@ -10,6 +10,17 @@ export const LEARNING_PATHS = [
         id: "NA_DECIMAL_ARITHMETIC",
         nameHe: "מספרים ופעולות בסיסיות",
         shortcutTest: { id: "NA_DECIMAL_SHORTCUT", skillIds: ["AR_PLACE_VALUE", "AR_ADD_FACTS", "AR_SUB_FACTS"] },
+        optionalNodes: [
+          {
+            id: "NA_NUMBER_PAIR_RIDDLE",
+            type: "riddle",
+            titleHe: "זוג מסתורי",
+            promptHe: "מצאו שני מספרים טבעיים שונים שסכומם 10 ומכפלתם גדולה מ־20. כתבו איך מצאתם אותם.",
+            difficulty: "medium",
+            media: { type: "image", src: "riddle-number-pair.svg", alt: "שתי משבצות של מספרים שסכומן 10", role: "instructional", caption: "איזה מספר מתאים לכל משבצת?" },
+            finalAnswer: { acceptedAnswers: ["4 ו־6", "6 ו־4", "4,6", "6,4"] },
+          },
+        ],
         stages: [
           { id: "NA_PLACE_VALUE", nameHe: "מבנה המספר", type: "normal", skillIds: ["AR_PLACE_VALUE"] },
           { id: "NA_ADD_SUBTRACT", nameHe: "חיבור וחיסור", type: "normal", skillIds: ["AR_ADD_FACTS", "AR_SUB_FACTS"] },
@@ -31,6 +42,9 @@ export const LEARNING_PATHS = [
       {
         id: "NA_OPERATION_ORDER",
         nameHe: "סדר פעולות",
+        optionalNodes: [
+          { id: "NA_CALCULATOR_TOOL", type: "tool", titleHe: "מחשבון לחקירה", shortDescription: "בדקו ביטויים והשוו בין סדרי חישוב שונים.", url: "https://www.geogebra.org/calculator", sourceLabel: "GeoGebra", opensExternally: true },
+        ],
         stages: [
           { id: "NA_OPERATION_ORDER_BASIC", nameHe: "סדר פעולות בסיסי", type: "normal", skillIds: ["OPS_ORDER_BASIC"] },
         ],

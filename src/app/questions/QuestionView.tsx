@@ -7,6 +7,7 @@ import type {
   RawAnswer,
 } from "@domain/questions/types";
 import { ContentRenderer } from "@ui/ContentRenderer";
+import { ResponsiveMedia } from "@ui/ResponsiveMedia";
 import {
   MultiChoiceAnswerInput,
   NumericAnswerInput,
@@ -417,6 +418,7 @@ export function QuestionView({
           minWidth: 0,
         }}
       >
+        {question.media ? <ResponsiveMedia media={question.media} /> : null}
         <ContentRenderer content={question.prompt} />
       </div>
 

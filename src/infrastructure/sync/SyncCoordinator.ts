@@ -3,6 +3,7 @@ import type { SessionRepository, SyncMetadataRepository } from "../../domain/syn
 import { AppsScriptClient, RemoteApiError } from "./AppsScriptClient.ts";
 import { syncConfig } from "./config.ts";
 import { log } from "../../shared/logger.ts";
+import type { RiddleSubmissionRepository } from "../../domain/optionalLearningContent/RiddleSubmissionRepository.ts";
 
 export class SyncCoordinator {
   private activeFlush: Promise<void> | null = null;
@@ -12,20 +13,27 @@ export class SyncCoordinator {
     privateSessions: SessionRepository,
     privateMetadata: SyncMetadataRepository,
     privateClient: AppsScriptClient | null,
+    privateRiddleSubmissions?: RiddleSubmissionRepository,
   ) {
     this.attempts = privateAttempts;
     this.sessions = privateSessions;
     this.metadata = privateMetadata;
     this.client = privateClient;
+    this.riddleSubmissions = privateRiddleSubmissions;
   }
   private readonly attempts: AttemptRepository;
   private readonly sessions: SessionRepository;
   private readonly metadata: SyncMetadataRepository;
   private readonly client: AppsScriptClient | null;
+  private readonly riddleSubmissions?: RiddleSubmissionRepository;
 
   async notifyAttemptSaved(): Promise<void> {
     const pending = await this.attempts.getPendingAttempts(syncConfig.attemptFlushThreshold);
     if (pending.length >= syncConfig.attemptFlushThreshold) void this.flush();
+  }
+
+  async notifyRiddleSubmissionSaved(): Promise<void> {
+    if (this.riddleSubmissions && (await this.riddleSubmissions.getPending(1)).length) void this.flush();
   }
 
   flush(): Promise<void> {
@@ -62,6 +70,19 @@ export class SyncCoordinator {
           if (!(error instanceof RemoteApiError) || error.retryable) throw error;
           await this.attempts.markAttemptsInvalid(batch.map((attempt) => attempt.attemptId));
           log.warn("sync", "Attempt batch rejected permanently and retained locally", { attemptIds: batch.map((attempt) => attempt.attemptId), code: error.code });
+        }
+      }
+      const pendingRiddles = await this.riddleSubmissions?.getPending(syncConfig.maxBatchSize) ?? [];
+      if (pendingRiddles.length > 0) {
+        const studentId = pendingRiddles[0]!.studentId;
+        const batch = pendingRiddles.filter((submission) => submission.studentId === studentId);
+        try {
+          const result = await this.client!.submitRiddleResponses(studentId, batch);
+          await this.riddleSubmissions!.markSynced([...result.acceptedSubmissionIds, ...result.duplicateSubmissionIds]);
+        } catch (error) {
+          if (!(error instanceof RemoteApiError) || error.retryable) throw error;
+          await this.riddleSubmissions!.markInvalid(batch.map((submission) => submission.submissionId));
+          log.warn("sync", "Riddle submissions rejected permanently and retained locally", { submissionIds: batch.map((submission) => submission.submissionId), code: error.code });
         }
       }
       await this.metadata.saveSyncMetadata({ retryCount: 0, lastSuccessfulSync: new Date().toISOString() });

@@ -5,6 +5,8 @@ import { derivePathProgress, recordStageResult, totalEarnedStars } from "../src/
 import type { Chapter, LearningPath, Stage, StageStars, StudentLearningProgress } from "../src/domain/learningPath/types.ts";
 import { projectMastery } from "../src/domain/mastery/projectMastery.ts";
 import { createPracticeSession } from "../src/domain/session/practiceSession.ts";
+import { createRiddleSubmission, safeExternalResourceUrl, type RiddleDefinition } from "../src/domain/optionalLearningContent/types.ts";
+import { mediaValidationIssues } from "../src/domain/media/types.ts";
 
 function run(name: string, fn: () => void): void {
   fn();
@@ -35,6 +37,11 @@ run("the two authored paths use unique identities and existing atomic Skills", (
     unique(definition.id);
     for (const entry of definition.chapters) {
       unique(entry.id);
+      for (const optional of entry.optionalNodes ?? []) {
+        unique(optional.id);
+        if (optional.type === "riddle") assert.ok(["easy", "medium", "hard"].includes(optional.difficulty));
+        else assert.equal(optional.opensExternally, true);
+      }
       for (const item of entry.stages) {
         unique(item.id);
         assert.ok(item.skillIds.length >= 1);
@@ -58,6 +65,27 @@ run("the two authored paths use unique identities and existing atomic Skills", (
   }
   assert.deepEqual([...stageTypes].sort(), ["bonus", "checkpoint", "normal", "review"]);
   assert.deepEqual([...coveredSkills].sort(), SKILLS.map((skill) => skill.id).sort());
+});
+
+run("riddles and side resources are optional and leave normal Stage progression unchanged", () => {
+  const riddle: RiddleDefinition = { id: "riddle", type: "riddle", titleHe: "חידה", promptHe: "הסבירו", difficulty: "medium" };
+  const plain = path([chapter("chapter", [stage("one"), stage("two")])]);
+  const optional = path([{ ...plain.chapters[0]!, optionalNodes: [riddle, { id: "tool", type: "tool", titleHe: "כלי", url: "https://example.com/tool", opensExternally: true }] }]);
+  assert.deepEqual(derivePathProgress(optional, fresh()), derivePathProgress(plain, fresh()));
+  const after = recordStageResult(optional, fresh(), "one", 1);
+  assert.equal(derivePathProgress(optional, after).find((entry) => entry.stageId === "two")?.status, "available");
+  assert.equal(totalEarnedStars([optional], after), 1);
+});
+
+run("riddle submissions stay separate from Mastery and media and URLs validate safely", () => {
+  const riddle: RiddleDefinition = { id: "riddle", type: "riddle", titleHe: "חידה", promptHe: "הסבירו", difficulty: "hard", finalAnswer: { acceptedAnswers: ["42"] } };
+  const submission = createRiddleSubmission({ riddle, studentId: "student", responseText: "כך פתרתי", finalAnswerText: "42", submissionId: "submission", now: "2026-01-01T00:00:00.000Z" });
+  assert.equal(submission.status, "submitted"); assert.equal(submission.finalAnswerCorrect, true); assert.equal("skillId" in submission, false);
+  assert.deepEqual(projectMastery({ studentId: "student", skillId: "AR_PLACE_VALUE", attempts: [], calculatedAt: "x" }).attemptCount, 0);
+  assert.ok(mediaValidationIssues({ type: "image", src: "diagram.svg", alt: "", role: "instructional" }).length);
+  assert.deepEqual(mediaValidationIssues({ type: "image", src: "diagram.svg", alt: "תרשים", role: "instructional" }), []);
+  assert.equal(safeExternalResourceUrl("javascript:alert(1)"), null);
+  assert.equal(safeExternalResourceUrl("https://example.com/resource"), "https://example.com/resource");
 });
 
 run("a new student can start only the first main stage", () => {

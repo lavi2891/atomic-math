@@ -1,4 +1,5 @@
 import type { SkillId } from "../../content/catalog/types.ts";
+import type { OptionalLearningNode } from "../optionalLearningContent/types.ts";
 
 export type LearningPathId = "NUMBERS_ALGEBRA" | "GEOMETRY";
 export type StageType = "normal" | "review" | "checkpoint" | "bonus";
@@ -55,6 +56,8 @@ export interface Chapter {
   /** Array order is progression order; there is no fixed stage count. */
   readonly stages: readonly Stage[];
   readonly shortcutTest?: ChapterShortcutTest;
+  /** Optional content is rendered on side branches and never participates in progression. */
+  readonly optionalNodes?: readonly OptionalLearningNode[];
 }
 
 export interface LearningPath {

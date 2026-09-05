@@ -30,10 +30,13 @@ let shortcutLaunches = [];
 let reads = [];
 let modalOpens = 0;
 let modalCloses = 0;
+let savedRiddles = [];
+const riddleSubmissions = { async save(value) { savedRiddles.push(value); }, async listForRiddle(studentId, riddleId) { return savedRiddles.filter(item => item.studentId === studentId && item.riddleId === riddleId); }, async getPending() { return savedRiddles; }, async markSynced() {}, async markInvalid() {} };
 const defaults = { path: definition, progress: progress({}), definitions: FOUNDATIONAL_QUESTIONS,
   personalBests: { get: async (studentId, signature) => { reads.push({ studentId, signature }); return { bestScore: 4200 }; } },
   onBack() {}, onPractice: (...args) => launches.push(args),
   onShortcut: (...args) => shortcutLaunches.push(args),
+  riddleSubmissions,
 };
 async function mount(overrides = {}) {
   let tree;
@@ -42,7 +45,7 @@ async function mount(overrides = {}) {
 }
 async function click(button) { await act(async () => { button.props.onClick(); }); }
 async function unmount(tree) { await act(() => tree.unmount()); }
-async function run(name, fn) { launches = []; shortcutLaunches = []; reads = []; await fn(); console.log(`PASS ${name}`); }
+async function run(name, fn) { launches = []; shortcutLaunches = []; reads = []; savedRiddles = []; await fn(); console.log(`PASS ${name}`); }
 
 try {
   await run('map reverses chapter/stage DOM order and uses distinct icons and current state', async () => {
@@ -133,6 +136,40 @@ try {
     assert.equal(node(tree, 'review').props.disabled, false);
     assert.equal(node(tree, 'checkpoint').props.disabled, true);
     await unmount(tree);
+  });
+
+  await run('optional riddle renders off-path difficulty and media and stores an open response', async () => {
+    const riddle = { id: 'riddle', type: 'riddle', titleHe: 'חידה', promptHe: 'איך ידעת?', difficulty: 'hard', media: { type: 'image', src: 'diagram.svg', alt: 'תרשים עזר', role: 'instructional' } };
+    const adapted = { ...definition, chapters: [{ ...definition.chapters[0], optionalNodes: [riddle] }, definition.chapters[1]] };
+    const tree = await mount({ path: adapted });
+    const row = tree.root.findByProps({ 'data-optional-id': 'riddle' });
+    assert.ok(row.findByProps({ className: 'path-optional-branch' }));
+    assert.ok(row.findByProps({ 'data-icon': 'riddle' }));
+    assert.match(text(row), /חידה · לבחירה.*●●● קשה/);
+    await click(row.findByType('button'));
+    assert.equal(sheet(tree).props['aria-labelledby'], 'riddle-sheet-title');
+    const image = sheet(tree).findByType('img'); assert.equal(image.props.alt, 'תרשים עזר'); assert.match(image.props.src, /diagram\.svg$/);
+    const textarea = sheet(tree).findByType('textarea'); await act(() => textarea.props.onChange({ target: { value: 'פתרון מוסבר' } }));
+    const submit = sheet(tree).findAllByType('button').find(item => text(item.props.children) === 'הגשה');
+    await click(submit);
+    assert.equal(savedRiddles.length, 1); assert.equal(savedRiddles[0].status, 'submitted'); assert.equal(savedRiddles[0].difficulty, 'hard');
+    assert.match(text(sheet(tree)), /הפתרון נשמר/);
+    await unmount(tree);
+  });
+
+  await run('video link and tool resources use distinct icons and safe external actions', async () => {
+    const resources = [
+      { id: 'video', type: 'video', titleHe: 'סרטון', url: 'https://example.com/video', opensExternally: true },
+      { id: 'link', type: 'externalLink', titleHe: 'קישור', url: 'https://example.com/read', opensExternally: true },
+      { id: 'tool', type: 'tool', titleHe: 'כלי', url: 'https://example.com/tool', opensExternally: true },
+    ];
+    for (const [resource, label] of resources.map((item, index) => [item, ['צפה', 'פתח', 'פתח כלי'][index]])) {
+      const adapted = { ...definition, chapters: [{ ...definition.chapters[0], optionalNodes: [resource] }, definition.chapters[1]] };
+      const tree = await mount({ path: adapted }); const row = tree.root.findByProps({ 'data-optional-id': resource.id });
+      assert.ok(row.findByProps({ 'data-icon': resource.type })); await click(row.findByType('button'));
+      const anchor = sheet(tree).findByType('a'); assert.equal(text(anchor), label); assert.equal(anchor.props.target, '_blank'); assert.equal(anchor.props.rel, 'noopener noreferrer');
+      assert.match(text(sheet(tree)), /נפתח מחוץ ל־Atomic Math/); await unmount(tree);
+    }
   });
 
   await run('long paths mount only the local past and future window around the current stage', async () => {

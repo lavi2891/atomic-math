@@ -26,6 +26,21 @@ function amValidateAttemptBatch_(payload) {
   return payload;
 }
 
+function amValidateRiddleSubmissionBatch_(payload) {
+  if (!payload || typeof payload !== "object" || typeof payload.studentId !== "string") throw amError_("INVALID_PAYLOAD", "Missing riddle submission payload", false);
+  if (!Array.isArray(payload.submissions) || payload.submissions.length === 0 || payload.submissions.length > AM_MAX_ATTEMPT_BATCH) throw amError_("INVALID_BATCH", "Riddle batch must contain 1-25 items", false);
+  var ids = {};
+  payload.submissions.forEach(function(submission) {
+    if (!submission || typeof submission.submissionId !== "string" || !submission.submissionId || submission.studentId !== payload.studentId) throw amError_("INVALID_RIDDLE_SUBMISSION", "Riddle submission identity is invalid", false);
+    if (typeof submission.riddleId !== "string" || typeof submission.responseText !== "string" || !submission.responseText.trim() || typeof submission.submittedAt !== "string" || typeof submission.updatedAt !== "string") throw amError_("INVALID_RIDDLE_SUBMISSION", "Riddle response is missing", false);
+    if (["easy", "medium", "hard"].indexOf(submission.difficulty) < 0 || ["submitted", "reviewed", "accepted", "needs-revision"].indexOf(submission.status) < 0) throw amError_("INVALID_RIDDLE_SUBMISSION", "Riddle metadata is invalid", false);
+    if (submission.finalAnswerCorrect !== undefined && typeof submission.finalAnswerCorrect !== "boolean") throw amError_("INVALID_RIDDLE_SUBMISSION", "Riddle final-answer result is invalid", false);
+    if (ids[submission.submissionId]) throw amError_("DUPLICATE_IN_BATCH", "Duplicate submissionId inside batch", false);
+    ids[submission.submissionId] = true;
+  });
+  return payload;
+}
+
 function amPartitionAttempts_(attempts, existingIds) {
   var existing = {};
   existingIds.forEach(function(id) { existing[String(id)] = true; });

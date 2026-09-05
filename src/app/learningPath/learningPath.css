@@ -70,6 +70,17 @@
 .path-shortcut-icon { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: #5c408e; }
 .path-shortcut-icon svg { width: 20px; height: 20px; }
 .path-shortcut-node:focus-visible { outline: 3px solid white; outline-offset: 4px; }
+.path-optional-row { min-height: 98px; }
+.path-optional-row::before { background: #3a4a60; }
+.path-optional-branch { position: absolute; left: calc(50% - 64px); top: calc(50% - 2px); width: 64px; height: 3px; background: #8068aa; }
+.path-optional-node { grid-column: 2; grid-row: 1; justify-self: center; z-index: 2; width: 48px; height: 48px; padding: 0; border: 2px dashed var(--path-purple); border-radius: 16px; background: #3d2e5d; color: #f0e8ff; transform: translateX(-64px); display: grid; place-items: center; }
+.path-optional-icon { display: grid; place-items: center; }
+.path-optional-icon svg { width: 23px; height: 23px; }
+.path-optional-label { grid-column: 1; grid-row: 1; direction: rtl; justify-self: start; width: min(92px, 100%); padding-inline: 2px; display: grid; gap: 3px; color: #eee8fa; text-align: right; font-size: 12px; line-height: 1.25; overflow-wrap: anywhere; }
+.path-optional-label small { color: #cabde1; font-size: 9px; }
+.path-optional-node:focus-visible { outline: 3px solid white; outline-offset: 4px; }
+.riddle-difficulty { display: inline-flex; direction: rtl; align-items: center; width: max-content; max-width: 100%; gap: 5px; color: #d5c9e8; font-size: 12px; line-height: 1; }
+.riddle-difficulty > span { direction: ltr; color: #c0a2ff; letter-spacing: 2px; font-size: 9px; }
 .path-stars { display: inline-flex; direction: ltr; gap: 4px; width: max-content; line-height: 1; font-size: 20px; color: #6f7e94; filter: drop-shadow(0 1px 0 #0008); }
 .path-stars [data-earned="true"] { color: #ffd45f; }
 .path-stage-node:disabled { cursor: default; }
@@ -90,6 +101,19 @@
 .path-launch-error { color: #ffb4b4; }
 .path-stage-sheet [role="status"], .path-stage-sheet [role="alert"] { padding: 10px 12px; border-radius: 10px; background: #22334b; line-height: 1.4; }
 .path-stage-sheet [role="alert"] { background: #40272d; }
+.optional-sheet-title { min-width: 0; display: flex; align-items: center; gap: 10px; }
+.optional-sheet-title > svg { flex: 0 0 auto; width: 30px; height: 30px; color: var(--path-purple); }
+.optional-sheet-title small { color: #cbbce2; font-size: 11px; }
+.optional-sheet-title h2 { margin-top: 2px; }
+.riddle-sheet .riddle-prompt { font-size: 16px; line-height: 1.55; }
+.riddle-response, .riddle-final-answer { display: grid; gap: 7px; color: #d9e3f0; font-size: 13px; font-weight: 700; }
+.riddle-response textarea, .riddle-final-answer input { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid #637792; border-radius: 12px; background: #101d30; color: #fff; font: inherit; font-weight: 400; line-height: 1.5; }
+.riddle-response textarea { min-height: 132px; resize: vertical; padding: 12px; }
+.riddle-final-answer input { min-height: 48px; padding: 10px 12px; }
+.riddle-response textarea:focus, .riddle-final-answer input:focus { outline: 3px solid #8fbfff; outline-offset: 2px; }
+.riddle-sheet .primary-action { position: sticky; bottom: max(0px, env(safe-area-inset-bottom)); z-index: 2; box-shadow: 0 -8px 18px #1a2940cc; }
+.resource-meta { color: #b8c4d5; font-size: 12px; line-height: 1.4; }
+.resource-open-action { box-sizing: border-box; display: grid; place-items: center; color: white; text-decoration: none; font-weight: 700; }
 @media (max-width: 480px) {
   .learning-path-screen { height: calc(100dvh - max(30px, env(safe-area-inset-top) + env(safe-area-inset-bottom))); }
   .path-screen-header h1 { font-size: 18px; }
@@ -102,11 +126,15 @@
   .path-row { grid-template-columns: minmax(0, 1fr) 76px minmax(0, 1fr); }
   .path-node-label { padding-inline-end: 8px; font-size: 13px; }
   .path-row[data-kind="checkpoint"][data-current="true"] .path-node-label { padding-inline-end: 18px; }
+  .path-optional-node { transform: translateX(-54px); }
+  .path-optional-branch { left: calc(50% - 54px); width: 54px; }
+  .path-optional-label { width: min(78px, 100%); }
 }
 
 @media (max-height: 620px) {
   .path-stage-sheet__content { gap: 12px; padding-top: 14px; }
   .path-stage-sheet .primary-action { min-height: 50px; }
+  .riddle-response textarea { min-height: 104px; }
 }
 
 @keyframes path-unlock {

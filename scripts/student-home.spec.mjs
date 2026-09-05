@@ -53,6 +53,20 @@ test('direct Geometry URL survives refresh', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'גיאומטריה' })).toBeVisible();
 });
 
+test('optional riddle branch and response form stay within a narrow mobile viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto(`${url}course/numbers-algebra`);
+  const riddle = page.getByRole('button', { name: /חידה לבחירה: זוג מסתורי/ });
+  await expect(riddle).toBeVisible();
+  const pathOverflow = await page.locator('.path-scroll').evaluate(element => element.scrollWidth - element.clientWidth);
+  expect(pathOverflow).toBeLessThanOrEqual(1);
+  await riddle.click();
+  const dialog = page.locator('.riddle-sheet'); await expect(dialog).toBeVisible();
+  const textarea = dialog.locator('textarea'); await textarea.fill('מצאתי שני מספרים ובדקתי את הסכום והמכפלה.');
+  await expect(dialog.getByRole('button', { name: 'הגשה' })).toBeInViewport();
+  const box = await dialog.boundingBox(); expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(320);
+});
+
 test('browser Back returns from a course to Home', async ({ page }) => {
   await open(page);
   await numbers(page).getByRole('button').click();

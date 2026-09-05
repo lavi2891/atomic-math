@@ -816,3 +816,10 @@ run("generated instances inherit literacy demand and invalid values are rejected
   assert.ok(literacyDemandIssues({ ...definition, literacyDemand: undefined } as GeneratedQuestionDefinition & { skillId: string }).length > 0);
   assert.ok(literacyDemandIssues({ ...definition, literacyDemand: "none" }).some((issue) => issue.includes("contextual")));
 });
+
+run("generated questions preserve reusable image media metadata", () => {
+  const definition = { ...generatedDefinition("MVP_AR_ADD_FACTS_A_A"), media: { type: "image" as const, src: "example.svg", alt: "תרשים חיבור", role: "instructional" as const } };
+  const question = buildGeneratedQuestion(definition, { seed: 9 });
+  assert.deepEqual(question.media, definition.media);
+  assert.deepEqual(generatedInstanceMetadataIssues(definition, question), []);
+});

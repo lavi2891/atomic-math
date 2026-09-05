@@ -2,8 +2,9 @@ import type { Attempt } from "../../domain/attempts/types.ts";
 import type { PersistedSession } from "../../domain/sync/types.ts";
 import type { Assignment, StudentProfile } from "../../domain/studentHome/types.ts";
 import type { MasterySnapshot } from "../../domain/mastery/projectMastery.ts";
+import type { RiddleSubmission } from "../../domain/optionalLearningContent/types.ts";
 
-export type ApiAction = "health" | "getStudentHome" | "startSession" | "submitAttempts" | "endSession" | "getSyncState" | "upsertAssignments";
+export type ApiAction = "health" | "getStudentHome" | "startSession" | "submitAttempts" | "submitRiddleResponses" | "endSession" | "getSyncState" | "upsertAssignments";
 export type ApiResponse<T> =
   | { ok: true; requestId: string; serverTime: string; data: T }
   | { ok: false; requestId: string; error: { code: string; message: string; retryable: boolean } };
@@ -43,6 +44,9 @@ export class AppsScriptClient {
 
   submitAttempts(sessionId: string, studentId: string, attempts: Attempt[]) {
     return this.request<{ acceptedAttemptIds: string[]; duplicateAttemptIds: string[] }>("submitAttempts", { sessionId, studentId, attempts });
+  }
+  submitRiddleResponses(studentId: string, submissions: RiddleSubmission[]) {
+    return this.request<{ acceptedSubmissionIds: string[]; duplicateSubmissionIds: string[] }>("submitRiddleResponses", { studentId, submissions });
   }
   syncSession(session: PersistedSession) {
     return this.request<{ sessionId: string }>(session.status === "active" ? "startSession" : "endSession", { session });

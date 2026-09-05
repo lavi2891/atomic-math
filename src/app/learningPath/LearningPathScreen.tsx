@@ -10,6 +10,10 @@ import { StageSheet } from "./StageSheet.tsx";
 import { ShortcutSheet } from "./ShortcutSheet.tsx";
 import { TotalStars } from "./TotalStars.tsx";
 import { DEFAULT_PAST_STAGE_COUNT, derivePathViewport } from "./pathViewport.ts";
+import type { RiddleSubmissionRepository } from "../../domain/optionalLearningContent/RiddleSubmissionRepository.ts";
+import type { OptionalLearningNode } from "../../domain/optionalLearningContent/types.ts";
+import { RiddleDifficultyBadge, RiddleSheet } from "./RiddleSheet.tsx";
+import { ResourceSheet } from "./ResourceSheet.tsx";
 import "./learningPath.css";
 
 type Props = {
@@ -23,12 +27,15 @@ type Props = {
   onBack: () => void;
   onPractice: (reference: LearningStageReference, skillIds: string[]) => void;
   onShortcut: (reference: LearningShortcutReference, skillIds: string[]) => void;
+  riddleSubmissions: RiddleSubmissionRepository;
+  onRiddleSubmitted?: () => void;
 };
 const typeLabels: Record<StageType, string> = { normal: "שלב", review: "חזרה", checkpoint: "אתגר", bonus: "בונוס · לבחירה" };
 
-export function LearningPathScreen({ path, progress, totalStars, definitions, personalBests, starting = false, error, onBack, onPractice, onShortcut }: Props) {
+export function LearningPathScreen({ path, progress, totalStars, definitions, personalBests, starting = false, error, onBack, onPractice, onShortcut, riddleSubmissions, onRiddleSubmitted }: Props) {
   const [selectedStageId, setSelectedStageId] = useState<string>();
   const [selectedChapterId, setSelectedChapterId] = useState<string>();
+  const [selectedOptionalId, setSelectedOptionalId] = useState<string>();
   const [historyWindow, setHistoryWindow] = useState<{ focusStageId?: string; count: number }>({ count: DEFAULT_PAST_STAGE_COUNT });
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentRef = useRef<HTMLLIElement>(null);
@@ -43,6 +50,8 @@ export function LearningPathScreen({ path, progress, totalStars, definitions, pe
   const selectedStage = stages.find((stage) => stage.id === selectedStageId);
   const selectedState = selectedStage && states.get(selectedStage.id);
   const selectedChapter = path.chapters.find((chapter) => chapter.id === selectedChapterId);
+  const optionalNodes = path.chapters.flatMap((chapter) => chapter.optionalNodes ?? []);
+  const selectedOptional = optionalNodes.find((node) => node.id === selectedOptionalId);
   const firstLockedMainStageId = stages.find((stage) => stage.type !== "bonus" && states.get(stage.id)?.status === "locked")?.id;
   const firstLockedChapterId = path.chapters.find((chapter) => {
     const main = chapter.stages.filter((stage) => stage.type !== "bonus");
@@ -85,6 +94,18 @@ export function LearningPathScreen({ path, progress, totalStars, definitions, pe
     </li>;
   }
 
+  function optionalNode(node: OptionalLearningNode) {
+    const riddle = node.type === "riddle";
+    const typeLabel = riddle ? "חידה" : node.type === "video" ? "סרטון" : node.type === "tool" ? "כלי" : node.type === "article" ? "מאמר" : "קישור";
+    return <li key={node.id} className="path-row path-optional-row" data-kind={node.type} data-optional-id={node.id}>
+      <span className="path-optional-branch" aria-hidden="true" />
+      <button type="button" className="path-optional-node" aria-haspopup="dialog" aria-label={`${typeLabel} לבחירה: ${node.titleHe}`} onClick={() => setSelectedOptionalId(node.id)}>
+        <span className="path-optional-icon"><PathNodeIcon kind={node.type} /></span>
+      </button>
+      <div className="path-optional-label"><small>{typeLabel} · לבחירה</small><span>{node.titleHe}</span>{riddle ? <RiddleDifficultyBadge difficulty={node.difficulty} /> : null}</div>
+    </li>;
+  }
+
   // Reverse DOM order as well as visual order: later stages are physically above.
   const pathRows = path.chapters.flatMap((chapter, index) => {
     const visibleStages = chapter.stages.filter((stage) => viewport.visibleStageIds.has(stage.id));
@@ -101,7 +122,7 @@ export function LearningPathScreen({ path, progress, totalStars, definitions, pe
       <div className="path-chapter-node" aria-hidden="true"><PathNodeIcon kind={completed ? "check" : "chapter"} /><span>{index + 1}</span>{chapter.id === firstLockedChapterId ? <span className="path-node-status"><PathNodeIcon kind="lock" /></span> : null}</div>
       <h2 className="path-node-label"><small>פרק {index + 1}{completed ? " · הושלם" : ""}</small>{chapter.nameHe}</h2>
     </li>;
-    return [...(showsChapterBoundary ? [chapterRow] : []), ...visibleStages.map(stageNode)];
+    return [...(showsChapterBoundary ? [chapterRow] : []), ...(chapter.optionalNodes ?? []).map(optionalNode), ...visibleStages.map(stageNode)];
   });
   const rows = [
     ...(viewport.hasOlderRequiredStages ? [<li key="older" className="path-row path-history-row">
@@ -128,5 +149,7 @@ export function LearningPathScreen({ path, progress, totalStars, definitions, pe
     {selectedChapter?.shortcutTest && progress ? <ShortcutSheet key={selectedChapter.id} chapter={selectedChapter} passed={progress.passedShortcutIds?.includes(selectedChapter.shortcutTest.id) === true}
       canPractice={selectedChapter.shortcutTest.skillIds.every((id) => available.has(id))} starting={starting} error={error}
       onClose={() => setSelectedChapterId(undefined)} onPractice={() => onShortcut({ pathId: path.id, chapterId: selectedChapter.id, shortcutId: selectedChapter.shortcutTest!.id }, [...selectedChapter.shortcutTest!.skillIds])} /> : null}
+    {selectedOptional?.type === "riddle" && progress ? <RiddleSheet key={selectedOptional.id} riddle={selectedOptional} studentId={progress.studentId} submissions={riddleSubmissions} onSubmitted={onRiddleSubmitted} onClose={() => setSelectedOptionalId(undefined)} /> : null}
+    {selectedOptional && selectedOptional.type !== "riddle" ? <ResourceSheet key={selectedOptional.id} resource={selectedOptional} onClose={() => setSelectedOptionalId(undefined)} /> : null}
   </section>;
 }

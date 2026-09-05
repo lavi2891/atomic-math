@@ -1,5 +1,6 @@
 import type { QuestionCategory } from "./categories.ts";
 import type { DifficultyBand, SkillId } from "../../content/catalog/types.ts";
+import type { LearningMedia } from "../media/types.ts";
 
 export type QuestionType = "numeric" | "singleChoice" | "multiChoice"; // TODO: expression, drag & drop, desmos?, geometry?
 export type LiteracyDemand = "none" | "light" | "moderate" | "high";
@@ -36,6 +37,7 @@ export interface BaseQuestion {
   difficulty?: number;
   difficultyBand?: DifficultyBand;
   prompt: OptionContent[]; // what the student sees
+  media?: LearningMedia;
   subtopic?: string;
   misconceptions?: string[];
   version?: number;

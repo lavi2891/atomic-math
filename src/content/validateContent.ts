@@ -13,6 +13,9 @@ import type { GeneratedQuestionInstance } from "../domain/questions/types.ts";
 import { atomicSkillIdentityIssues, signedGeneratedInstanceIssues, signedSkillDefinitionIssues } from "./foundations/skillScope.ts";
 import { hasAmbiguousProseNumber, mathLookingText } from "./foundations/studentMathContent.ts";
 import { LEARNING_PATHS } from "./learningPaths.ts";
+import type { LearningPath } from "../domain/learningPath/types.ts";
+import { mediaValidationIssues } from "../domain/media/types.ts";
+import { safeExternalResourceUrl } from "../domain/optionalLearningContent/types.ts";
 
 export interface SkillContentAudit {
   skillId: string;
@@ -87,6 +90,10 @@ function questionStudentSurfaces(question: Question): string[] {
     ...(question.hints ?? []).map(contentSurface),
     ...(question.type === "numeric" ? [] : question.options.map((option) => contentSurface(option.content))),
   ];
+}
+
+function definitionMediaIssues(definition: SkillQuestionDefinition): string[] {
+  return definition.media ? mediaValidationIssues(definition.media).map((issue) => `${definition.id}: ${issue}`) : [];
 }
 
 function visibleLatinSymbols(question: Question): string[] {
@@ -190,6 +197,7 @@ export function generatedInstanceMetadataIssues(definition: GeneratedQuestionDef
   const issues: string[] = [];
   if (question.templateId !== definition.id || question.baseId !== definition.id) issues.push(`${definition.id}: generated instance identity does not match its definition`);
   if (question.literacyDemand !== definition.literacyDemand) issues.push(`${definition.id}: generated instance does not preserve literacyDemand`);
+  if (JSON.stringify(question.media) !== JSON.stringify(definition.media)) issues.push(`${definition.id}: generated instance does not preserve media`);
   if (JSON.stringify(question.supportingSkills ?? []) !== JSON.stringify(definition.supportingSkills ?? [])) issues.push(`${definition.id}: generated instance does not preserve supportingSkills`);
   const reconstructed = definition.exprTemplate.replace(/\{([A-Za-z_]\w*)\}/g, (match, name: string) => question.sampledParams[name] ?? match);
   if (reconstructed !== question.renderedExpression) issues.push(`${definition.id}: rendered expression does not match template and sampled params`);
@@ -439,10 +447,19 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
   for (const skill of SKILLS.filter((item) => item.active)) {
     issues.push(...deprecatedStudentTerminologyIssues(skill.id, [skill.nameHe, skill.shortNameHe ?? "", skill.descriptionHe ?? ""]));
   }
-  for (const path of LEARNING_PATHS) {
+  for (const path of LEARNING_PATHS as readonly LearningPath[]) {
     issues.push(...deprecatedStudentTerminologyIssues(path.id, [path.nameHe]));
     for (const chapter of path.chapters) {
       issues.push(...deprecatedStudentTerminologyIssues(chapter.id, [chapter.nameHe, ...chapter.stages.map((stage) => stage.nameHe)]));
+      for (const node of chapter.optionalNodes ?? []) {
+        if (node.type === "riddle") {
+          if (!["easy", "medium", "hard"].includes(node.difficulty)) issues.push(`${node.id}: riddle difficulty is invalid`);
+          if (node.media) issues.push(...mediaValidationIssues(node.media).map((issue) => `${node.id}: ${issue}`));
+        } else {
+          if (!node.opensExternally || !safeExternalResourceUrl(node.url)) issues.push(`${node.id}: external resource URL is invalid`);
+          if (node.media) issues.push(...mediaValidationIssues(node.media).map((issue) => `${node.id}: ${issue}`));
+        }
+      }
     }
   }
   for (const skill of SKILLS) for (const issue of validateEvidencePolicy(skill.evidencePolicy)) issues.push(`${skill.id}: ${issue}`);
@@ -454,6 +471,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
     if (!definition.difficultyBand) issues.push(`${definition.id}: difficulty band is missing`);
     if (!definition.contentFamily) issues.push(`${definition.id}: content family is missing`);
     issues.push(...literacyDemandIssues(definition));
+    issues.push(...definitionMediaIssues(definition));
     issues.push(...supportingSkillMetadataIssues(definition));
     if (isGeneratedQuestionDefinition(definition)) {
       const authoringMode: string | undefined = definition.authoringMode;

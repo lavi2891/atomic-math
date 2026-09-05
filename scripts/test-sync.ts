@@ -1,14 +1,16 @@
 import assert from "node:assert/strict";
-import { DurableAttemptRepository, DurableSessionRepository, DurableSyncMetadataRepository } from "../src/infrastructure/persistence/DurableRepositories.ts";
+import { DurableAttemptRepository, DurableRiddleSubmissionRepository, DurableSessionRepository, DurableSyncMetadataRepository } from "../src/infrastructure/persistence/DurableRepositories.ts";
 import { MemoryPersistenceDriver } from "../src/infrastructure/persistence/MemoryPersistenceDriver.ts";
 import { AppsScriptClient } from "../src/infrastructure/sync/AppsScriptClient.ts";
 import { SyncCoordinator } from "../src/infrastructure/sync/SyncCoordinator.ts";
 import type { Attempt } from "../src/domain/attempts/types.ts";
 import type { PersistedSession } from "../src/domain/sync/types.ts";
+import { createRiddleSubmission, type RiddleDefinition } from "../src/domain/optionalLearningContent/types.ts";
 
 async function run(name: string, fn: () => void | Promise<void>) { await fn(); process.stdout.write(`PASS ${name}\n`); }
 function attempt(id: string): Attempt { return { attemptId:id,sessionId:"S",studentId:"STUDENT",questionId:"Q",skillId:"SKILL",difficulty:0.5,literacyDemand:"moderate",submittedAnswer:{questionType:"numeric",data:{value:"1"}},correct:true,supportLevel:"independent",scoreValue:1,responseTimeMs:1000,submittedAt:"2026-01-01T00:00:00.000Z",sequenceNumber:Number(id.replace(/\D/g,""))||1 }; }
 function session(): PersistedSession { return { id:"S",studentId:"STUDENT",selectedSkillIds:["SKILL"],settings:{mode:"fixed",questionCount:5},startedAt:1,source:"freePractice",strategy:"balanced",status:"active",questionCount:0,correctCount:0,incorrectCount:0,accuracy:0 }; }
+const riddle: RiddleDefinition = { id:"RIDDLE",type:"riddle",titleHe:"חידה",promptHe:"הסבירו",difficulty:"medium" };
 
 await run("attempt is durable across repository recreation and pending before sync", async () => {
   const driver = new MemoryPersistenceDriver();
@@ -17,6 +19,27 @@ await run("attempt is durable across repository recreation and pending before sy
   assert.equal((await recreated.getPendingAttempts()).length, 1);
   assert.equal((await recreated.getAttemptsForSkill("STUDENT","SKILL")).length, 1);
   assert.equal((await recreated.getPendingAttempts())[0]?.literacyDemand, "moderate");
+});
+
+await run("open riddle responses persist offline with resubmission history", async () => {
+  const driver = new MemoryPersistenceDriver(); const repo = new DurableRiddleSubmissionRepository(driver);
+  await repo.save(createRiddleSubmission({ riddle, studentId:"STUDENT", responseText:"פתרון ראשון", submissionId:"R1", now:"2026-01-01T00:00:00.000Z" }));
+  await repo.save(createRiddleSubmission({ riddle, studentId:"STUDENT", responseText:"פתרון משופר", submissionId:"R2", now:"2026-01-02T00:00:00.000Z" }));
+  const recreated = new DurableRiddleSubmissionRepository(driver); const history = await recreated.listForRiddle("STUDENT","RIDDLE");
+  assert.deepEqual(history.map((item) => item.responseText), ["פתרון ראשון","פתרון משופר"]);
+  assert.equal((await recreated.getPending()).length, 2);
+});
+
+await run("riddle response sync uses its own payload and never becomes an Attempt", async () => {
+  const driver = new MemoryPersistenceDriver(); const riddles = new DurableRiddleSubmissionRepository(driver);
+  await riddles.save(createRiddleSubmission({ riddle, studentId:"STUDENT", responseText:"הסבר", submissionId:"R1", now:"2026-01-01T00:00:00.000Z" }));
+  const client = new AppsScriptClient("https://example.test", async (_input, init) => {
+    const request = JSON.parse(String(init?.body)) as { action:string; requestId:string; payload:{submissions:Array<{submissionId:string}>} };
+    assert.equal(request.action,"submitRiddleResponses"); assert.equal(request.payload.submissions[0]?.submissionId,"R1");
+    return new Response(JSON.stringify({ok:true,requestId:request.requestId,serverTime:"x",data:{acceptedSubmissionIds:["R1"],duplicateSubmissionIds:[]}}),{status:200});
+  });
+  await new SyncCoordinator(new DurableAttemptRepository(driver),new DurableSessionRepository(driver),new DurableSyncMetadataRepository(driver),client,riddles).flush();
+  assert.equal((await riddles.getPending()).length,0); assert.equal(driver.attempts.size,0);
 });
 
 await run("marking synced clears pending without deleting history", async () => {

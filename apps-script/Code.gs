@@ -5,7 +5,7 @@ function doPost(event) {
   try {
     var request = amValidateRequest_(JSON.parse(event.postData.contents));
     requestId = request.requestId;
-    var handlers = { health: amHealth_, getStudentHome: amGetStudentHome_, startSession: amStartSession_, submitAttempts: amSubmitAttempts_, endSession: amEndSession_, getSyncState: amGetSyncState_, upsertAssignments: amUpsertAssignments_ };
+    var handlers = { health: amHealth_, getStudentHome: amGetStudentHome_, startSession: amStartSession_, submitAttempts: amSubmitAttempts_, submitRiddleResponses: amSubmitRiddleResponses_, endSession: amEndSession_, getSyncState: amGetSyncState_, upsertAssignments: amUpsertAssignments_ };
     if (!handlers[request.action]) throw amError_("UNKNOWN_ACTION", "Unknown action: " + request.action, false);
     return amJson_({ ok: true, requestId: requestId, serverTime: new Date().toISOString(), data: handlers[request.action](request.payload || {}) });
   } catch (error) {
@@ -39,6 +39,21 @@ function amSubmitAttempts_(payload) {
 }
 
 function amReadAttempts_(sheet) { return amObjects_(sheet).map(function(a) { return { submittedAt:String(a.submittedAt),studentId:String(a.studentId),skillId:String(a.skillId),scoreValue:Number(a.scoreValue),correct:a.correct === true || String(a.correct).toUpperCase() === "TRUE",sequenceNumber:Number(a.sequenceNumber),supportLevel:String(a.supportLevel),responseTimeMs:Number(a.responseTimeMs),literacyDemand:a.literacyDemand ? String(a.literacyDemand) : undefined }; }); }
+function amSubmitRiddleResponses_(payload) {
+  payload = amValidateRiddleSubmissionBatch_(payload);
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    var sheet = amSpreadsheet_().getSheetByName("RiddleSubmissions"); var headers = amHeaders_(sheet).values;
+    var existing = {}; amObjects_(sheet).forEach(function(row) { existing[String(row.submissionId)] = true; });
+    var accepted = []; var duplicates = [];
+    payload.submissions.forEach(function(submission) {
+      if (existing[submission.submissionId]) { duplicates.push(submission.submissionId); return; }
+      existing[submission.submissionId] = true; accepted.push(submission);
+    });
+    if (accepted.length) sheet.getRange(sheet.getLastRow() + 1, 1, accepted.length, headers.length).setValues(accepted.map(function(s) { return amRow_(headers, s); }));
+    return { acceptedSubmissionIds: accepted.map(function(s) { return s.submissionId; }), duplicateSubmissionIds: duplicates };
+  } finally { lock.releaseLock(); }
+}
 function amRebuildAffectedMastery_(spreadsheet, keys) {
   var allAttempts = amReadAttempts_(spreadsheet.getSheetByName("Attempts")); var now = new Date().toISOString();
   var updated = keys.map(function(key) { var parts = key.split("||"); return amProjectMastery_(parts[0], parts[1], allAttempts, now); });

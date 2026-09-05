@@ -1,6 +1,7 @@
 import type { ChoiceOption, LiteracyDemand, NumericAnswerSemantics, NumericInputFormat, OptionContent, QuestionAuthoringMode } from "../types.ts";
 import type { QuestionCategory } from "../categories.ts";
 import type { DifficultyBand, SkillId } from "../../../content/catalog/types.ts";
+import type { LearningMedia } from "../../media/types.ts";
 
 export type IntegerLikeParamSpec = {
   type: "integer" | "natural";
@@ -87,6 +88,7 @@ export interface GeneratedQuestionDefinition {
   difficultyBand?: DifficultyBand;
   exprTemplate: string;
   promptTemplate: OptionContent[];
+  media?: LearningMedia;
   params: ParamsSpec;
   constraints?: string[];
   /** Symbols intentionally shown as symbols to the student; these are not sampled generator parameters. */

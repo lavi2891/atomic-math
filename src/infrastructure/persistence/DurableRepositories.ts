@@ -2,6 +2,8 @@ import type { AttemptRepository } from "../../domain/attempts/AttemptRepository.
 import type { Attempt } from "../../domain/attempts/types.ts";
 import type { SessionRepository, SyncMetadata, SyncMetadataRepository, PersistedSession } from "../../domain/sync/types.ts";
 import type { PersistenceDriver } from "./driver.ts";
+import type { RiddleSubmissionRepository } from "../../domain/optionalLearningContent/RiddleSubmissionRepository.ts";
+import type { RiddleSubmission } from "../../domain/optionalLearningContent/types.ts";
 
 export class DurableAttemptRepository implements AttemptRepository {
   constructor(privateDriver: PersistenceDriver) { this.driver = privateDriver; }
@@ -35,6 +37,20 @@ export class DurableSessionRepository implements SessionRepository {
   }
   async markSessionsSynced(sessionIds: string[]) { await this.driver.updateSessionSyncState(sessionIds, "synced"); }
   async markSessionsInvalid(sessionIds: string[]) { await this.driver.updateSessionSyncState(sessionIds, "invalid"); }
+}
+
+export class DurableRiddleSubmissionRepository implements RiddleSubmissionRepository {
+  constructor(privateDriver: PersistenceDriver) { this.driver = privateDriver; }
+  private readonly driver: PersistenceDriver;
+  async save(submission: RiddleSubmission) { await this.driver.putRiddleSubmission({ value: submission, syncState: "pending" }); }
+  async listForRiddle(studentId: string, riddleId: string) {
+    return (await this.driver.listRiddleSubmissions()).map((record) => record.value)
+      .filter((submission) => submission.studentId === studentId && submission.riddleId === riddleId)
+      .sort((left, right) => left.submittedAt.localeCompare(right.submittedAt));
+  }
+  async getPending(limit = 25) { return (await this.driver.listRiddleSubmissions()).filter((record) => record.syncState === "pending").map((record) => record.value).slice(0, Math.max(0, Math.floor(limit))); }
+  async markSynced(ids: readonly string[]) { await this.driver.updateRiddleSubmissionSyncState(ids, "synced"); }
+  async markInvalid(ids: readonly string[]) { await this.driver.updateRiddleSubmissionSyncState(ids, "invalid"); }
 }
 
 export class DurableSyncMetadataRepository implements SyncMetadataRepository {

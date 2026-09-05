@@ -1,4 +1,4 @@
-import type { PersistenceDriver, StoredAttempt, StoredSession, SyncState } from "./driver.ts";
+import type { PersistenceDriver, StoredAttempt, StoredRiddleSubmission, StoredSession, SyncState } from "./driver.ts";
 import type { SyncMetadata } from "../../domain/sync/types.ts";
 import type { Attempt } from "../../domain/attempts/types.ts";
 import type { CachedStudentHome } from "../../domain/studentHome/types.ts";
@@ -6,7 +6,7 @@ import type { PersonalBest } from "../../domain/personalBests/types.ts";
 import { isBetterPersonalBest } from "../../domain/personalBests/compare.ts";
 
 const DB_NAME = "atomic-math";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const LEGACY_ATTEMPTS_KEY = "atomicMath.attempts.v1";
 
 function requestResult<T>(request: IDBRequest<T>): Promise<T> {
@@ -40,6 +40,7 @@ export class IndexedDbPersistenceDriver implements PersistenceDriver {
       if (!db.objectStoreNames.contains("sessions")) db.createObjectStore("sessions", { keyPath: "value.id" });
       if (!db.objectStoreNames.contains("metadata")) db.createObjectStore("metadata", { keyPath: "id" });
       if (!db.objectStoreNames.contains("personalBests")) db.createObjectStore("personalBests", { keyPath: "key" });
+      if (!db.objectStoreNames.contains("riddleSubmissions")) db.createObjectStore("riddleSubmissions", { keyPath: "value.submissionId" });
     };
     const database = await requestResult(request);
     await this.migrateLegacyAttempts(database);
@@ -74,7 +75,7 @@ export class IndexedDbPersistenceDriver implements PersistenceDriver {
     await transactionDone(transaction);
   }
 
-  private async list<T>(storeName: "attempts" | "sessions"): Promise<T[]> {
+  private async list<T>(storeName: "attempts" | "sessions" | "riddleSubmissions"): Promise<T[]> {
     const database = await this.databasePromise;
     const transaction = database.transaction(storeName, "readonly");
     return requestResult(transaction.objectStore(storeName).getAll()) as Promise<T[]>;
@@ -95,14 +96,25 @@ export class IndexedDbPersistenceDriver implements PersistenceDriver {
   async listSessions() { return this.list<StoredSession>("sessions"); }
   async updateSessionSyncState(ids: readonly string[], state: SyncState) { await this.updateStates("sessions", ids, state); }
 
-  private async updateStates(storeName: "attempts" | "sessions", ids: readonly string[], state: SyncState) {
+  async putRiddleSubmission(record: StoredRiddleSubmission) {
+    const existing = (await this.list<StoredRiddleSubmission>("riddleSubmissions")).some((item) => item.value.submissionId === record.value.submissionId);
+    if (existing) return;
+    const database = await this.databasePromise;
+    const transaction = database.transaction("riddleSubmissions", "readwrite");
+    transaction.objectStore("riddleSubmissions").put(record);
+    await transactionDone(transaction);
+  }
+  async listRiddleSubmissions() { return this.list<StoredRiddleSubmission>("riddleSubmissions"); }
+  async updateRiddleSubmissionSyncState(ids: readonly string[], state: SyncState) { await this.updateStates("riddleSubmissions", ids, state); }
+
+  private async updateStates(storeName: "attempts" | "sessions" | "riddleSubmissions", ids: readonly string[], state: SyncState) {
     const database = await this.databasePromise;
     const transaction = database.transaction(storeName, "readwrite");
     const store = transaction.objectStore(storeName);
-    const records = await requestResult(store.getAll()) as Array<StoredAttempt | StoredSession>;
+    const records = await requestResult(store.getAll()) as Array<StoredAttempt | StoredSession | StoredRiddleSubmission>;
     const wanted = new Set(ids);
     for (const record of records) {
-      const id = "attemptId" in record.value ? record.value.attemptId : record.value.id;
+      const id = "attemptId" in record.value ? record.value.attemptId : "submissionId" in record.value ? record.value.submissionId : record.value.id;
       if (wanted.has(id)) { record.syncState = state; store.put(record); }
     }
     await transactionDone(transaction);
