@@ -45,7 +45,9 @@
 .path-type-label { font-size: 11px; color: #aab8ca; }
 .path-row[data-status="locked"] .path-node-label { color: #a2aec0; }
 .path-chapter-row { min-height: 156px; }
-.path-chapter-node { grid-column: 2; grid-row: 1; justify-self: center; z-index: 1; box-sizing: border-box; display: grid; justify-items: center; align-content: center; gap: 3px; width: 88px; height: 88px; border: 4px double #637086; border-radius: 50%; background: #29354a; color: #bac6d7; font-weight: 700; }
+.path-chapter-node { grid-column: 2; grid-row: 1; justify-self: center; z-index: 1; box-sizing: border-box; display: grid; justify-items: center; align-content: center; gap: 3px; width: 88px; height: 88px; padding: 6px; border: 4px double #637086; border-radius: 50%; background: #29354a; color: #bac6d7; font-weight: 700; }
+.path-chapter-node small { font-size: 9px; line-height: 1.1; }
+.path-chapter-node:is(button):focus-visible { outline: 3px solid white; outline-offset: 6px; }
 .path-chapter-row[data-status="available"] .path-chapter-node { border-color: var(--path-blue); background: #24436a; color: #cfe5ff; }
 .path-chapter-row[data-status="completed"] .path-chapter-node { border-color: var(--path-green); background: #204f40; color: #c2f8de; }
 .path-chapter-row h2 { margin: 0; font-size: 15px; }

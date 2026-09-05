@@ -14,7 +14,7 @@ const { LearningPathScreen } = await server.ssrLoadModule('/src/app/learningPath
 const { FOUNDATIONAL_QUESTIONS } = await server.ssrLoadModule('/src/content/foundations/questions.ts');
 const stage = (id, type = 'normal', skillIds = ['AR_PLACE_VALUE']) => ({ id, nameHe: id, type, skillIds });
 const definition = { id: 'NUMBERS_ALGEBRA', nameHe: 'מספרים ואלגברה', chapters: [
-  { id: 'chapter-a', nameHe: 'ראשון', stages: [stage('first'), stage('review', 'review', ['AR_ADD_FACTS', 'AR_SUB_FACTS']), stage('checkpoint', 'checkpoint'), stage('bonus', 'bonus')] },
+  { id: 'chapter-a', nameHe: 'ראשון', shortcutTest: { id: 'shortcut-a', skillIds: ['AR_PLACE_VALUE', 'AR_ADD_FACTS', 'AR_SUB_FACTS'], passingAccuracy: 0.8 }, stages: [stage('first'), stage('review', 'review', ['AR_ADD_FACTS', 'AR_SUB_FACTS']), stage('checkpoint', 'checkpoint'), stage('bonus', 'bonus')] },
   { id: 'chapter-b', nameHe: 'שני', stages: [stage('last')] },
 ] };
 const progress = stars => ({ studentId: 'learner', bestStarsByStage: stars });
@@ -23,12 +23,14 @@ const node = (tree, id) => tree.root.findByProps({ 'data-stage-id': id }).findBy
 const sheet = tree => tree.root.findByType('dialog');
 const action = tree => sheet(tree).findAllByType('button').find(button => button.props.className === 'primary-action');
 let launches = [];
+let shortcutLaunches = [];
 let reads = [];
 let modalOpens = 0;
 let modalCloses = 0;
 const defaults = { path: definition, progress: progress({}), definitions: FOUNDATIONAL_QUESTIONS,
   personalBests: { get: async (studentId, signature) => { reads.push({ studentId, signature }); return { bestScore: 4200 }; } },
   onBack() {}, onPractice: (...args) => launches.push(args),
+  onShortcut: (...args) => shortcutLaunches.push(args),
 };
 async function mount(overrides = {}) {
   let tree;
@@ -37,7 +39,7 @@ async function mount(overrides = {}) {
 }
 async function click(button) { await act(async () => { button.props.onClick(); }); }
 async function unmount(tree) { await act(() => tree.unmount()); }
-async function run(name, fn) { launches = []; reads = []; await fn(); console.log(`PASS ${name}`); }
+async function run(name, fn) { launches = []; shortcutLaunches = []; reads = []; await fn(); console.log(`PASS ${name}`); }
 
 try {
   await run('map reverses chapter/stage DOM order and uses distinct icons and current state', async () => {
@@ -89,6 +91,33 @@ try {
     await click(node(tree, 'bonus'));
     await click(action(tree));
     assert.equal(launches[0][0].stageId, 'bonus');
+    await unmount(tree);
+  });
+
+  await run('current chapter shortcut opens a compact assessment sheet with exact atomic Skill scope', async () => {
+    const tree = await mount();
+    const chapterButton = tree.root.findAllByProps({ className: 'path-chapter-node' }).find(item => item.type === 'button');
+    assert.ok(chapterButton);
+    assert.match(chapterButton.props['aria-label'], /בדיקת קיצור/);
+    await click(chapterButton);
+    assert.equal(sheet(tree).props['aria-labelledby'], 'shortcut-sheet-title');
+    assert.match(text(sheet(tree)), /5 שאלות קצרות/);
+    assert.match(text(sheet(tree)), /80%/);
+    await click(action(tree));
+    assert.deepEqual(shortcutLaunches, [[{ pathId: 'NUMBERS_ALGEBRA', chapterId: 'chapter-a', shortcutId: 'shortcut-a' }, ['AR_PLACE_VALUE', 'AR_ADD_FACTS', 'AR_SUB_FACTS']]]);
+    await unmount(tree);
+  });
+
+  await run('shortcut-bypassed stages stay tappable without fabricated earned stars', async () => {
+    const bypassed = { studentId: 'learner', bestStarsByStage: {}, bypassedStageIds: ['first', 'review'], passedShortcutIds: ['shortcut-a'] };
+    const tree = await mount({ progress: bypassed });
+    assert.equal(node(tree, 'first').props.disabled, false);
+    assert.equal(node(tree, 'review').props.disabled, false);
+    assert.equal(node(tree, 'checkpoint').props['aria-current'], 'step');
+    assert.match(node(tree, 'first').props['aria-label'], /הושלם בבדיקת קיצור/);
+    await click(node(tree, 'first'));
+    assert.ok(sheet(tree).findByProps({ 'aria-label': '0 מתוך 3 כוכבים' }));
+    assert.match(text(sheet(tree)), /הושלם דרך בדיקת קיצור/);
     await unmount(tree);
   });
 

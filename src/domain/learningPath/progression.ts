@@ -9,7 +9,7 @@ export function derivePathProgress(path: LearningPath, progress: StudentLearning
   let precedingMainStagesComplete = true;
   return path.chapters.flatMap((chapter) => chapter.stages.map((stage): StageProgress => {
     const stars = progress.bestStarsByStage[stage.id] ?? 0;
-    const completed = stars >= 1;
+    const completed = stars >= 1 || progress.bypassedStageIds?.includes(stage.id) === true;
     const status = completed ? "completed" : precedingMainStagesComplete ? "available" : "locked";
     if (stage.type !== "bonus") precedingMainStagesComplete &&= completed;
     return { chapterId: chapter.id, stageId: stage.id, stars, status };

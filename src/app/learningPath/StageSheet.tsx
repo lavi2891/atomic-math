@@ -9,6 +9,7 @@ import { StageStars } from "./PathNodeIcon.tsx";
 type Props = {
   stage: Stage;
   stars: Stars;
+  bypassed?: boolean;
   studentId: string;
   canPractice: boolean;
   starting: boolean;
@@ -18,7 +19,7 @@ type Props = {
   onPractice: () => void;
 };
 
-export function StageSheet({ stage, stars, studentId, canPractice, starting, error, personalBests, onClose, onPractice }: Props) {
+export function StageSheet({ stage, stars, bypassed = false, studentId, canPractice, starting, error, personalBests, onClose, onPractice }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [best, setBest] = useState<PersonalBest | null>(null);
   const signature = useMemo(() => createChallengeSignature(LEARNING_STAGE_SETTINGS, stage.skillIds, DOMAINS, SKILLS), [stage.skillIds]);
@@ -57,7 +58,7 @@ export function StageSheet({ stage, stars, studentId, canPractice, starting, err
     onClick={(event) => { if (event.target === event.currentTarget && !starting) onClose(); }}>
     <div className="path-stage-sheet__content">
       <header><h2 id="stage-sheet-title">{stage.nameHe}</h2><button type="button" className="path-sheet-close" aria-label="סגירה" disabled={starting} onClick={onClose}>×</button></header>
-      <div id="stage-sheet-stars"><StageStars stars={stars} /><span>{stars ? "כוכבים שהרווחת" : "עוד לא הרווחת כוכבים בשלב הזה"}</span></div>
+      <div id="stage-sheet-stars"><StageStars stars={stars} /><span>{stars ? "כוכבים שהרווחת" : bypassed ? "השלב הושלם דרך בדיקת קיצור; אפשר לחזור אליו בכל זמן" : "עוד לא הרווחת כוכבים בשלב הזה"}</span></div>
       {best ? <p className="path-personal-best">השיא שלך: {Math.round(best.bestScore / 100) / 10} שניות · {LEARNING_STAGE_SETTINGS.questionCount} שאלות</p> : null}
       {!canPractice ? <p role="status">השאלות בשלב הזה אינן זמינות כרגע</p> : null}
       {error ? <p className="path-launch-error" role="alert">{error}</p> : null}

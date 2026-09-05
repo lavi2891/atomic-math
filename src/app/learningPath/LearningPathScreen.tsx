@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { LearningPath, LearningStageReference, Stage, StageType, StudentLearningProgress } from "../../domain/learningPath/types.ts";
+import type { LearningPath, LearningShortcutReference, LearningStageReference, Stage, StageType, StudentLearningProgress } from "../../domain/learningPath/types.ts";
 import type { SkillQuestionDefinition } from "../../domain/session/skillQuestionSelector.ts";
 import type { PersonalBestRepository } from "../../domain/personalBests/types.ts";
 import { derivePathProgress } from "../../domain/learningPath/progression.ts";
@@ -7,6 +7,7 @@ import { contentBackedCatalog } from "../../domain/studentHome/contentAvailabili
 import { DOMAINS, SKILLS } from "../../content/catalog/index.ts";
 import { PathNodeIcon, StageStars } from "./PathNodeIcon.tsx";
 import { StageSheet } from "./StageSheet.tsx";
+import { ShortcutSheet } from "./ShortcutSheet.tsx";
 import "./learningPath.css";
 
 type Props = {
@@ -18,11 +19,13 @@ type Props = {
   error?: string;
   onBack: () => void;
   onPractice: (reference: LearningStageReference, skillIds: string[]) => void;
+  onShortcut: (reference: LearningShortcutReference, skillIds: string[]) => void;
 };
 const typeLabels: Record<StageType, string> = { normal: "שלב", review: "חזרה", checkpoint: "אתגר", bonus: "בונוס · לבחירה" };
 
-export function LearningPathScreen({ path, progress, definitions, personalBests, starting = false, error, onBack, onPractice }: Props) {
+export function LearningPathScreen({ path, progress, definitions, personalBests, starting = false, error, onBack, onPractice, onShortcut }: Props) {
   const [selectedStageId, setSelectedStageId] = useState<string>();
+  const [selectedChapterId, setSelectedChapterId] = useState<string>();
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentRef = useRef<HTMLLIElement>(null);
   const stages = path.chapters.flatMap((chapter) => chapter.stages);
@@ -33,6 +36,7 @@ export function LearningPathScreen({ path, progress, definitions, personalBests,
     .flatMap(({ skills }) => skills.filter((skill) => skill.modes.fixed).map((skill) => skill.id))), [definitions]);
   const selectedStage = stages.find((stage) => stage.id === selectedStageId);
   const selectedState = selectedStage && states.get(selectedStage.id);
+  const selectedChapter = path.chapters.find((chapter) => chapter.id === selectedChapterId);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -50,14 +54,15 @@ export function LearningPathScreen({ path, progress, definitions, personalBests,
     const state = states.get(stage.id);
     const status = state?.status ?? "locked";
     const current = stage.id === currentStage?.id;
-    const label = `${stage.nameHe} · ${typeLabels[stage.type]} · ${current ? "כאן ממשיכים" : status === "completed" ? "הושלם" : status === "locked" ? "בהמשך" : "זמין"}`;
+    const bypassed = status === "completed" && state?.stars === 0 && progress?.bypassedStageIds?.includes(stage.id) === true;
+    const label = `${stage.nameHe} · ${typeLabels[stage.type]} · ${current ? "כאן ממשיכים" : bypassed ? "הושלם בבדיקת קיצור" : status === "completed" ? "הושלם" : status === "locked" ? "בהמשך" : "זמין"}`;
     return <li key={stage.id} ref={stage.id === focusStageId ? currentRef : undefined} className="path-row" data-kind={stage.type} data-status={status} data-current={current} data-stage-id={stage.id}>
       {stage.type === "bonus" ? <span className="path-branch" aria-hidden="true" /> : null}
       <button type="button" className="path-stage-node" aria-label={label} aria-current={current ? "step" : undefined} aria-haspopup="dialog" disabled={starting || status === "locked"} onClick={() => setSelectedStageId(stage.id)}>
         <span className="path-node-shape"><PathNodeIcon kind={stage.type} /></span>
         {status === "completed" || status === "locked" ? <span className="path-node-status"><PathNodeIcon kind={status === "completed" ? "check" : "lock"} /></span> : null}
       </button>
-      <div className="path-node-label"><span className="path-type-label">{current ? "כאן ממשיכים" : typeLabels[stage.type]}</span><span>{stage.nameHe}</span>{state && state.stars > 0 ? <StageStars stars={state.stars} /> : null}</div>
+      <div className="path-node-label"><span className="path-type-label">{current ? "כאן ממשיכים" : bypassed ? "הושלם בבדיקת קיצור" : typeLabels[stage.type]}</span><span>{stage.nameHe}</span>{state && state.stars > 0 ? <StageStars stars={state.stars} /> : null}</div>
     </li>;
   }
 
@@ -67,8 +72,10 @@ export function LearningPathScreen({ path, progress, definitions, personalBests,
     const completed = main.length > 0 && main.every((stage) => states.get(stage.id)?.status === "completed");
     const current = chapter.stages.some((stage) => stage.id === currentStage?.id);
     const status = completed ? "completed" : current ? "available" : "locked";
+    const shortcutAvailable = !!chapter.shortcutTest && status !== "locked";
     return [<li key={chapter.id} className="path-row path-chapter-row" data-kind="chapter" data-status={status}>
-      <div className="path-chapter-node" aria-hidden="true"><PathNodeIcon kind={completed ? "check" : current ? "chapter" : "lock"} /><span>{index + 1}</span></div>
+      {shortcutAvailable ? <button type="button" className="path-chapter-node" aria-haspopup="dialog" aria-label={`פרק ${index + 1}: ${chapter.nameHe} · בדיקת קיצור`} disabled={starting} onClick={() => setSelectedChapterId(chapter.id)}><PathNodeIcon kind={completed ? "check" : "chapter"} /><span>{index + 1}</span><small>בדיקת קיצור</small></button>
+        : <div className="path-chapter-node" aria-hidden="true"><PathNodeIcon kind={completed ? "check" : current ? "chapter" : "lock"} /><span>{index + 1}</span></div>}
       <h2 className="path-node-label"><small>פרק {index + 1}{completed ? " · הושלם" : ""}</small>{chapter.nameHe}</h2>
     </li>, ...chapter.stages.map(stageNode)];
   }).reverse();
@@ -79,8 +86,11 @@ export function LearningPathScreen({ path, progress, definitions, personalBests,
       <div ref={scrollRef} className="path-scroll" role="region" aria-label="מפת המסלול, מתקדמים מלמטה למעלה" tabIndex={0}>
         <ol className="path-route" aria-label="פרקים ושלבים, מהיעד אל ההתחלה">{rows}</ol>
       </div>}
-    {selectedStage && selectedState && selectedState.status !== "locked" && progress ? <StageSheet key={selectedStage.id} stage={selectedStage} stars={selectedState.stars} studentId={progress.studentId}
+    {selectedStage && selectedState && selectedState.status !== "locked" && progress ? <StageSheet key={selectedStage.id} stage={selectedStage} stars={selectedState.stars} bypassed={selectedState.stars === 0 && progress.bypassedStageIds?.includes(selectedStage.id)} studentId={progress.studentId}
       canPractice={selectedStage.skillIds.every((id) => available.has(id))} starting={starting} error={error} personalBests={personalBests}
       onClose={() => setSelectedStageId(undefined)} onPractice={() => onPractice({ pathId: path.id, stageId: selectedStage.id }, [...selectedStage.skillIds])} /> : null}
+    {selectedChapter?.shortcutTest && progress ? <ShortcutSheet key={selectedChapter.id} chapter={selectedChapter} passed={progress.passedShortcutIds?.includes(selectedChapter.shortcutTest.id) === true}
+      canPractice={selectedChapter.shortcutTest.skillIds.every((id) => available.has(id))} starting={starting} error={error}
+      onClose={() => setSelectedChapterId(undefined)} onPractice={() => onShortcut({ pathId: path.id, chapterId: selectedChapter.id, shortcutId: selectedChapter.shortcutTest!.id }, [...selectedChapter.shortcutTest!.skillIds])} /> : null}
   </section>;
 }

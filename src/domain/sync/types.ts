@@ -1,4 +1,5 @@
 import type { PracticeSession, SessionEndReason } from "../session/practiceSession.ts";
+import type { StageStars } from "../learningPath/types.ts";
 
 export type PersistedSessionStatus = "active" | "completed" | "abandoned";
 
@@ -15,6 +16,8 @@ export interface PersistedSession extends PracticeSession {
   accuracy: number;
   durationMs?: number;
   gameScore?: number;
+  stageStars?: StageStars;
+  shortcutPassed?: boolean;
 }
 
 export interface SyncMetadata {

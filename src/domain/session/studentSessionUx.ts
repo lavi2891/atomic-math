@@ -1,9 +1,10 @@
 import { DOMAINS, SKILL_GROUPS, getSkillById } from "../../content/catalog/index.ts";
 import type { AnswerResult } from "../results/types.ts";
-import { isSuccessfulSessionCompletion, type PracticeSession, type PracticeSessionState, type SessionMode } from "./practiceSession.ts";
+import { isSuccessfulSessionCompletion, type PracticeSession, type PracticeSessionState, type SessionMode, type SessionSettings } from "./practiceSession.ts";
+import type { LearningShortcutReference, LearningStageReference } from "../learningPath/types.ts";
 
-export function repeatSessionConfig(session: PracticeSession) {
-  return { skillIds: [...session.selectedSkillIds], settings: { ...session.settings }, assignmentId: session.assignmentId, ...(session.learningStage ? { learningStage: { ...session.learningStage } } : {}) };
+export function repeatSessionConfig(session: PracticeSession): { skillIds: string[]; settings: SessionSettings; assignmentId?: string; learningStage?: LearningStageReference; learningShortcut?: LearningShortcutReference } {
+  return { skillIds: [...session.selectedSkillIds], settings: { ...session.settings }, assignmentId: session.assignmentId, ...(session.learningStage ? { learningStage: { ...session.learningStage } } : {}), ...(session.learningShortcut ? { learningShortcut: { ...session.learningShortcut } } : {}) };
 }
 
 export const sessionModeLabels: Record<SessionMode, string> = {

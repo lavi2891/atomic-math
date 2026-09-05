@@ -14,7 +14,7 @@ export const LEARNING_PATHS = [
           { id: "NA_PLACE_VALUE", nameHe: "מבנה המספר", type: "normal", skillIds: ["AR_PLACE_VALUE"] },
           { id: "NA_ADD_SUBTRACT", nameHe: "חיבור וחיסור", type: "normal", skillIds: ["AR_ADD_FACTS", "AR_SUB_FACTS"] },
           { id: "NA_DECIMAL_REVIEW", nameHe: "חוזרים על היסודות", type: "review", skillIds: ["AR_PLACE_VALUE", "AR_ADD_FACTS", "AR_SUB_FACTS"] },
-          { id: "NA_DECIMAL_CHECKPOINT", nameHe: "בודקים את היסודות", type: "checkpoint", skillIds: ["AR_PLACE_VALUE", "AR_ADD_FACTS", "AR_SUB_FACTS"] },
+          { id: "NA_DECIMAL_CHECKPOINT", nameHe: "בודקים את היסודות", type: "checkpoint", skillIds: ["AR_PLACE_VALUE", "AR_ADD_FACTS", "AR_SUB_FACTS"], scoring: { thresholds: { passed: 0.6, strong: 0.8, excellent: 0.9 } } },
         ],
       },
       {

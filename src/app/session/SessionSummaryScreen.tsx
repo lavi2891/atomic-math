@@ -5,10 +5,13 @@ import type { PersonalBestUpdate } from "../../domain/personalBests/types.ts";
 import { practiceScopeLabel, sessionModeLabels, sessionResultLabel, sessionReviewResults } from "../../domain/session/studentSessionUx.ts";
 import { QuestionView } from "../questions/QuestionView.tsx";
 import { colors, radius, spacing } from "../../ui/tokens.ts";
+import type { StageStars } from "../../domain/learningPath/types.ts";
 
-type Props = { completed: PracticeSessionState; masteryBefore: Record<string, MasterySnapshot>; masteryAfter: Record<string, MasterySnapshot>; personalBestUpdate: PersonalBestUpdate | null; homeLabel?: string; onHome: () => void; onRepeat: () => void };
+type Props = { completed: PracticeSessionState; masteryBefore: Record<string, MasterySnapshot>; masteryAfter: Record<string, MasterySnapshot>; personalBestUpdate: PersonalBestUpdate | null; stageStars?: StageStars; shortcutPassed?: boolean; homeLabel?: string; onHome: () => void; onRepeat: () => void };
 
-export function SessionSummaryScreen({ completed, masteryBefore, masteryAfter, personalBestUpdate, homeLabel = "מסך ראשי", onHome, onRepeat }: Props) {
+const starLabels = ["כמעט שם — עוד סיבוב קצר וננסה שוב.", "עברת את השלב", "תוצאה חזקה", "מצוין"] as const;
+
+export function SessionSummaryScreen({ completed, masteryBefore, masteryAfter, personalBestUpdate, stageStars, shortcutPassed, homeLabel = "מסך ראשי", onHome, onRepeat }: Props) {
   const [reviewing, setReviewing] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [details, setDetails] = useState(false);
@@ -18,9 +21,11 @@ export function SessionSummaryScreen({ completed, masteryBefore, masteryAfter, p
     <div><strong>{practiceScopeLabel(completed.session.selectedSkillIds)}</strong><div>{sessionModeLabels[completed.session.settings.mode]}</div></div>
     {!reviewing ? <>
       <p style={{ fontSize: "1.4rem", margin: 0 }}>{sessionResultLabel(completed)}</p>
+      {stageStars !== undefined ? <div aria-label={`${stageStars} מתוך 3 כוכבים`}><strong style={{ color: "#f4ca5d", fontSize: "1.5rem" }}>{"★".repeat(stageStars)}{"☆".repeat(3 - stageStars)}</strong><p style={{ margin: "4px 0 0" }}>{starLabels[stageStars]}</p></div> : null}
+      {shortcutPassed !== undefined ? <p style={{ margin: 0, fontWeight: 700 }}>{shortcutPassed ? "בדיקת הקיצור הושלמה. אתגר הפרק פתוח עבורך." : "עוד קצת תרגול ויהיה אפשר לנסות את הקיצור שוב."}</p> : null}
       {personalBestUpdate?.isNewRecord ? <strong>שיא אישי חדש!</strong> : null}
       <div className="responsive-actions" style={{ display: "flex", gap: spacing.sm, flexWrap: "wrap" }}>
-        <button type="button" onClick={onRepeat} style={{ border: 0, background: colors.topicGreen, color: "#08130b", fontWeight: 700 }}>שחק שוב</button>
+        <button type="button" onClick={onRepeat} style={{ border: 0, background: colors.topicGreen, color: "#08130b", fontWeight: 700 }}>{stageStars === 0 || shortcutPassed === false ? "ניסיון קצר נוסף" : "שחק שוב"}</button>
         <button type="button" onClick={() => setReviewing(true)}>ראה מה טעיתי</button>
         <button type="button" onClick={onHome}>{homeLabel}</button>
       </div>

@@ -11,6 +11,27 @@ export interface LearningStageReference {
   readonly stageId: string;
 }
 
+export interface LearningShortcutReference {
+  readonly pathId: LearningPathId;
+  readonly chapterId: string;
+  readonly shortcutId: string;
+}
+
+export interface StageScoreThresholds {
+  readonly passed: number;
+  readonly strong: number;
+  readonly excellent: number;
+}
+
+export interface StageScoringPolicy {
+  readonly thresholds?: StageScoreThresholds;
+  /** Response time affects stars only for a stage explicitly authored for fluency. */
+  readonly fluency?: {
+    readonly maximumMedianResponseTimeMs: number;
+    readonly appliesFromStar: 2 | 3;
+  };
+}
+
 /** Presentation content only. Skills and their evidence policies remain atomic. */
 export interface Stage {
   /** Stable and unique across paths, including student-specific inserted stages. */
@@ -18,12 +39,14 @@ export interface Stage {
   readonly nameHe: string;
   readonly type: StageType;
   readonly skillIds: StageSkillIds;
+  readonly scoring?: StageScoringPolicy;
 }
 
-/** Assessment metadata only; passing/skip behavior belongs to a future feature. */
+/** A short chapter assessment. Passing changes path progression, never Skill Mastery. */
 export interface ChapterShortcutTest {
   readonly id: string;
   readonly skillIds: StageSkillIds;
+  readonly passingAccuracy?: number;
 }
 
 export interface Chapter {
@@ -46,6 +69,9 @@ export interface StudentLearningProgress {
   readonly studentId: string;
   /** Missing entries mean zero stars. Keep only the best reward from replays. */
   readonly bestStarsByStage: Readonly<Partial<Record<string, StageStars>>>;
+  /** Stages made complete for navigation by passed chapter shortcuts. */
+  readonly bypassedStageIds?: readonly string[];
+  readonly passedShortcutIds?: readonly string[];
 }
 
 /** A derived view, never stored on a Stage or used as Skill mastery evidence. */

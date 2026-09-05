@@ -21,6 +21,14 @@ for (const stage of stages) {
     questionCount: 5, correctCount: 5, incorrectCount: 0, accuracy: 1,
   });
 }
+if (new URLSearchParams(location.search).get("shortcut") === "passed" && firstChapter.shortcutTest) {
+  await sessionRepository.saveSession({
+    id: "fixture-shortcut", studentId: studentIdentityProvider.getStudentId(), selectedSkillIds: [...firstChapter.shortcutTest.skillIds],
+    settings: { mode: "fixed", questionCount: 5 }, learningShortcut: { pathId: "NUMBERS_ALGEBRA", chapterId: firstChapter.id, shortcutId: firstChapter.shortcutTest.id },
+    startedAt: 0, endedAt: 5000, source: "freePractice", strategy: "balanced", status: "completed", endReason: "completed",
+    questionCount: 5, correctCount: 4, incorrectCount: 1, accuracy: 0.8, shortcutPassed: true,
+  });
+}
 if (new URLSearchParams(location.search).has("best")) {
   await personalBestRepository.record({ studentId: studentIdentityProvider.getStudentId(), signature: { mode: "fixed", questionCount: 5, scope: { type: "skill", skillId: "AR_PLACE_VALUE" } }, bestScore: 10_000, achievedAt: new Date().toISOString(), sessionId: "fixture-best", metrics: { attempted: 5, correct: 5, incorrect: 0, accuracy: 1, durationMs: 10_000 } });
 }

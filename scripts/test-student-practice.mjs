@@ -175,6 +175,16 @@ try {
   assert.equal(sessionReviewResults(completed.results).length, 1);
   await unmount(tree);
   console.log('PASS minimal summary, scope label, actions, and incorrect-only review');
+  const zeroStarTree = await mount(React.createElement(SessionSummaryScreen, { completed, masteryBefore: {}, masteryAfter: {}, personalBestUpdate: null, stageStars: 0, onHome() {}, onRepeat() {} }));
+  assert.match(text(zeroStarTree.toJSON()), /כמעט שם/);
+  assert.ok(zeroStarTree.root.findByProps({ 'aria-label': '0 מתוך 3 כוכבים' }));
+  assert.ok(button(zeroStarTree, 'ניסיון קצר נוסף'));
+  await unmount(zeroStarTree);
+  const shortcutRetryTree = await mount(React.createElement(SessionSummaryScreen, { completed, masteryBefore: {}, masteryAfter: {}, personalBestUpdate: null, shortcutPassed: false, onHome() {}, onRepeat() {} }));
+  assert.match(text(shortcutRetryTree.toJSON()), /עוד קצת תרגול/);
+  assert.ok(button(shortcutRetryTree, 'ניסיון קצר נוסף'));
+  await unmount(shortcutRetryTree);
+  console.log('PASS zero-star and shortcut retry summaries stay encouraging');
   // Exercise the real eligible generator bank beyond its initial pool size.
   const settings = { mode: 'timed', durationSeconds: 30 };
   const definitions = filterChallengeContent(settings, [skill], FOUNDATIONAL_QUESTIONS).filter(q => q.skillId === skill.id);

@@ -219,3 +219,34 @@ test('current checkpoint uses a challenge shape and icon with the current-stage 
   await checkpoint.click();
   await expect(page.getByRole('dialog')).toContainText('בודקים את היסודות');
 });
+
+test('chapter shortcut is touch friendly and launches its five-question atomic Skill cluster', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await openMap(page, '');
+  const shortcut = page.getByRole('button', { name: /פרק 1.*בדיקת קיצור/ });
+  await expect(shortcut).toBeEnabled();
+  const box = await shortcut.boundingBox();
+  expect(box.width).toBeGreaterThanOrEqual(48);
+  expect(box.height).toBeGreaterThanOrEqual(48);
+  await shortcut.click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText('5 שאלות קצרות');
+  await expect(dialog).toContainText('80% מספיקים למעבר');
+  await page.screenshot({ path: 'test-results/learning-path-shortcut-320.png' });
+  await dialog.getByRole('button', { name: 'התחלת בדיקה' }).click();
+  await expect(page.locator('.practice-status')).toHaveText('1 / 5');
+  await expect(page.locator('.practice-context')).toContainText('3 מיומנויות');
+});
+
+test('passed shortcut restores bypassed stages as accessible and opens the checkpoint', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openMap(page, '?shortcut=passed');
+  const first = stageNode(page, 'NA_PLACE_VALUE');
+  await expect(first).toBeEnabled();
+  await expect(first).toHaveAccessibleName(/הושלם בבדיקת קיצור/);
+  await expect(stageNode(page, 'NA_DECIMAL_CHECKPOINT')).toHaveAttribute('aria-current', 'step');
+  await page.screenshot({ path: 'test-results/learning-path-shortcut-bypass-390.png' });
+  await first.click();
+  await expect(page.getByRole('dialog')).toContainText('השלב הושלם דרך בדיקת קיצור');
+  await expect(page.getByRole('img', { name: '0 מתוך 3 כוכבים' })).toBeVisible();
+});
