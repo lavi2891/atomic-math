@@ -15,9 +15,9 @@ test.beforeAll(async () => {
 });
 test.afterAll(async () => { await server?.close(); });
 
-async function open(page, query = '') {
+async function open(page, query = '', ready = '.numeric-answer-input') {
   await page.goto(url + query);
-  await expect(page.locator('.numeric-answer-input')).toBeVisible();
+  await expect(page.locator(ready).first()).toBeVisible();
 }
 // Model iOS: the layout viewport stays full-height while the visual viewport
 // shrinks and pans. The actual DOM, focus, resize/scroll listeners and geometry run in Chromium.
@@ -37,21 +37,53 @@ async function expectBarAt(page, bottom) {
   const rect = await button.boundingBox();
   expect(rect.y).toBeGreaterThanOrEqual(0); expect(rect.y + rect.height).toBeLessThanOrEqual(bottom);
 }
+async function expectNumericIconOnPhysicalRight(page, state) {
+  const input = page.locator('.numeric-answer-input');
+  const icon = page.locator(`.numeric-answer-status--${state}`);
+  const [inputBox, iconBox, metrics] = await Promise.all([
+    input.boundingBox(),
+    icon.boundingBox(),
+    input.evaluate(el => {
+      const style = getComputedStyle(el);
+      return { direction: style.direction, paddingRight: Number.parseFloat(style.paddingRight) };
+    }),
+  ]);
+  expect(metrics.direction).toBe('ltr');
+  expect(inputBox.x + inputBox.width - (iconBox.x + iconBox.width)).toBeCloseTo(12, 1);
+  const textRightEdge = inputBox.x + inputBox.width - metrics.paddingRight;
+  expect(textRightEdge).toBeLessThanOrEqual(iconBox.x);
+}
 
-test('narrow context stays on one line; visual keyboard collapses header and tracks panning', async ({ page }) => {
+test('narrow Android keyboard keeps the core question geometry stable while chrome collapses', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await open(page, '?multi');
   await expect(page.locator('.practice-context')).toContainText('5 מיומנויות');
   expect(await page.locator('.practice-context strong').evaluate(el => getComputedStyle(el).whiteSpace)).toBe('nowrap');
   await expectBarAt(page, 844);
+  const before = {
+    prompt: await page.locator('.practice-question__prompt').boundingBox(),
+    card: await page.locator('.math-input-card').boundingBox(),
+    input: await page.locator('.numeric-answer-input').boundingBox(),
+  };
   await page.locator('input').focus();
   await visualKeyboard(page, 410, 35);
   await expect(page.locator('.practice-session--keyboard')).toBeVisible();
-  await expect(page.locator('.practice-context')).toHaveCount(0);
-  await expect(page.locator('.math-input-preview')).toBeHidden();
-  await expect(page.getByRole('button', { name: 'סיום תרגול' })).toHaveCount(0);
+  await expect(page.locator('.practice-context')).toBeHidden();
+  await expect(page.locator('.math-input-preview')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'סיום תרגול', includeHidden: true })).toBeHidden();
   await expect(page.locator('.practice-status')).toContainText('1 / 5');
   await expectBarAt(page, 445);
+  const after = {
+    prompt: await page.locator('.practice-question__prompt').boundingBox(),
+    card: await page.locator('.math-input-card').boundingBox(),
+    input: await page.locator('.numeric-answer-input').boundingBox(),
+  };
+  for (const part of ['prompt', 'card', 'input']) {
+    expect(after[part].x).toBeCloseTo(before[part].x, 1);
+    expect(after[part].y).toBeCloseTo(before[part].y, 1);
+    expect(after[part].width).toBeCloseTo(before[part].width, 1);
+    expect(after[part].height).toBeCloseTo(before[part].height, 1);
+  }
   await expect(page.locator('.practice-question .math').first()).toBeInViewport({ ratio: 1 });
   await page.screenshot({ path: 'test-results/mobile-keyboard-open.png' });
   const input = await page.locator('input').boundingBox();
@@ -62,6 +94,10 @@ test('narrow context stays on one line; visual keyboard collapses header and tra
   await visualKeyboard(page, 844);
   await expect(page.locator('.practice-session--keyboard')).toHaveCount(0);
   await expect(page.locator('.practice-context')).toBeVisible();
+  const restoredInput = await page.locator('.numeric-answer-input').boundingBox();
+  expect(restoredInput.x).toBeCloseTo(before.input.x, 1);
+  expect(restoredInput.y).toBeCloseTo(before.input.y, 1);
+  expect(restoredInput.width).toBeCloseTo(before.input.width, 1);
   await page.screenshot({ path: 'test-results/mobile-keyboard-closed.png' });
 });
 
@@ -75,7 +111,7 @@ test('stage practice shows compact Stage and Chapter context and hides it with t
   await page.screenshot({ path: 'test-results/mobile-stage-context-320.png' });
   await page.locator('input').focus();
   await visualKeyboard(page, 340);
-  await expect(context).toHaveCount(0);
+  await expect(context).toBeHidden();
   await expectBarAt(page, 340);
 });
 
@@ -85,11 +121,14 @@ for (const mode of ['timed', 'survival']) test(`${mode} preserves essential stat
   const input = page.locator('input');
   await input.focus(); await visualKeyboard(page, 380);
   await expect(page.locator('.practice-status')).toBeVisible();
-  await expect(page.locator('.practice-context')).toHaveCount(0);
+  await expect(page.locator('.practice-context')).toBeHidden();
   await expectBarAt(page, 380);
   await input.fill('2');
   await input.press('Enter');
   await expect(page.getByRole('status')).toContainText('✓ נכון');
+  await expect(page.locator('.numeric-answer-input')).toHaveAttribute('data-answer-state', 'correct');
+  await expect(page.getByRole('button', { name: 'הבא', exact: true })).toHaveCount(0);
+  await expect(page.locator('.practice-feedback')).toHaveCount(0);
   await expect.poll(() => page.evaluate(async () => (await window.savedAttempts()).length)).toBe(1);
   await expect(page.locator('input')).toHaveValue('');
 });
@@ -111,11 +150,37 @@ test('invalid Enter cannot submit; repeated submission is guarded; tapping bar r
 test('the visible mobile action submits a valid answer by tap', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await open(page); await page.locator('input').focus(); await visualKeyboard(page, 400);
+  await expect(page.locator('.page')).toHaveAttribute('dir', 'rtl');
   await page.locator('input').fill('2');
   await expectBarAt(page, 400);
   await page.getByRole('button', { name: 'אישור', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('נכון');
+  await expect(page.locator('.numeric-answer-input')).toHaveAttribute('data-answer-state', 'correct');
+  expect(await page.locator('.numeric-answer-input').evaluate(el => getComputedStyle(el).borderColor)).toBe('rgb(74, 222, 128)');
+  await expectNumericIconOnPhysicalRight(page, 'correct');
+  await expect(page.locator('.practice-feedback')).toHaveCount(0);
   await expect.poll(() => page.evaluate(async () => (await window.savedAttempts()).length)).toBe(1);
+});
+
+test('wrong numeric answer stays visible, marks the input inline, and reveals the correction compactly', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page);
+  const input = page.locator('.numeric-answer-input');
+  await input.focus(); await visualKeyboard(page, 400); await input.fill('0');
+  const before = await page.locator('.practice-action-bar').boundingBox();
+  await page.getByRole('button', { name: 'אישור', exact: true }).click();
+  await expect(input).toHaveValue('0');
+  await expect(input).toHaveAttribute('data-answer-state', 'incorrect');
+  await expect(input).toHaveAttribute('aria-invalid', 'true');
+  expect(await input.evaluate(el => getComputedStyle(el).borderColor)).toBe('rgb(248, 113, 113)');
+  await expect(page.locator('.numeric-answer-status--incorrect')).toContainText('✗');
+  await expectNumericIconOnPhysicalRight(page, 'incorrect');
+  await expect(page.locator('.numeric-correct-answer')).toContainText('התשובה הנכונה:');
+  await expect(page.locator('.numeric-correct-answer')).toContainText('2');
+  await expect(page.locator('.practice-feedback')).toHaveCount(0);
+  const after = await page.locator('.practice-action-bar').boundingBox();
+  expect(after.x).toBeCloseTo(before.x, 1); expect(after.y).toBeCloseTo(before.y, 1);
+  expect(after.width).toBeCloseTo(before.width, 1); expect(after.height).toBeCloseTo(before.height, 1);
 });
 
 test('long question can scroll clear of the action bar', async ({ page }) => {
@@ -143,7 +208,82 @@ test('desktop keeps inline submit and full header despite focus and resize', asy
   await expect(page.locator('.practice-action-bar')).toHaveCount(0);
   await expect(page.locator('.practice-session--keyboard')).toHaveCount(0);
   await expect(page.locator('.practice-context')).toBeVisible();
-  await expect(page.locator('form button[type="submit"]')).toHaveText('אישור');
+  const action = page.locator('.practice-primary-action');
+  await expect(action.getByRole('button')).toHaveText('אישור');
+  await page.locator('input').fill('2');
+  const before = await action.boundingBox();
+  await action.getByRole('button').click();
+  await expect(action.getByRole('button')).toHaveText('הבא');
+  const after = await action.boundingBox();
+  expect(after.x).toBeCloseTo(before.x, 1); expect(after.y).toBeCloseTo(before.y, 1);
+  expect(after.width).toBeCloseTo(before.width, 1); expect(after.height).toBeCloseTo(before.height, 1);
+});
+
+test('mobile action bar does not move when אישור becomes הבא above the keyboard', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page);
+  await page.locator('input').focus();
+  await visualKeyboard(page, 400);
+  await page.locator('input').fill('2');
+  const before = await page.locator('.practice-action-bar').boundingBox();
+  await page.getByRole('button', { name: 'אישור', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'הבא', exact: true })).toBeVisible();
+  const after = await page.locator('.practice-action-bar').boundingBox();
+  expect(after.x).toBeCloseTo(before.x, 1);
+  expect(after.y).toBeCloseTo(before.y, 1);
+  expect(after.width).toBeCloseTo(before.width, 1);
+  expect(after.height).toBeCloseTo(before.height, 1);
+  expect(after.y + after.height).toBeCloseTo(400, 1);
+  await expect(page.locator('input')).toBeDisabled();
+});
+
+test('single choice reveals the correct option and selected mistake without moving the primary action', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await open(page, '?choice=single', '[data-option-id]');
+  await page.locator('[data-option-id="a"]').click();
+  const before = await page.locator('.practice-action-bar').boundingBox();
+  await page.getByRole('button', { name: 'אישור', exact: true }).click();
+  const correct = page.locator('[data-option-id="b"]');
+  const selectedWrong = page.locator('[data-option-id="a"]');
+  const neutral = page.locator('[data-option-id="c"]');
+  await expect(correct).toHaveAttribute('data-answer-state', 'correct');
+  await expect(correct.getByLabel('תשובה נכונה')).toContainText('✓');
+  expect(await correct.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(22, 63, 45)');
+  await expect(selectedWrong).toHaveAttribute('data-answer-state', 'incorrect');
+  await expect(selectedWrong.getByLabel('תשובה שגויה שנבחרה')).toContainText('✕');
+  expect(await selectedWrong.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(74, 32, 38)');
+  await expect(neutral).toHaveAttribute('data-answer-state', 'neutral');
+  await expect(page.locator('.practice-feedback')).toHaveCount(0);
+  for (const option of await page.locator('[data-option-id]').all()) await expect(option).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'הבא', exact: true })).toBeVisible();
+  const after = await page.locator('.practice-action-bar').boundingBox();
+  expect(after.x).toBeCloseTo(before.x, 1); expect(after.y).toBeCloseTo(before.y, 1);
+  expect(after.width).toBeCloseTo(before.width, 1); expect(after.height).toBeCloseTo(before.height, 1);
+});
+
+test('multi choice distinguishes selected correct, missed correct, selected wrong, and neutral options', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await open(page, '?choice=multi', '[data-option-id]');
+  for (const id of ['a', 'b', 'd']) await page.locator(`[data-option-id="${id}"]`).click();
+  await page.getByRole('button', { name: 'אישור', exact: true }).click();
+  const selectedCorrect = page.locator('[data-option-id="a"]');
+  await expect(selectedCorrect).toHaveAttribute('data-answer-state', 'correct');
+  await expect(selectedCorrect.getByLabel('תשובה נכונה שנבחרה')).toContainText('✓');
+  const missedCorrect = page.locator('[data-option-id="c"]');
+  await expect(missedCorrect).toHaveAttribute('data-answer-state', 'missed-correct');
+  await expect(missedCorrect.getByLabel('תשובה נכונה שלא נבחרה')).toHaveText('גם נכונה');
+  await expect(missedCorrect).not.toContainText('✓');
+  expect(await missedCorrect.evaluate(el => getComputedStyle(el).borderStyle)).toBe('dashed');
+  expect(await missedCorrect.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(await selectedCorrect.evaluate(el => getComputedStyle(el).backgroundColor));
+  for (const id of ['b', 'd']) {
+    const option = page.locator(`[data-option-id="${id}"]`);
+    await expect(option).toHaveAttribute('data-answer-state', 'incorrect');
+    await expect(option.getByLabel('תשובה שגויה שנבחרה')).toContainText('✕');
+  }
+  await expect(page.locator('[data-option-id="a"]')).toHaveCSS('opacity', '1');
+  await expect(page.locator('[data-option-id="c"]')).toHaveCSS('opacity', '1');
+  for (const option of await page.locator('[data-option-id]').all()) await expect(option).toBeDisabled();
+  await expect(page.locator('.practice-feedback')).toHaveCount(0);
 });
 
 for (const outcome of ['passed', 'retry']) test(`stage completion ${outcome} keeps its result and actions visible at 320px`, async ({ page }) => {

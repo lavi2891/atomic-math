@@ -12,6 +12,7 @@ import type { OptionContent, Question, QuestionCurationReason } from "../domain/
 import type { GeneratedQuestionInstance } from "../domain/questions/types.ts";
 import { atomicSkillIdentityIssues, signedGeneratedInstanceIssues, signedSkillDefinitionIssues } from "./foundations/skillScope.ts";
 import { hasAmbiguousProseNumber, mathLookingText } from "./foundations/studentMathContent.ts";
+import { LEARNING_PATHS } from "./learningPaths.ts";
 
 export interface SkillContentAudit {
   skillId: string;
@@ -58,6 +59,22 @@ const GENERIC_JUSTIFICATION_PATTERN = /(?:convenient|arbitrary|magic number|דו
 
 function contentSurface(content: readonly OptionContent[]): string {
   return content.map((part) => part.kind === "text" ? part.value : part.latex).join(" ");
+}
+
+const DEPRECATED_NUMBER_LINE_TERM = "ישר המספרים";
+
+export function deprecatedStudentTerminologyIssues(context: string, surfaces: readonly string[]): string[] {
+  return surfaces.some((surface) => surface.includes(DEPRECATED_NUMBER_LINE_TERM))
+    ? [`${context}: student-facing content uses deprecated term ${DEPRECATED_NUMBER_LINE_TERM}`]
+    : [];
+}
+
+function questionStudentSurfaces(question: Question): string[] {
+  return [
+    contentSurface(question.prompt),
+    ...(question.hints ?? []).map(contentSurface),
+    ...(question.type === "numeric" ? [] : question.options.map((option) => contentSurface(option.content))),
+  ];
 }
 
 function visibleLatinSymbols(question: Question): string[] {
@@ -406,6 +423,15 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
   issues.push(...atomicSkillIdentityIssues(FOUNDATIONAL_QUESTIONS));
   issues.push(...signedSkillDefinitionIssues(FOUNDATIONAL_QUESTIONS));
   issues.push(...signedMultiplicationLoadIssues(FOUNDATIONAL_QUESTIONS));
+  for (const skill of SKILLS.filter((item) => item.active)) {
+    issues.push(...deprecatedStudentTerminologyIssues(skill.id, [skill.nameHe, skill.shortNameHe ?? "", skill.descriptionHe ?? ""]));
+  }
+  for (const path of LEARNING_PATHS) {
+    issues.push(...deprecatedStudentTerminologyIssues(path.id, [path.nameHe]));
+    for (const chapter of path.chapters) {
+      issues.push(...deprecatedStudentTerminologyIssues(chapter.id, [chapter.nameHe, ...chapter.stages.map((stage) => stage.nameHe)]));
+    }
+  }
   for (const skill of SKILLS) for (const issue of validateEvidencePolicy(skill.evidencePolicy)) issues.push(`${skill.id}: ${issue}`);
   for (const entry of CONTENT_READINESS) for (const issue of readinessIssues(entry, FOUNDATIONAL_QUESTIONS)) issues.push(`${entry.skillId}: ${issue}`);
   for (const definition of FOUNDATIONAL_QUESTIONS) {
@@ -430,6 +456,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
           issues.push(...generatedInstanceMetadataIssues(definition, question));
           issues.push(...signedGeneratedInstanceIssues(definition, question));
           issues.push(...studentFacingNotationIssues(definition.id, question, seed));
+          issues.push(...deprecatedStudentTerminologyIssues(`${definition.id}: seed ${seed}`, questionStudentSurfaces(question)));
           issues.push(...studentMathContentIssues(definition.id, question, `seed ${seed}`));
           warnings.push(...studentMathContentWarnings(definition.id, question, `seed ${seed}`));
           issues.push(...pedagogicalTargetingIssues(definition, question, seed));
@@ -470,6 +497,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
         if (next.renderedExpression === first.renderedExpression) issues.push(`${definition.id}: anti-repetition repeated the recent expression`);
       } catch { issues.push(`${definition.id}: anti-repetition could not produce a follow-up item`); }
     } else if (definition.type === "singleChoice") {
+      issues.push(...deprecatedStudentTerminologyIssues(definition.id, questionStudentSurfaces(definition)));
       issues.push(...studentFacingVariableSupportIssues(definition, definition));
       issues.push(...studentMathContentIssues(definition.id, definition));
       warnings.push(...studentMathContentWarnings(definition.id, definition));
@@ -493,6 +521,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
       const existing = normalizedFamilies.get(normalizedKey);
       normalizedFamilies.set(normalizedKey, { skillId: definition.skillId, family: definition.contentFamily ?? "missing-family", ids: [...(existing?.ids ?? []), definition.id] });
     } else if (definition.type === "numeric") {
+      issues.push(...deprecatedStudentTerminologyIssues(definition.id, questionStudentSurfaces(definition)));
       issues.push(...studentFacingVariableSupportIssues(definition, definition));
       issues.push(...studentMathContentIssues(definition.id, definition));
       warnings.push(...studentMathContentWarnings(definition.id, definition));
@@ -504,6 +533,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
       const existing = normalizedFamilies.get(normalizedKey);
       normalizedFamilies.set(normalizedKey, { skillId: definition.skillId ?? "missing-skill", family: definition.contentFamily ?? "missing-family", ids: [...(existing?.ids ?? []), definition.id] });
     } else if (definition.type === "multiChoice") {
+      issues.push(...deprecatedStudentTerminologyIssues(definition.id, questionStudentSurfaces(definition)));
       issues.push(...studentFacingVariableSupportIssues(definition, definition));
       issues.push(...studentMathContentIssues(definition.id, definition));
       warnings.push(...studentMathContentWarnings(definition.id, definition));

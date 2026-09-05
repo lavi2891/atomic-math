@@ -12,7 +12,7 @@ import type { Attempt } from "../src/domain/attempts/types.ts";
 import { isAssignmentComplete } from "../src/domain/studentHome/deriveStudentHome.ts";
 import { createChallengeSignature, challengeSignatureKey } from "../src/domain/personalBests/challengeSignature.ts";
 import { resolveQuickPracticeScope } from "../src/domain/studentHome/quickPractice.ts";
-import { auditFoundationalContent, curatedNumericLiteralIssues, curatedNumericLiteralItems, factorMultipleSemanticIssues, generatedInstanceMetadataIssues, magnitudeBandProgressionIssues, pedagogicalTargetingIssues, questionCategorySemanticsIssues, signedMultiplicationLoadIssues, structuralBandProgressionIssues, studentFacingVariableSupportIssues, studentMathContentIssues, studentMathContentWarnings, supportingSkillMetadataIssues, symbolicAuthoringIssues, validateFoundationalContent } from "../src/content/validateContent.ts";
+import { auditFoundationalContent, curatedNumericLiteralIssues, curatedNumericLiteralItems, deprecatedStudentTerminologyIssues, factorMultipleSemanticIssues, generatedInstanceMetadataIssues, magnitudeBandProgressionIssues, pedagogicalTargetingIssues, questionCategorySemanticsIssues, signedMultiplicationLoadIssues, structuralBandProgressionIssues, studentFacingVariableSupportIssues, studentMathContentIssues, studentMathContentWarnings, supportingSkillMetadataIssues, symbolicAuthoringIssues, validateFoundationalContent } from "../src/content/validateContent.ts";
 import { atomicSkillIdentityIssues } from "../src/content/foundations/skillScope.ts";
 import { signedGeneratedInstanceIssues, signedSkillDefinitionIssues } from "../src/content/foundations/skillScope.ts";
 import type { GeneratedQuestionInstance, OptionContent } from "../src/domain/questions/types.ts";
@@ -410,7 +410,14 @@ run("algebra-dominated symbolic extensions are removed or replaced by clean targ
 
 run("number-line and subtraction generators use clarified purposeful wording", () => {
   const numberLine = buildGeneratedQuestion(generatedDefinition("MVP_INT_NUMBER_LINE_LEFT_A"), { seed: 8 });
-  assert.match(renderedText(numberLine.prompt), /משמאל.*(?:אפס|0).*ישר המספרים/u);
+  assert.match(renderedText(numberLine.prompt), /משמאל.*(?:אפס|0).*ציר המספרים/u);
+  assert.deepEqual(deprecatedStudentTerminologyIssues("active", [renderedText(numberLine.prompt)]), []);
+  assert.equal(deprecatedStudentTerminologyIssues("new-content", ["שאלה על ישר המספרים"]).length, 1);
+  for (const id of ["MVP_INT_NUMBER_LINE_LEFT_A", "MVP_INT_NUMBER_LINE_LEFT_B", "MVP_INT_NUMBER_LINE_LEFT_C", "MVP_INT_NUMBER_LINE_DIRECTION_A"]) {
+    const definition = generatedDefinition(id);
+    assert.equal(definition.version, 6, id);
+    assert.ok(definition.tags?.includes("requires-rereview"), id);
+  }
   assert.equal(FOUNDATIONAL_QUESTIONS.some((item) => item.id.startsWith("MVP_AR_SUB_FACTS_CONCEPT_")), false);
   const removal = buildGeneratedQuestion(generatedDefinition("MVP_AR_SUB_FACTS_REMOVE_A"), { seed: 8 });
   assert.match(renderedText(removal.prompt), /\?/);

@@ -186,13 +186,24 @@ input {
 }
 .practice-action-bar button { display: block; width: 100%; min-height: 48px; padding: 9px 16px; font-size: 16px; font-weight: 700; background: #2563eb; color: #fff; }
 .practice-action-bar button:disabled { opacity: .45; cursor: default; }
-.practice-session--keyboard .math-input-preview,
-.practice-session--keyboard .answer-format-hint { display: none !important; }
-.practice-session--keyboard .math-input-card { padding: 8px !important; gap: 4px !important; }
+.answer-choice__status { flex: 0 0 18px; display: inline-grid; place-items: center; font-size: 19px; font-weight: 900; }
+.answer-choice__status--missed { flex-basis: auto; min-width: max-content; padding: 2px 6px; border: 1px solid #78b98f; border-radius: 999px; font-size: 11px; line-height: 1.25; font-weight: 700; }
+button[data-answer-state]:disabled { opacity: 1; }
+.numeric-answer-field { position: relative; min-width: 0; }
+.numeric-answer-status { position: absolute; right: 12px; left: auto; top: 50%; translate: 0 -50%; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font-size: 18px; font-weight: 900; pointer-events: none; }
+.numeric-answer-status--correct { color: #86efac; }
+.numeric-answer-status--incorrect { color: #fca5a5; }
+.numeric-answer-input { direction: ltr; }
+.numeric-answer-input[data-answer-state="correct"], .numeric-answer-input[data-answer-state="incorrect"] { opacity: 1; }
+.numeric-correct-answer { min-height: 18px; color: #dce7f5; font-size: 13px; line-height: 18px; }
+.numeric-correct-answer .math { display: inline; }
+.visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
+.practice-primary-action button { min-height: 48px; }
 .practice-session--keyboard .numeric-answer-input { scroll-margin-block: 8px 80px; }
-.practice-session--keyboard { padding: max(6px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left)) !important; }
-.practice-session--keyboard > header { min-height: 36px; }
-.practice-session--keyboard .practice-status { line-height: 1.1; }
+.practice-session--keyboard .practice-context,
+.practice-session--keyboard .practice-stop-action,
+.practice-session--keyboard .practice-status-detail { visibility: hidden; pointer-events: none; }
+.practice-session--keyboard > header { position: sticky; top: 0; z-index: 2; background: #353535; }
 
 .stage-completion { box-sizing: border-box; min-height: calc(100dvh - 96px); max-width: 440px; margin: 0 auto; padding: max(8px, env(safe-area-inset-top)) 4px max(8px, env(safe-area-inset-bottom)); display: grid; align-content: center; justify-items: center; gap: 16px; text-align: center; }
 .stage-completion__total { justify-self: end; align-self: start; }

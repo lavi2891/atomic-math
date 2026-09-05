@@ -23,7 +23,7 @@ export const SKILLS = [
   s("AR_DIV_F_8_9", "ARITHMETIC", "חילוק ב־8 וב־9", 54, ["AR_MUL_F_8_9"], 90, fact, fluent, { fluency: { enabled: true, targetMedianMs: 5_000 } }),
   s("AR_FACTORS_MULTIPLES", "ARITHMETIC", "גורמים וכפולות", 60, [], 85, reasoning, quick, { supportingSkills: ["AR_MUL_F_2_5_10", "AR_DIV_F_2_5_10"] }),
   s("OPS_ORDER_BASIC", "ORDER_OF_OPERATIONS", "סדר פעולות בסיסי", 10, [], 85, routine, quick, { supportingSkills: ["AR_ADD_FACTS", "AR_MUL_F_2_5_10"] }),
-  s("INT_NUMBER_LINE", "INTEGERS", "ישר המספרים", 10, [], 85, concept, quick),
+  s("INT_NUMBER_LINE", "INTEGERS", "ציר המספרים", 10, [], 85, concept, quick),
   s("INT_COMPARE", "INTEGERS", "השוואת מספרים מכוונים", 20, ["INT_NUMBER_LINE"], 85, reasoning, quick),
   s("INT_NEGATION", "INTEGERS", "מספר נגדי", 30, ["INT_NUMBER_LINE"], 85, reasoning, quick),
   s("INT_ADD", "INTEGERS", "חיבור מספרים מכוונים", 40, ["INT_NUMBER_LINE"], 85, routine, fluent, { supportingSkills: ["AR_ADD_FACTS"], fluency: { enabled: true, targetMedianMs: 5_000 } }),

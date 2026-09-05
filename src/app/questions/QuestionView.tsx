@@ -182,7 +182,7 @@ export function QuestionView({
       lastEval,
     },
     actions: { setNumericValue, setSingleId, setMultiIds, check, nextResult },
-    derived: { canCheck, isNumericAnsweringSolve, disabledInputs },
+    derived: { canCheck, disabledInputs },
   } = solve;
 
   const parsedNumeric = useMemo(
@@ -343,11 +343,17 @@ export function QuestionView({
 
   useEffect(() => {
     if (!viewport?.keyboardOpen) return;
-    // The compact layout introduces a scroll container. Keep the focused field
-    // clear of the reserved action-bar space even for a long question.
-    const frame = requestAnimationFrame(() => numericInputRef.current?.scrollIntoView({ block: "nearest" }));
+    // Keep a long question's focused field clear of the action bar without
+    // swapping or resizing the question card when the keyboard opens.
+    const frame = requestAnimationFrame(() => {
+      const input = numericInputRef.current;
+      if (!input) return;
+      const rect = input.getBoundingClientRect();
+      const visibleBottom = viewport.top + viewport.height - 84;
+      if (rect.bottom > visibleBottom) window.scrollBy(0, rect.bottom - visibleBottom + spacing.xs);
+    });
     return () => cancelAnimationFrame(frame);
-  }, [viewport?.keyboardOpen, question.id]);
+  }, [viewport?.height, viewport?.keyboardOpen, viewport?.top, question.id]);
 
   useEffect(() => {
     if (mode !== "solve" || phase !== "checked") return;
@@ -380,6 +386,10 @@ export function QuestionView({
     emphasizeFraction: numericEmphasizeFraction,
     formatHint: numericFormatHint,
   } as const;
+  const showPrimaryAction = mode === "solve" && (phase === "answering" || autoAdvanceMs === null);
+  const primaryActionDisabled = phase === "answering" && (question.type === "numeric" ? !numericCanCheck : !canCheck);
+  const primaryActionLabel = phase === "answering" ? he.session.check : he.session.next;
+  const onPrimaryAction = phase === "answering" ? onCheck : onNextClick;
 
   return (
     <div
@@ -387,7 +397,7 @@ export function QuestionView({
       onKeyDownCapture={onWrapperKeyDownCapture}
       style={{
         display: "grid",
-        gap: viewport?.keyboardOpen ? spacing.xs : spacing.md,
+        gap: spacing.md,
         overflowY: viewport?.keyboardOpen ? "auto" : undefined,
         minHeight: 0,
         alignContent: "start",
@@ -398,6 +408,7 @@ export function QuestionView({
       }}
     >
       <div
+        className="practice-question__prompt"
         style={{
           fontSize: fontSize.md,
           lineHeight: lineHeight.md,
@@ -409,40 +420,9 @@ export function QuestionView({
         <ContentRenderer content={question.prompt} />
       </div>
 
-      {mode === "solve" ? <div>
+      {mode === "solve" ? <div className="practice-question__answer">
         {question.type === "numeric" ? (
-          isNumericAnsweringSolve ? (
-            <form
-              onSubmit={onNumericSubmit}
-              style={{ display: "grid", gap: spacing.sm, minWidth: 0 }}
-            >
-              <NumericAnswerInput
-                question={question}
-                value={numericValue}
-                onChange={setNumericValue}
-                disabled={disabledInputs}
-                inputRef={numericInputRef}
-                autoFocus
-                {...numericUxProps}
-              />
-              {!mobileAction ? <button
-                type="submit"
-                disabled={!numericCanCheck}
-                style={{
-                  width: "100%",
-                  maxWidth: "100%",
-                  boxSizing: "border-box",
-                  minWidth: 0,
-                  padding: `${spacing.sm}px ${spacing.md}px`,
-                  borderRadius: radius.md,
-                  border: `1px solid ${colors.border}`,
-                  cursor: !numericCanCheck ? "not-allowed" : "pointer",
-                }}
-              >
-                {he.session.check}
-              </button> : null}
-            </form>
-          ) : (
+          <form onSubmit={onNumericSubmit} style={{ display: "grid", gap: spacing.sm, minWidth: 0 }}>
             <NumericAnswerInput
               question={question}
               value={numericValue}
@@ -450,9 +430,10 @@ export function QuestionView({
               disabled={disabledInputs}
               inputRef={numericInputRef}
               autoFocus
+              feedbackState={phase === "checked" && lastEval ? (lastEval.isCorrect ? "correct" : "incorrect") : undefined}
               {...numericUxProps}
             />
-          )
+          </form>
         ) : question.type === "singleChoice" ? (
           <SingleChoiceAnswerInput
             question={question}
@@ -460,6 +441,7 @@ export function QuestionView({
             onChange={setSingleId}
             shuffleSeed={shuffleSeed}
             disabled={disabledInputs}
+            showFeedback={phase === "checked"}
           />
         ) : question.type === "multiChoice" ? (
           <div style={{ display: "grid", gap: spacing.xs }}>
@@ -477,30 +459,13 @@ export function QuestionView({
               onChange={setMultiIds}
               shuffleSeed={shuffleSeed}
               disabled={disabledInputs}
+              showFeedback={phase === "checked"}
             />
           </div>
         ) : (
           unreachable(question, "Unknown question type")
         )}
       </div> : null}
-
-      {mode === "solve" && phase === "checked" && lastEval && (
-        <div
-          style={{
-            padding: `${spacing.sm}px ${spacing.md}px`,
-            borderRadius: radius.md,
-            border: `1px solid ${colors.borderSubtle}`,
-            background: colors.bgSubtle,
-          }}
-        >
-          <strong role="status" aria-live="polite">
-            {autoAdvanceMs !== null ? (lastEval.isCorrect ? "✓ נכון" : "✗ לא נכון") : (lastEval.isCorrect ? he.feedback.correct : he.feedback.incorrect)}
-          </strong>
-          {autoAdvanceMs === null && lastEval.message ? (
-            <div style={{ marginTop: spacing.xs }}>{lastEval.message}</div>
-          ) : null}
-        </div>
-      )}
 
       {mode === "review" && reviewData && (
         <div
@@ -530,57 +495,17 @@ export function QuestionView({
         </div>
       )}
 
-      {mode === "solve" && !isNumericAnsweringSolve && ((phase === "answering" && !mobileAction) || (phase === "checked" && autoAdvanceMs === null)) ? (
-        <div style={{ display: "flex", gap: spacing.sm, minWidth: 0 }}>
-          {phase === "answering" ? (
-            <button
-              type="button"
-              onClick={onCheck}
-              disabled={
-                question.type === "numeric" ? !numericCanCheck : !canCheck
-              }
-              style={{
-                flex: 1,
-                minWidth: 0,
-                width: "100%",
-                maxWidth: "100%",
-                boxSizing: "border-box",
-                padding: `${spacing.sm}px ${spacing.md}px`,
-                borderRadius: radius.md,
-                border: `1px solid ${colors.border}`,
-                cursor:
-                  question.type === "numeric" && !numericCanCheck
-                    ? "not-allowed"
-                    : !canCheck
-                      ? "not-allowed"
-                      : "pointer",
-              }}
-            >
-              {he.session.check}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={onNextClick}
-              style={{
-                flex: 1,
-                minWidth: 0,
-                width: "100%",
-                maxWidth: "100%",
-                boxSizing: "border-box",
-                padding: `${spacing.sm}px ${spacing.md}px`,
-                borderRadius: radius.md,
-                border: `1px solid ${colors.border}`,
-                cursor: "pointer",
-              }}
-            >
-              {he.session.next}
-            </button>
-          )}
+      {showPrimaryAction && !mobileAction ? (
+        <div className="practice-primary-action" style={{ display: "flex", gap: spacing.sm, minWidth: 0 }}>
+          <button type="button" onClick={onPrimaryAction} disabled={primaryActionDisabled} style={{
+            flex: 1, minWidth: 0, width: "100%", maxWidth: "100%", boxSizing: "border-box",
+            padding: `${spacing.sm}px ${spacing.md}px`, borderRadius: radius.md, border: `1px solid ${colors.border}`,
+            cursor: primaryActionDisabled ? "not-allowed" : "pointer",
+          }}>{primaryActionLabel}</button>
         </div>
       ) : null}
 
-      {mobileAction && phase === "answering" && viewport ? <MobileSubmitBar viewport={viewport} disabled={question.type === "numeric" ? !numericCanCheck : !canCheck} onSubmit={onCheck} /> : null}
+      {mobileAction && showPrimaryAction && viewport ? <MobileSubmitBar viewport={viewport} label={primaryActionLabel} state={phase} disabled={primaryActionDisabled} onSubmit={onPrimaryAction} /> : null}
       {!viewport?.keyboardOpen ? <DevQuestionDebug question={question} /> : null}
     </div>
   );

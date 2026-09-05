@@ -7,6 +7,7 @@ export type PracticeViewport = {
   left: number;
   width: number;
   height: number;
+  occludedHeight: number;
 };
 
 function readViewport(): PracticeViewport {
@@ -18,6 +19,7 @@ function readViewport(): PracticeViewport {
     left: viewport?.offsetLeft ?? 0,
     width: viewport?.width ?? window.innerWidth,
     height: viewport?.height ?? window.innerHeight,
+    occludedHeight: 0,
   };
 }
 
@@ -43,6 +45,7 @@ export function usePracticeViewport() {
       baselineHeight = Math.max(baselineHeight, window.innerHeight, next.height);
       next.keyboardOpen = next.narrow && focused && (visual?.scale ?? 1) <= 1.05
         && baselineHeight - next.height > Math.max(100, baselineHeight * 0.18);
+      next.occludedHeight = next.keyboardOpen ? Math.max(0, baselineHeight - next.height) : 0;
       setViewport((previous) => Object.keys(next).every((key) => previous[key as keyof PracticeViewport] === next[key as keyof PracticeViewport]) ? previous : next);
     };
     document.addEventListener("focusin", update);

@@ -40,7 +40,7 @@ export const LEARNING_PATHS = [
         nameHe: "מספרים מכוונים",
         shortcutTest: { id: "NA_INTEGERS_SHORTCUT", skillIds: ["INT_COMPARE", "INT_SUB", "INT_DIV"] },
         stages: [
-          { id: "NA_NUMBER_LINE", nameHe: "ישר המספרים", type: "normal", skillIds: ["INT_NUMBER_LINE"] },
+          { id: "NA_NUMBER_LINE", nameHe: "ציר המספרים", type: "normal", skillIds: ["INT_NUMBER_LINE"] },
           { id: "NA_COMPARE_NEGATE", nameHe: "השוואה ומספר נגדי", type: "normal", skillIds: ["INT_COMPARE", "INT_NEGATION"] },
           { id: "NA_INTEGER_ADD_SUBTRACT", nameHe: "חיבור וחיסור מכוונים", type: "normal", skillIds: ["INT_ADD", "INT_SUB"] },
           { id: "NA_INTEGER_MULTIPLY_DIVIDE", nameHe: "כפל וחילוק מכוונים", type: "normal", skillIds: ["INT_MUL", "INT_DIV"] },

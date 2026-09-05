@@ -74,21 +74,20 @@ export function SessionView({ session, definitions, initialTargetDifficulty = 0,
   }
 
   return (
-    <section ref={sessionRef} className={`practice-session${viewport.keyboardOpen ? " practice-session--keyboard" : ""}`} style={{ display: "grid", gap: viewport.keyboardOpen ? spacing.xs : spacing.md, ...(viewport.keyboardOpen ? {
-      position: "fixed", top: viewport.top, left: viewport.left, width: viewport.width, height: viewport.height,
-      zIndex: 30, padding: 8, boxSizing: "border-box", background: colors.bgSubtle,
-      gridTemplateRows: "auto minmax(0, 1fr)",
-    } : {}) }}>
-      {!viewport.keyboardOpen ? <div className="practice-context"><strong title={contextTitle}>{contextTitle}</strong><small>{pathContext?.chapterNameHe ?? sessionModeLabels[session.settings.mode]}</small></div> : null}
+    <section ref={sessionRef} className={`practice-session${viewport.keyboardOpen ? " practice-session--keyboard" : ""}`} style={{ display: "grid", gap: spacing.md }}>
+      <div className="practice-context" aria-hidden={viewport.keyboardOpen || undefined}><strong title={contextTitle}>{contextTitle}</strong><small>{pathContext?.chapterNameHe ?? sessionModeLabels[session.settings.mode]}</small></div>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: spacing.sm }}>
-        <span className="practice-status"><SessionStatus state={engine.state} remainingSeconds={remainingSeconds} />{session.settings.mode === "timed" && !viewport.keyboardOpen ? <small style={{ display: "block", color: colors.textMuted }}>נכונות עכשיו: {correctCount}{previousBest ? ` · השיא שלך: ${personalBestResultLabel(previousBest)}` : ""}</small> : null}</span>
-        {!viewport.keyboardOpen ? <button
+        <span className="practice-status"><SessionStatus state={engine.state} remainingSeconds={remainingSeconds} />{session.settings.mode === "timed" ? <small className="practice-status-detail" style={{ display: "block", color: colors.textMuted }}>נכונות עכשיו: {correctCount}{previousBest ? ` · השיא שלך: ${personalBestResultLabel(previousBest)}` : ""}</small> : null}</span>
+        <button
+          className="practice-stop-action"
           type="button"
           onClick={engine.actions.stopSession}
+          aria-hidden={viewport.keyboardOpen || undefined}
+          tabIndex={viewport.keyboardOpen ? -1 : 0}
           style={{ border: `1px solid ${colors.border}`, borderRadius: radius.md, padding: `${spacing.xs}px ${spacing.sm}px`, background: colors.bgSubtle, color: colors.text, cursor: "pointer" }}
         >
           סיום תרגול
-        </button> : null}
+        </button>
       </header>
       <QuestionView
         key={`${engine.state.results.length}:${engine.state.currentQuestion.id}`}
@@ -101,6 +100,7 @@ export function SessionView({ session, definitions, initialTargetDifficulty = 0,
         }}
         onNext={engine.actions.submitAnswer}
       />
+      {viewport.keyboardOpen ? <div className="practice-keyboard-scroll-buffer" aria-hidden="true" style={{ height: viewport.occludedHeight }} /> : null}
     </section>
   );
 }
