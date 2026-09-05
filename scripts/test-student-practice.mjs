@@ -18,6 +18,8 @@ const { SessionSummaryScreen } = await server.ssrLoadModule('/src/app/session/Se
 const { useSessionEngine } = await server.ssrLoadModule('/src/app/session/useSessionEngine.ts');
 const { SKILLS, SKILL_GROUPS, DOMAINS } = await server.ssrLoadModule('/src/content/catalog/index.ts');
 const { sessionReviewResults, repeatSessionConfig, activePracticeScopeLabel } = await server.ssrLoadModule('/src/domain/session/studentSessionUx.ts');
+const { learningSessionContext } = await server.ssrLoadModule('/src/domain/learningPath/sessionProgress.ts');
+const { LEARNING_PATHS } = await server.ssrLoadModule('/src/content/learningPaths.ts');
 const { FOUNDATIONAL_QUESTIONS } = await server.ssrLoadModule('/src/content/foundations/questions.ts');
 const { filterChallengeContent } = await server.ssrLoadModule('/src/domain/session/challengeContent.ts');
 const skill = SKILLS.find(s => s.active && s.modes.timedProfileId);
@@ -47,6 +49,17 @@ try {
   const domainSkills = SKILLS.filter(item => item.domainId === skill.domainId).map(item => item.id);
   assert.equal(activePracticeScopeLabel(domainSkills), `${DOMAINS.find(item => item.id === skill.domainId).nameHe} · ${domainSkills.length} מיומנויות`);
   console.log('PASS compact active scope uses skill, group, or domain with count');
+  const stageReference = { pathId: 'NUMBERS_ALGEBRA', stageId: 'NA_PLACE_VALUE' };
+  const shortcutReference = { pathId: 'NUMBERS_ALGEBRA', chapterId: 'NA_DECIMAL_ARITHMETIC', shortcutId: 'NA_DECIMAL_SHORTCUT' };
+  assert.deepEqual(learningSessionContext(LEARNING_PATHS, { learningStage: stageReference }), { kind: 'stage', titleHe: 'מבנה המספר', chapterNameHe: 'מספרים ופעולות בסיסיות', pathNameHe: 'מספרים ואלגברה' });
+  assert.deepEqual(learningSessionContext(LEARNING_PATHS, { learningShortcut: shortcutReference }), { kind: 'shortcut', titleHe: 'בדיקת קיצור', chapterNameHe: 'מספרים ופעולות בסיסיות', pathNameHe: 'מספרים ואלגברה' });
+  const stageReplay = repeatSessionConfig({ id: 'stage', studentId: 'student', selectedSkillIds: ['AR_PLACE_VALUE'], settings: { mode: 'fixed', questionCount: 5 }, startedAt: 0, learningStage: stageReference });
+  assert.deepEqual(stageReplay, { skillIds: ['AR_PLACE_VALUE'], settings: { mode: 'fixed', questionCount: 5 }, assignmentId: undefined, learningStage: stageReference });
+  const shortcutReplay = repeatSessionConfig({ id: 'shortcut', studentId: 'student', selectedSkillIds: ['AR_PLACE_VALUE', 'AR_ADD_FACTS'], settings: { mode: 'fixed', questionCount: 5 }, startedAt: 0, learningShortcut: shortcutReference });
+  assert.deepEqual(shortcutReplay, { skillIds: ['AR_PLACE_VALUE', 'AR_ADD_FACTS'], settings: { mode: 'fixed', questionCount: 5 }, assignmentId: undefined, learningShortcut: shortcutReference });
+  assert.notEqual(stageReplay.learningStage, stageReference);
+  assert.notEqual(shortcutReplay.learningShortcut, shortcutReference);
+  console.log('PASS path context and exact stage/shortcut replay configuration');
   mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'], now: 1000 });
   mock.method(performance, 'now', () => Date.now());
   for (const mode of ['timed', 'survival', 'fixed', 'practice']) {
@@ -178,13 +191,24 @@ try {
   const zeroStarTree = await mount(React.createElement(SessionSummaryScreen, { completed, masteryBefore: {}, masteryAfter: {}, personalBestUpdate: null, stageStars: 0, onHome() {}, onRepeat() {} }));
   assert.match(text(zeroStarTree.toJSON()), /כמעט שם/);
   assert.ok(zeroStarTree.root.findByProps({ 'aria-label': '0 מתוך 3 כוכבים' }));
-  assert.ok(button(zeroStarTree, 'ניסיון קצר נוסף'));
+  assert.ok(button(zeroStarTree, 'שחק שוב'));
   await unmount(zeroStarTree);
   const shortcutRetryTree = await mount(React.createElement(SessionSummaryScreen, { completed, masteryBefore: {}, masteryAfter: {}, personalBestUpdate: null, shortcutPassed: false, onHome() {}, onRepeat() {} }));
   assert.match(text(shortcutRetryTree.toJSON()), /עוד קצת תרגול/);
-  assert.ok(button(shortcutRetryTree, 'ניסיון קצר נוסף'));
+  assert.ok(button(shortcutRetryTree, 'שחק שוב'));
   await unmount(shortcutRetryTree);
   console.log('PASS zero-star and shortcut retry summaries stay encouraging');
+  const pathCompleted = { ...completed, session: { ...completed.session, learningStage: stageReference } };
+  const best = { key: 'best', studentId: 'student', signature: { mode: 'timed', durationSeconds: 30, scope: { type: 'skill', skillId: skill.id }, profile: { id: 'profile', version: 1 } }, bestScore: 8, achievedAt: '2026-01-01T00:00:00.000Z', sessionId: 'best-session', metrics: { attempted: 8, correct: 8, incorrect: 0, accuracy: 1, durationMs: 30000 } };
+  const pathSummary = await mount(React.createElement(SessionSummaryScreen, { completed: pathCompleted, masteryBefore: {}, masteryAfter: {}, personalBestUpdate: { best, previousBest: best, isNewRecord: false }, stageStars: 2, homeLabel: 'חזרה למסלול', onHome() {}, onRepeat() {} }));
+  const pathSummaryText = text(pathSummary.toJSON());
+  assert.match(pathSummaryText, /מבנה המספר/);
+  assert.match(pathSummaryText, /מספרים ופעולות בסיסיות/);
+  assert.doesNotMatch(pathSummaryText, /מבנה המספר העשרוני/);
+  assert.match(pathSummaryText, /השיא האישי שלך: 8 תשובות נכונות/);
+  assert.deepEqual(buttons(pathSummary).map(b => text(b.props.children)), ['שחק שוב', 'ראה מה טעיתי', 'חזרה למסלול', 'דוח מפורט']);
+  await unmount(pathSummary);
+  console.log('PASS path summary stays compact and shows existing personal best');
   // Exercise the real eligible generator bank beyond its initial pool size.
   const settings = { mode: 'timed', durationSeconds: 30 };
   const definitions = filterChallengeContent(settings, [skill], FOUNDATIONAL_QUESTIONS).filter(q => q.skillId === skill.id);

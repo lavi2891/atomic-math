@@ -2,6 +2,7 @@ import { DOMAINS, SKILL_GROUPS, getSkillById } from "../../content/catalog/index
 import type { AnswerResult } from "../results/types.ts";
 import { isSuccessfulSessionCompletion, type PracticeSession, type PracticeSessionState, type SessionMode, type SessionSettings } from "./practiceSession.ts";
 import type { LearningShortcutReference, LearningStageReference } from "../learningPath/types.ts";
+import type { PersonalBest } from "../personalBests/types.ts";
 
 export function repeatSessionConfig(session: PracticeSession): { skillIds: string[]; settings: SessionSettings; assignmentId?: string; learningStage?: LearningStageReference; learningShortcut?: LearningShortcutReference } {
   return { skillIds: [...session.selectedSkillIds], settings: { ...session.settings }, assignmentId: session.assignmentId, ...(session.learningStage ? { learningStage: { ...session.learningStage } } : {}), ...(session.learningShortcut ? { learningShortcut: { ...session.learningShortcut } } : {}) };
@@ -13,6 +14,12 @@ export const sessionModeLabels: Record<SessionMode, string> = {
 
 export function feedbackDelayMs(mode: SessionMode): number | null {
   return mode === "timed" || mode === "survival" ? 450 : null;
+}
+
+export function personalBestResultLabel(best: PersonalBest): string {
+  return best.signature.mode === "fixed"
+    ? `${Math.round(best.bestScore / 100) / 10} שניות`
+    : `${best.bestScore} תשובות נכונות`;
 }
 
 export function practiceScopeLabel(skillIds: readonly string[]): string {

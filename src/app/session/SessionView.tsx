@@ -11,7 +11,9 @@ import { QuestionView } from "../questions/QuestionView";
 import { useSessionEngine } from "./useSessionEngine";
 import type { PersonalBest } from "@domain/personalBests/types";
 
-import { activePracticeScopeLabel, sessionModeLabels } from "../../domain/session/studentSessionUx.ts";
+import { activePracticeScopeLabel, personalBestResultLabel, sessionModeLabels } from "../../domain/session/studentSessionUx.ts";
+import { learningSessionContext } from "../../domain/learningPath/sessionProgress.ts";
+import { LEARNING_PATHS } from "../../content/learningPaths.ts";
 
 import { usePracticeViewport } from "./usePracticeViewport.ts";
 
@@ -44,6 +46,8 @@ export function SessionView({ session, definitions, initialTargetDifficulty = 0,
   const didEndRef = useRef(false);
   const remainingSeconds = engine.remainingSeconds;
   const correctCount = engine.state.results.filter((result) => result.isCorrect).length;
+  const pathContext = learningSessionContext(LEARNING_PATHS, session);
+  const contextTitle = pathContext?.titleHe ?? activePracticeScopeLabel(session.selectedSkillIds);
 
   useEffect(() => {
     if (engine.state.status !== "ended" || didEndRef.current) return;
@@ -75,9 +79,9 @@ export function SessionView({ session, definitions, initialTargetDifficulty = 0,
       zIndex: 30, padding: 8, boxSizing: "border-box", background: colors.bgSubtle,
       gridTemplateRows: "auto minmax(0, 1fr)",
     } : {}) }}>
-      {!viewport.keyboardOpen ? <div className="practice-context"><strong title={activePracticeScopeLabel(session.selectedSkillIds)}>{activePracticeScopeLabel(session.selectedSkillIds)}</strong><small>{sessionModeLabels[session.settings.mode]}</small></div> : null}
+      {!viewport.keyboardOpen ? <div className="practice-context"><strong title={contextTitle}>{contextTitle}</strong><small>{pathContext?.chapterNameHe ?? sessionModeLabels[session.settings.mode]}</small></div> : null}
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: spacing.sm }}>
-        <span className="practice-status"><SessionStatus state={engine.state} remainingSeconds={remainingSeconds} />{session.settings.mode === "timed" && !viewport.keyboardOpen ? <small style={{ display: "block", color: colors.textMuted }}>נכונות עכשיו: {correctCount}{previousBest ? ` · השיא שלך: ${previousBest.bestScore}` : ""}</small> : null}</span>
+        <span className="practice-status"><SessionStatus state={engine.state} remainingSeconds={remainingSeconds} />{session.settings.mode === "timed" && !viewport.keyboardOpen ? <small style={{ display: "block", color: colors.textMuted }}>נכונות עכשיו: {correctCount}{previousBest ? ` · השיא שלך: ${personalBestResultLabel(previousBest)}` : ""}</small> : null}</span>
         {!viewport.keyboardOpen ? <button
           type="button"
           onClick={engine.actions.stopSession}

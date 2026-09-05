@@ -65,6 +65,20 @@ test('narrow context stays on one line; visual keyboard collapses header and tra
   await page.screenshot({ path: 'test-results/mobile-keyboard-closed.png' });
 });
 
+test('stage practice shows compact Stage and Chapter context and hides it with the keyboard', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await open(page, '?stage');
+  const context = page.locator('.practice-context');
+  await expect(context.getByText('מבנה המספר', { exact: true })).toBeVisible();
+  await expect(context.getByText('מספרים ופעולות בסיסיות', { exact: true })).toBeVisible();
+  await expect(context).not.toContainText('מבנה המספר העשרוני');
+  await page.screenshot({ path: 'test-results/mobile-stage-context-320.png' });
+  await page.locator('input').focus();
+  await visualKeyboard(page, 340);
+  await expect(context).toHaveCount(0);
+  await expectBarAt(page, 340);
+});
+
 for (const mode of ['timed', 'survival']) test(`${mode} preserves essential status and submits once with keyboard Enter`, async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await open(page, `?mode=${mode}`);

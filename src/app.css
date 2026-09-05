@@ -166,7 +166,7 @@ input {
   .domain-tree__header, .domain-launch, .skill-map-summary { gap: 8px; padding: 10px; }
 }
 
-/* Active practice uses one context line; full scope remains in setup/summary. */
+/* Active practice uses one context line; full Skill detail stays behind setup/summary details. */
 .practice-context { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .practice-context strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .practice-context small { flex-shrink: 0; }

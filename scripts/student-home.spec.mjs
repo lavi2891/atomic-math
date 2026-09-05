@@ -53,7 +53,8 @@ test('Continue opens the map and its current stage; stopping does not advance it
   await page.locator('[aria-current="step"]').click();
   await page.getByRole('dialog').getByRole('button', { name: 'התחלת תרגול' }).click();
   await expect(page.locator('.practice-status')).toHaveText('1 / 5');
-  await expect(page.locator('.practice-context')).toContainText('מבנה המספר העשרוני');
+  await expect(page.locator('.practice-context')).toContainText('מבנה המספר');
+  await expect(page.locator('.practice-context')).toContainText('מספרים ופעולות בסיסיות');
   await page.getByRole('button', { name: 'סיום תרגול', exact: true }).click();
   await page.getByRole('button', { name: 'חזרה למסלול', exact: true }).click();
   await page.getByRole('button', { name: 'חזרה לבית', exact: true }).click();
@@ -71,7 +72,7 @@ test('saved completion restores the next cluster and chapter progress after relo
   await numbers(page).getByRole('button').click();
   await page.locator('[aria-current="step"]').click();
   await page.getByRole('dialog').getByRole('button', { name: 'התחלת תרגול' }).click();
-  await expect(page.locator('.practice-context')).toContainText('2 מיומנויות');
+  await expect(page.locator('.practice-context')).toContainText('חיבור וחיסור');
 });
 
 test('a finished chapter advances the card to the next chapter', async ({ page }) => {
@@ -235,7 +236,8 @@ test('chapter shortcut is touch friendly and launches its five-question atomic S
   await page.screenshot({ path: 'test-results/learning-path-shortcut-320.png' });
   await dialog.getByRole('button', { name: 'התחלת בדיקה' }).click();
   await expect(page.locator('.practice-status')).toHaveText('1 / 5');
-  await expect(page.locator('.practice-context')).toContainText('3 מיומנויות');
+  await expect(page.locator('.practice-context')).toContainText('בדיקת קיצור');
+  await expect(page.locator('.practice-context')).toContainText('מספרים ופעולות בסיסיות');
 });
 
 test('passed shortcut restores bypassed stages as accessible and opens the checkpoint', async ({ page }) => {

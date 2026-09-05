@@ -1,6 +1,7 @@
 import type { PersistedSession } from "../sync/types.ts";
 import type { Chapter, LearningPath, LearningShortcutReference, LearningStageReference, Stage, StageStars, StudentLearningProgress } from "./types.ts";
 import { shortcutBypassStageIds } from "./scoring.ts";
+import type { PracticeSession } from "../session/practiceSession.ts";
 
 export const LEARNING_STAGE_SETTINGS = { mode: "fixed", questionCount: 5 } as const;
 
@@ -11,6 +12,29 @@ export function matchesLearningPathSettings(settings: PersistedSession["settings
 export function findLearningStage(paths: readonly LearningPath[], reference: LearningStageReference): Stage | undefined {
   return paths.find((path) => path.id === reference.pathId)?.chapters
     .flatMap((chapter) => chapter.stages).find((stage) => stage.id === reference.stageId);
+}
+
+export type LearningSessionContext = {
+  readonly kind: "stage" | "shortcut";
+  readonly titleHe: string;
+  readonly chapterNameHe: string;
+  readonly pathNameHe: string;
+};
+
+/** Resolve display context without changing the session's atomic Skill scope. */
+export function learningSessionContext(paths: readonly LearningPath[], session: Pick<PracticeSession, "learningStage" | "learningShortcut">): LearningSessionContext | undefined {
+  if (session.learningStage) {
+    const path = paths.find((item) => item.id === session.learningStage?.pathId);
+    const chapter = path?.chapters.find((item) => item.stages.some((stage) => stage.id === session.learningStage?.stageId));
+    const stage = chapter?.stages.find((item) => item.id === session.learningStage?.stageId);
+    if (path && chapter && stage) return { kind: "stage", titleHe: stage.nameHe, chapterNameHe: chapter.nameHe, pathNameHe: path.nameHe };
+  }
+  if (session.learningShortcut) {
+    const path = paths.find((item) => item.id === session.learningShortcut?.pathId);
+    const chapter = path?.chapters.find((item) => item.id === session.learningShortcut?.chapterId && item.shortcutTest?.id === session.learningShortcut?.shortcutId);
+    if (path && chapter) return { kind: "shortcut", titleHe: "בדיקת קיצור", chapterNameHe: chapter.nameHe, pathNameHe: path.nameHe };
+  }
+  return undefined;
 }
 
 export function findLearningShortcut(paths: readonly LearningPath[], reference: LearningShortcutReference): Chapter | undefined {

@@ -2,10 +2,12 @@ import { useState } from "react";
 import type { MasterySnapshot } from "../../domain/mastery/projectMastery.ts";
 import { isSuccessfulSessionCompletion, type PracticeSessionState } from "../../domain/session/practiceSession.ts";
 import type { PersonalBestUpdate } from "../../domain/personalBests/types.ts";
-import { practiceScopeLabel, sessionModeLabels, sessionResultLabel, sessionReviewResults } from "../../domain/session/studentSessionUx.ts";
+import { activePracticeScopeLabel, personalBestResultLabel, practiceScopeLabel, sessionModeLabels, sessionResultLabel, sessionReviewResults } from "../../domain/session/studentSessionUx.ts";
 import { QuestionView } from "../questions/QuestionView.tsx";
 import { colors, radius, spacing } from "../../ui/tokens.ts";
 import type { StageStars } from "../../domain/learningPath/types.ts";
+import { learningSessionContext } from "../../domain/learningPath/sessionProgress.ts";
+import { LEARNING_PATHS } from "../../content/learningPaths.ts";
 
 type Props = { completed: PracticeSessionState; masteryBefore: Record<string, MasterySnapshot>; masteryAfter: Record<string, MasterySnapshot>; personalBestUpdate: PersonalBestUpdate | null; stageStars?: StageStars; shortcutPassed?: boolean; homeLabel?: string; onHome: () => void; onRepeat: () => void };
 
@@ -16,16 +18,18 @@ export function SessionSummaryScreen({ completed, masteryBefore, masteryAfter, p
   const [showAll, setShowAll] = useState(false);
   const [details, setDetails] = useState(false);
   const reviewResults = sessionReviewResults(completed.results, showAll);
+  const pathContext = learningSessionContext(LEARNING_PATHS, completed.session);
+  const contextTitle = pathContext?.titleHe ?? activePracticeScopeLabel(completed.session.selectedSkillIds);
   return <section style={{ display: "grid", gap: spacing.md }}>
     <h2 style={{ margin: 0 }}>{reviewing ? "חזרה על התרגול" : completed.endReason === "stopped" ? "התרגול הסתיים" : isSuccessfulSessionCompletion(completed) ? "סיימת את התרגול!" : "התרגול הופסק עקב תקלה"}</h2>
-    <div><strong>{practiceScopeLabel(completed.session.selectedSkillIds)}</strong><div>{sessionModeLabels[completed.session.settings.mode]}</div></div>
+    <div><strong>{contextTitle}</strong>{pathContext ? <div>{pathContext.chapterNameHe}</div> : null}<div>{sessionModeLabels[completed.session.settings.mode]}</div></div>
     {!reviewing ? <>
       <p style={{ fontSize: "1.4rem", margin: 0 }}>{sessionResultLabel(completed)}</p>
       {stageStars !== undefined ? <div aria-label={`${stageStars} מתוך 3 כוכבים`}><strong style={{ color: "#f4ca5d", fontSize: "1.5rem" }}>{"★".repeat(stageStars)}{"☆".repeat(3 - stageStars)}</strong><p style={{ margin: "4px 0 0" }}>{starLabels[stageStars]}</p></div> : null}
       {shortcutPassed !== undefined ? <p style={{ margin: 0, fontWeight: 700 }}>{shortcutPassed ? "בדיקת הקיצור הושלמה. אתגר הפרק פתוח עבורך." : "עוד קצת תרגול ויהיה אפשר לנסות את הקיצור שוב."}</p> : null}
-      {personalBestUpdate?.isNewRecord ? <strong>שיא אישי חדש!</strong> : null}
+      {personalBestUpdate?.best ? <strong>{personalBestUpdate.isNewRecord ? "שיא אישי חדש" : "השיא האישי שלך"}: {personalBestResultLabel(personalBestUpdate.best)}</strong> : null}
       <div className="responsive-actions" style={{ display: "flex", gap: spacing.sm, flexWrap: "wrap" }}>
-        <button type="button" onClick={onRepeat} style={{ border: 0, background: colors.topicGreen, color: "#08130b", fontWeight: 700 }}>{stageStars === 0 || shortcutPassed === false ? "ניסיון קצר נוסף" : "שחק שוב"}</button>
+        <button type="button" onClick={onRepeat} style={{ border: 0, background: colors.topicGreen, color: "#08130b", fontWeight: 700 }}>שחק שוב</button>
         <button type="button" onClick={() => setReviewing(true)}>ראה מה טעיתי</button>
         <button type="button" onClick={onHome}>{homeLabel}</button>
       </div>

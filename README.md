@@ -35,6 +35,8 @@ Student UI
 
 Home's Continue action opens a narrow vertical learning path centered on the current stage. Later stages sit above completed stages, with chapter landmarks and short optional bonus branches. Tapping an available or completed stage opens a bottom sheet with stars, practice/replay, and a matching personal best when one exists. Accuracy awards zero to three stars using configurable Stage thresholds; one star unlocks the next required stage. Chapter landmarks can offer a short shortcut assessment that bypasses the lead-up to the checkpoint while keeping those stages accessible. Session outcomes restore offline from IndexedDB. Stars and shortcut bypasses never fabricate atomic Skill Mastery. Geometry is marked as coming soon until its atomic Skills exist. The existing topic and Skill selection tree is available through “תרגול חופשי”; Home keeps its compact cards without mastery analytics.
 
+Active path practice shows the Stage and Chapter in one compact line. Timed and Survival modes show brief feedback and advance automatically; Fixed and Practice modes retain the richer review step. On narrow screens, the focused layout follows `visualViewport`, hides the context row, and pins “אישור” above the virtual keyboard. The default result screen stays compact, with Skill analytics behind “דוח מפורט”.
+
 - `src/app`: React screens, top-level composition, and application services.
 - `src/domain`: framework-independent session, mastery, attempt, and student-home rules.
 - `src/content`: Domain/Skill catalog plus explicitly isolated legacy content adapters.
