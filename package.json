@@ -34,7 +34,9 @@
     "validate-content": "node --import ./scripts/register-ts-node.mjs ./scripts/validate-content.ts",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist",
+    "deploy:web": "npm run build && gh-pages -d dist",
+    "deploy:apps": "clasp push",
+    "deploy": "npm run deploy:web",
     "smoke:classroom-backend": "node scripts/classroom-backend-smoke.mjs"
   },
   "dependencies": {
