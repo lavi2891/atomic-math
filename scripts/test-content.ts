@@ -20,6 +20,25 @@ import type { GeneratedQuestionDefinition } from "../src/domain/questions/genera
 import type { SkillQuestionDefinition } from "../src/domain/session/skillQuestionSelector.ts";
 import { authoredChoiceContent, authoredStudentContent } from "../src/content/foundations/studentMathContent.ts";
 import { contentSegmentDirection, DEFAULT_CONTENT_DIRECTION, groupInlineMath } from "../src/ui/contentDirection.ts";
+import { studentMultiplicationNotationIssues } from "../src/content/validateContent.ts";
+
+run("multiplication validation checks authored and generated display surfaces, not evaluator syntax", () => {
+  const definition = FOUNDATIONAL_QUESTIONS.find(isGeneratedQuestionDefinition)!;
+  assert.ok(isGeneratedQuestionDefinition(definition));
+  const instance = buildGeneratedQuestion(definition, { seed: 1 });
+  assert.ok(studentMathContentIssues("raw-prompt", { ...instance, prompt: [{ kind: "math", latex: "3*4" }] }).some(issue => issue.includes("multiplication")));
+  for (const type of ["singleChoice", "multiChoice"] as const) {
+    const choice = { ...instance, type, correctOptionId: "a", correctOptionIds: ["a"], options: [{ id: "a", content: [{ kind: "math" as const, latex: "2*x" }] }] };
+    assert.ok(studentMathContentIssues("raw-choice", choice).some(issue => issue.includes("option a") && issue.includes("multiplication")));
+  }
+  assert.ok(studentMathContentIssues("raw-correction", { ...instance, type: "numeric", correctAnswers: ["(-3)*5"] }).some(issue => issue.includes("correct answer") && issue.includes("multiplication")));
+  assert.ok(studentMathContentIssues("raw-hint", { ...instance, hints: [[{ kind: "math", latex: "3*4" }]] }).some(issue => issue.includes("hint 1") && issue.includes("multiplication")));
+  assert.equal(studentMultiplicationNotationIssues("template", [{ kind: "math", latex: "{a}*{b}" }]).length, 1);
+  assert.equal(studentMultiplicationNotationIssues("riddle", [{ kind: "text", value: "3 * 4" }]).length, 1);
+  assert.deepEqual(studentMultiplicationNotationIssues("canonical", [{ kind: "math", latex: "2\\cdot x" }, { kind: "text", value: "note*" }]), []);
+  const internal = { ...instance, renderedExpression: "3*4", prompt: [{ kind: "math" as const, latex: "3\\cdot 4" }] };
+  assert.ok(!studentMathContentIssues("internal", internal).some(issue => issue.includes("multiplication")));
+});
 
 function run(name: string, fn: () => void) { fn(); process.stdout.write(`PASS ${name}\n`); }
 const skill = (id: string) => SKILLS.find((item) => item.id === id)!;
@@ -333,7 +352,7 @@ run("decimal structure covers both directions, structural bands, valid distracto
   const seenMistakes = new Set<string>();
   const zeroPositions = new Set<number>();
   // Independent evaluation of the displayed choices, including equivalent expressions.
-  const valueOf = (text: string) => text.replaceAll("\\times", "*").split("+").reduce((sum, term) => sum + term.trim().split("*").reduce((product, factor) => product * Number(factor.trim()), 1), 0);
+  const valueOf = (text: string) => text.replaceAll("\\cdot", "*").split("+").reduce((sum, term) => sum + term.trim().split("*").reduce((product, factor) => product * Number(factor.trim()), 1), 0);
   for (const definition of definitions) {
     assert.ok(isGeneratedQuestionDefinition(definition));
     assert.equal(definition.category, "representation");
@@ -355,8 +374,8 @@ run("decimal structure covers both directions, structural bands, valid distracto
       assert.doesNotMatch(prompt, /מה הערך|איזו ספרה|איזה מקום/u);
       const math = question.prompt.filter((segment) => segment.kind === "math").map((segment) => segment.latex).join("");
       assert.equal(valueOf(math), expected);
-      if (reverse && definition.difficultyBand === "C") assert.match(correctOptionTexts(question)[0]!, /0 \\times\s+10/u);
-      if (!reverse && definition.difficultyBand === "C") assert.match(math, /0 \\times\s+10/u);
+      if (reverse && definition.difficultyBand === "C") assert.match(correctOptionTexts(question)[0]!, /0 \\cdot\s+10/u);
+      if (!reverse && definition.difficultyBand === "C") assert.match(math, /0 \\cdot\s+10/u);
       for (const option of question.options) {
         const value = valueOf(renderedText(option.content));
         assert.ok(Number.isFinite(value));

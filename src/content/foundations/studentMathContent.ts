@@ -1,4 +1,5 @@
 import type { OptionContent } from "../../domain/questions/types.ts";
+import { multiplicationDotLatex } from "../../shared/mathDisplay.ts";
 
 /**
  * Authoring boundary for RTL student content:
@@ -14,12 +15,11 @@ const PURE_SYMBOLIC_EXPRESSION = /^(?=.*(?:\d|[□()+−×÷*/.=-]))[\dA-Za-z□
 const SINGLE_VARIABLE = /^[A-Za-z]$/u;
 
 export function studentMathLatex(value: string): string {
-  return value
+  return multiplicationDotLatex(value
     .trim()
     .replaceAll("−", "-")
-    .replaceAll("×", "\\times ")
     .replaceAll("÷", "\\div ")
-    .replaceAll("□", "\\square ");
+    .replaceAll("□", "\\square "));
 }
 
 export function authoredStudentContent(value: string): OptionContent[] {

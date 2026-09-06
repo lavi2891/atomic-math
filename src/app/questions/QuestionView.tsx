@@ -514,5 +514,5 @@ export function QuestionView({
 }
 
 function NumericMathValue({ value }: { value: string }) {
-  return <ContentRenderer content={[{ kind: "math", latex: value.replaceAll("−", "-").replaceAll("×", "\\times ").replaceAll("÷", "\\div ") }]} />;
+  return <ContentRenderer content={[{ kind: "math", latex: value.replaceAll("−", "-").replaceAll("÷", "\\div ") }]} />;
 }

@@ -134,7 +134,7 @@ function structureFeature(definition: GeneratedQuestionDefinition): string | nul
 
 /** Preserve the executable template; only normalize multiplication for clearer KaTeX display. */
 export function generatorTemplateLatex(template: string): string {
-  return formatStudentMathExpression(template).replaceAll("*", "\\cdot ");
+  return formatStudentMathExpression(template);
 }
 
 export function generatorStructureSummary(

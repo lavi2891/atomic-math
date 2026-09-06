@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import katex from "katex";
+import { multiplicationDotLatex } from "../shared/mathDisplay.ts";
 import "katex/dist/katex.min.css";
 import type { OptionContent } from "@domain/questions/types";
 import { contentSegmentDirection, DEFAULT_CONTENT_DIRECTION, groupInlineMath } from "./contentDirection.ts";
@@ -10,7 +11,7 @@ type Props = {
 };
 
 function renderMath(latex: string, displayMode: boolean) {
-  return katex.renderToString(latex, {
+  return katex.renderToString(multiplicationDotLatex(latex), {
     displayMode,
     throwOnError: false,
     strict: "ignore",

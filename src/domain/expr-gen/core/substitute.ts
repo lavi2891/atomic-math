@@ -126,7 +126,7 @@ function renderNode(node: ExprAst, values: SampledValues): RenderedNode {
 
   if (node.op === "*") {
     return {
-      latex: `${wrapIfNeeded(left, PREC_MUL_DIV)}\\times${wrapIfNeeded(right, PREC_MUL_DIV)}`,
+      latex: `${wrapIfNeeded(left, PREC_MUL_DIV)}\\cdot${wrapIfNeeded(right, PREC_MUL_DIV)}`,
       prec: PREC_MUL_DIV,
     };
   }

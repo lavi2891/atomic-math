@@ -16,6 +16,7 @@ import {
   formatStudentMathExpression,
   renderDisplayTemplate,
   renderExpressionTemplate,
+  renderPromptTemplate,
 } from "../src/domain/questions/generator/renderTemplate.ts";
 import { SIGNED_NUMBERS_GENERATED_QUESTIONS } from "../src/domain/questions/bank/SIGNED_NUMBERS.generated.ts";
 import { evaluateAnswer, numericAnswerFormatHint } from "../src/domain/questions/evaluators.ts";
@@ -23,6 +24,7 @@ import { resolveQuestionDefinition } from "../src/domain/questions/generator/res
 import { sampleParam } from "../src/domain/questions/generator/sampleParam.ts";
 import { SIGNED_NUMBERS_SAMPLE_QUESTIONS } from "../src/domain/questions/samples/SIGNED_NUMBERS.samples.ts";
 import { parseExactNumericInput } from "../src/shared/mathInput/exactNumeric.ts";
+import { multiplicationDotLatex } from "../src/shared/mathDisplay.ts";
 import type { GeneratedQuestionDefinition, SampledParams } from "../src/domain/questions/generator/types.ts";
 import type { GeneratedQuestionInstance, NumericQuestion, Question } from "../src/domain/questions/types.ts";
 
@@ -30,6 +32,23 @@ function run(name: string, testFn: () => void): void {
   testFn();
   process.stdout.write(`PASS ${name}\n`);
 }
+
+run("multiplication display uses dots while preserving LaTeX text and internal expressions", () => {
+  for (const [raw, expected] of [["3 * 4", "3 \\cdot 4"], ["2*x", "2\\cdot x"], ["(-3) * 5", "(-3) \\cdot 5"], ["3 × 4", "3 \\cdot 4"], ["2\\times x", "2\\cdot x"]]) {
+    assert.equal(multiplicationDotLatex(raw!), expected);
+    assert.equal(multiplicationDotLatex(expected!), expected);
+  }
+  const nonMultiplication = String.raw`\text{note* {nested*}}+\operatorname*{max}(x)+\begin{aligned}x\end{aligned}`;
+  assert.equal(multiplicationDotLatex(nonMultiplication), nonMultiplication);
+  assert.equal(multiplicationDotLatex(String.raw`\begin{align*}3*4\end{align*}`), String.raw`\begin{align*}3\cdot 4\end{align*}`);
+  assert.deepEqual(renderPromptTemplate([{ kind: "text", value: "note*" }, { kind: "math", latex: "2*x" }], {}), [{ kind: "text", value: "note*" }, { kind: "math", latex: "2\\cdot x" }]);
+  const definition: GeneratedQuestionDefinition = { id: "dot-regression", topicId: "FOUNDATIONS", kind: "generated", exprTemplate: "(-{a})*{b}", promptTemplate: [{ kind: "math", latex: "(-{a})*{b}" }], params: { a: { type: "natural", min: 3, max: 3 }, b: { type: "natural", min: 5, max: 5 } } };
+  const generated = buildGeneratedQuestion(definition, { seed: 1 });
+  assertNumericGenerated(generated);
+  assert.equal(generated.renderedExpression, "(-3)*5");
+  assert.equal(generated.correctAnswers[0], "-15");
+  assert.deepEqual(generated.prompt, [{ kind: "math", latex: "(-3)\\cdot 5" }]);
+});
 
 function assertNumericGenerated(question: GeneratedQuestionInstance): asserts question is GeneratedQuestionInstance & NumericQuestion {
   assert.equal(question.type, "numeric");
@@ -77,7 +96,7 @@ run("placeholder extraction and replacement", () => {
 run("student math display parenthesizes negative operands without changing executable expressions", () => {
   assert.equal(formatStudentMathExpression("5 + -3"), "5 + (-3)");
   assert.equal(formatStudentMathExpression("7 - -2"), "7 - (-2)");
-  assert.equal(formatStudentMathExpression("4 × -5"), "4 × (-5)");
+  assert.equal(formatStudentMathExpression("4 × -5"), "4 \\cdot (-5)");
   assert.equal(formatStudentMathExpression("8 ÷ -2"), "8 ÷ (-2)");
   assert.equal(formatStudentMathExpression("5 + 3"), "5 + 3");
   const negative = { ...sampledParams, b: { ...sampledParams.b, expr: "-3", display: "-3", value: { num: -3n, den: 1n } } };

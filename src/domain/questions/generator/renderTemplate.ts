@@ -1,14 +1,15 @@
 import type { OptionContent } from "../types.ts";
 import type { SampledParams } from "./types.ts";
+import { multiplicationDotLatex } from "../../../shared/mathDisplay.ts";
 
 const PLACEHOLDER_PATTERN = /\{([a-zA-Z_]\w*)\}/g;
-const NEGATIVE_OPERAND_PATTERN = /([+−*×/÷-])\s*([-−]\s*(?:\d+(?:\.\d+)?|\\frac\{[^}]+\}\{[^}]+\}))/gu;
+const NEGATIVE_OPERAND_PATTERN = /([+−*×/÷-]|\\(?:cdot|times|div))\s*([-−]\s*(?:\d+(?:\.\d+)?|\\frac\{[^}]+\}\{[^}]+\}))/gu;
 
 /** Keep a negative operand visually distinct from the binary operation before it. */
 export function formatStudentMathExpression(value: string): string {
-  return value.replace(NEGATIVE_OPERAND_PATTERN, (_match, operator: string, operand: string) =>
+  return multiplicationDotLatex(value.replace(NEGATIVE_OPERAND_PATTERN, (_match, operator: string, operand: string) =>
     `${operator} (${operand.replace(/\s+/gu, "")})`,
-  );
+  ));
 }
 
 export function extractTemplatePlaceholders(
@@ -62,7 +63,7 @@ export function renderPromptTemplate(
 ): OptionContent[] {
   return promptTemplate.map((segment) =>
     segment.kind === "text"
-      ? { ...segment, value: renderDisplayTemplate(segment.value, sampledParams) }
+      ? { ...segment, value: replaceTemplatePlaceholders(segment.value, sampledParams, "display") }
       : { ...segment, latex: renderDisplayTemplate(segment.latex, sampledParams) },
   );
 }

@@ -16,6 +16,7 @@ import { LEARNING_PATHS } from "./learningPaths.ts";
 import type { LearningPath } from "../domain/learningPath/types.ts";
 import { mediaValidationIssues } from "../domain/media/types.ts";
 import { safeExternalResourceUrl } from "../domain/optionalLearningContent/types.ts";
+import { multiplicationDotLatex } from "../shared/mathDisplay.ts";
 
 export interface SkillContentAudit {
   skillId: string;
@@ -142,27 +143,40 @@ export function signedMultiplicationLoadIssues(definitions: readonly SkillQuesti
   });
 }
 
+export function studentMultiplicationNotationIssues(context: string, content: readonly OptionContent[]): string[] {
+  return content.flatMap((part) => {
+    if (part.kind === "math" && multiplicationDotLatex(part.latex) !== part.latex) {
+      return [`${context}: student multiplication must use \\cdot, not an asterisk or cross`];
+    }
+    if (part.kind === "text" && /(?:[\dA-Za-z)}\]])\s*(?:\*|×|\\times\b)\s*(?:[-−]?[\dA-Za-z({[])/u.test(part.value)) {
+      return [`${context}: multiplication in prose must be authored as math using \\cdot`];
+    }
+    return [];
+  });
+}
+
 export function studentMathContentIssues(definitionId: string, question: Question, sampleLabel = "curated"): string[] {
   const surfaces: Array<{ label: string; content: readonly OptionContent[] }> = [
     { label: "prompt", content: question.prompt },
     ...(question.hints ?? []).map((content, index) => ({ label: `hint ${index + 1}`, content })),
     ...(question.type === "numeric" ? [] : question.options.map((option) => ({ label: `option ${option.id}`, content: option.content }))),
+    ...(question.type === "numeric" ? question.correctAnswers.map((answer) => ({ label: "correct answer", content: [{ kind: "math" as const, latex: answer }] })) : []),
   ];
-  return surfaces.flatMap(({ label, content }) => content.flatMap((part) => {
+  return surfaces.flatMap(({ label, content }) => [...studentMultiplicationNotationIssues(`${definitionId}: ${sampleLabel} ${label}`, content), ...content.flatMap((part) => {
     if (part.kind === "text" && mathLookingText(part.value)) {
       return [`${definitionId}: ${sampleLabel} ${label} contains mathematical notation in a text segment`];
     }
     if (part.kind === "math" && !part.latex.trim()) {
       return [`${definitionId}: ${sampleLabel} ${label} contains an empty math segment`];
     }
-    if (part.kind === "math" && /(?:\+|-|\\times|\\div|\*|\/)\s*-\s*\d/u.test(part.latex)) {
+    if (part.kind === "math" && /(?:\+|-|\\cdot|\\times|\\div|\*|\/)\s*-\s*\d/u.test(part.latex)) {
       return [`${definitionId}: ${sampleLabel} ${label} contains consecutive operators before a negative operand`];
     }
     if (part.kind === "math" && /(?:\d|[A-Za-z])\s*\/\s*(?:$|[)=<>+*/])/u.test(part.latex)) {
       return [`${definitionId}: ${sampleLabel} ${label} contains malformed fraction notation`];
     }
     return [];
-  }));
+  })]);
 }
 
 export function studentMathContentWarnings(definitionId: string, question: Question, sampleLabel = "curated"): string[] {
@@ -179,7 +193,7 @@ export function studentMathContentWarnings(definitionId: string, question: Quest
 }
 
 function numericContentValue(content: readonly OptionContent[]): string | null {
-  const source = contentSurface(content).trim().replaceAll("−", "-").replaceAll("×", "*").replaceAll("÷", "/");
+  const source = contentSurface(content).trim().replaceAll("−", "-").replace(/\\(?:cdot|times)\b/gu, "*").replaceAll("×", "*").replaceAll("÷", "/");
   if (!source || !/^[\d+\-*/().\s]+$/u.test(source)) return null;
   try { return rationalKey(evaluateExpression(source)); } catch { return null; }
 }
@@ -452,6 +466,10 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
     for (const chapter of path.chapters) {
       issues.push(...deprecatedStudentTerminologyIssues(chapter.id, [chapter.nameHe, ...chapter.stages.map((stage) => stage.nameHe)]));
       for (const node of chapter.optionalNodes ?? []) {
+        issues.push(...studentMultiplicationNotationIssues(node.id, [
+          { kind: "text", value: node.titleHe },
+          { kind: "text", value: node.type === "riddle" ? node.promptHe : node.shortDescription ?? "" },
+        ]));
         if (node.type === "riddle") {
           if (!["easy", "medium", "hard"].includes(node.difficulty)) issues.push(`${node.id}: riddle difficulty is invalid`);
           if (node.media) issues.push(...mediaValidationIssues(node.media).map((issue) => `${node.id}: ${issue}`));
@@ -474,6 +492,7 @@ export function validateFoundationalContent(samplesPerGenerator = 100): ContentV
     issues.push(...definitionMediaIssues(definition));
     issues.push(...supportingSkillMetadataIssues(definition));
     if (isGeneratedQuestionDefinition(definition)) {
+      issues.push(...studentMultiplicationNotationIssues(`${definition.id}: template`, [...definition.promptTemplate, ...(definition.hintsTemplate ?? []).flat()]));
       const authoringMode: string | undefined = definition.authoringMode;
       if (authoringMode !== "generated") issues.push("generated definition: authoring mode is missing");
       if (!Object.keys(definition.params).length) issues.push(`${definition.id}: generator has no parameters`);

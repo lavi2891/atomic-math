@@ -4,7 +4,7 @@ import type { DifficultyBand, SkillId } from "../catalog/types.ts";
 import type { GeneratedChoiceDraft, GeneratedQuestionDefinition, ParamsSpec, SampledParams } from "../../domain/questions/generator/types.ts";
 import type { QuestionCategory } from "../../domain/questions/categories.ts";
 import type { ChoiceOption, LiteracyDemand, OptionContent, QuestionCurationReason } from "../../domain/questions/types.ts";
-import { authoredChoiceContent, authoredStudentContent } from "./studentMathContent.ts";
+import { authoredChoiceContent, authoredStudentContent, studentMathLatex } from "./studentMathContent.ts";
 
 type GeneratorRecipe = { skillId: string; expr: string; secondExpr: string; structures: [string, string]; min: number; max: number; factValues?: readonly number[]; constraints?: [string[], string[]] };
 
@@ -39,9 +39,9 @@ function generator(recipe: GeneratorRecipe, band: DifficultyBand, alternate: boo
     exprTemplate: expr,
     promptTemplate: factorsAndMultiples
       ? alternate
-        ? [{ kind: "text", value: "נתונה הכפולה " }, { kind: "math", latex: "{a}\\times {b}" }, { kind: "text", value: " של " }, { kind: "math", latex: "{a}" }, { kind: "text", value: ". מצאו את הכפולה הבאה." }]
+        ? [{ kind: "text", value: "נתונה הכפולה " }, { kind: "math", latex: "{a}\\cdot {b}" }, { kind: "text", value: " של " }, { kind: "math", latex: "{a}" }, { kind: "text", value: ". מצאו את הכפולה הבאה." }]
         : [{ kind: "text", value: "מהי הכפולה של " }, { kind: "math", latex: "{a}" }, { kind: "text", value: " שמתקבלת כאשר כופלים ב־" }, { kind: "math", latex: "{b}" }, { kind: "text", value: "?" }]
-      : [{ kind: "text", value: "חשבו:" }, { kind: "math", latex: expr, display: true }],
+      : [{ kind: "text", value: "חשבו:" }, { kind: "math", latex: studentMathLatex(expr), display: true }],
     params: {
       a: { type: "integer", min: factFamily ? recipe.min : factorsAndMultiples ? multipleBandRange.min : reviewedBasicFacts && band === "B" ? 10 : recipe.min * scale, max: factFamily ? recipe.max : factorsAndMultiples ? multipleBandRange.max : reviewedBasicFacts ? (band === "A" ? 10 : recipe.max) : recipe.max * scale, exclude: factFamily ? omittedFactValues : undefined },
       ...(orderOfOperations ? { c: { type: "natural" as const, min: 2, max: 5 } } : {}),
@@ -106,7 +106,7 @@ const SIGNED_CALCULATION_GENERATORS: Array<GeneratedQuestionDefinition & { skill
     literacyDemand: "none",
     difficultyBand: band,
     exprTemplate: family.exprTemplate,
-    promptTemplate: [{ kind: "text", value: "חשבו:" }, { kind: "math", latex: family.exprTemplate, display: true }],
+    promptTemplate: [{ kind: "text", value: "חשבו:" }, { kind: "math", latex: studentMathLatex(family.exprTemplate), display: true }],
     params: isMentalStrategyMultiplication
       ? { m: { type: "natural", min: 10, max: 30, exclude: omittedMentalStrategyFactors }, n: { type: "natural", min: 2, max: 10 } }
       : { m: { type: "natural", ...range }, n: { type: "natural", ...range } },

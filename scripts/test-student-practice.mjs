@@ -44,6 +44,42 @@ async function answer(tree, value = '2') {
 }
 async function unmount(tree) { await act(() => tree.unmount()); }
 try {
+  const { ContentRenderer } = await server.ssrLoadModule('/src/ui/ContentRenderer.tsx');
+  const assertDotRendering = tree => {
+    const html = tree.root.findAll(node => !!node.props.dangerouslySetInnerHTML).map(node => node.props.dangerouslySetInnerHTML.__html).join('');
+    assert.ok(html.includes('katex'), 'uses the normal math renderer');
+    assert.ok(html.includes('⋅'), 'renders a centered multiplication dot');
+    assert.ok(!html.includes('*') && !html.includes('×'), 'no asterisk or multiplication cross in rendered math or annotation');
+  };
+  for (const latex of ['3 * 4', '2 * x', '(-3) * 5', String.raw`2\times x`]) {
+    const rendered = await mount(React.createElement(ContentRenderer, { content: [{ kind: 'math', latex }] }));
+    assertDotRendering(rendered);
+    await unmount(rendered);
+  }
+  for (const type of ['singleChoice', 'multiChoice']) {
+    const choice = { ...question, type, prompt: [{ kind: 'math', latex: '3*4' }], options: [{ id: 'a', content: [{ kind: 'math', latex: '2*x' }] }, { id: 'b', content: [{ kind: 'math', latex: '(-3)*5' }] }], correctOptionId: 'a', correctOptionIds: ['a'] };
+    const rendered = await mount(React.createElement(QuestionView, { question: choice, onNext() {} }));
+    assertDotRendering(rendered);
+    await unmount(rendered);
+    const reviewed = await mount(React.createElement(QuestionView, { question: choice, mode: 'review', review: { rawAnswer: type === 'singleChoice' ? { questionType: type, data: { optionId: 'b' } } : { questionType: type, data: { optionIds: ['b'] } }, isCorrect: false } }));
+    assertDotRendering(reviewed);
+    await unmount(reviewed);
+  }
+  const { QuestionReviewScreen } = await server.ssrLoadModule('/src/app/contentReview/QuestionReviewScreen.tsx');
+  const numericReview = await mount(React.createElement(QuestionView, { question: { ...question, prompt: [{ kind: 'math', latex: '3*4' }], correctAnswers: ['3*4'] }, mode: 'review', review: { rawAnswer: { questionType: 'numeric', data: { value: '2*5' } }, isCorrect: false } }));
+  assertDotRendering(numericReview);
+  await unmount(numericReview);
+  const previousLocation = window.location;
+  const previousHistory = window.history;
+  window.location = { search: '?review=questions&skill=AR_MUL_F_2_5_10&category=calculation' };
+  window.history = { replaceState() {} };
+  const reviewTool = await mount(React.createElement(QuestionReviewScreen));
+  await act(() => button(reviewTool, 'Student View').props.onClick());
+  assertDotRendering(reviewTool);
+  await unmount(reviewTool);
+  window.location = previousLocation;
+  window.history = previousHistory;
+  console.log('PASS multiplication dots in numeric, variable, signed, choice, answer review and generated Review Tool Student View rendering');
   assert.equal(activePracticeScopeLabel([skill.id]), skill.nameHe);
   const group = SKILL_GROUPS.find(item => item.active && item.skillIds.length > 1);
   assert.equal(activePracticeScopeLabel(group.skillIds), `${group.nameHe} · ${group.skillIds.length} מיומנויות`);
