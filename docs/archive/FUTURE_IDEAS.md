@@ -1,4 +1,4 @@
-**HISTORICAL IDEA BACKLOG.** Retained for ideas such as keeping potential speed-based points/confidence separate from base difficulty. The Topic-rating model, adaptive-difficulty rules, DEV write policy and priorities below are historical proposals, not current architecture or adopted requirements. See the [documentation index](README.md), [architecture](ARCHITECTURE.md) and [current curriculum roadmap](GRADE8_CURRICULUM_ROADMAP.md).
+**HISTORICAL IDEA BACKLOG.** Retained for ideas such as keeping potential speed-based points/confidence separate from base difficulty. The Topic-rating model, adaptive-difficulty rules, DEV write policy and priorities below are historical proposals, not current architecture or adopted requirements. See the [documentation index](../README.md), [architecture](../ARCHITECTURE.md) and [current curriculum roadmap](../GRADE8_CURRICULUM_ROADMAP.md).
 
 ---
 

@@ -4,6 +4,8 @@ When documents conflict, current executable code is truth for implementation sta
 
 ## CURRENT / AUTHORITATIVE
 
+- [GRADE8_ENTRY_CONTENT_BUILD_PLAN.md](GRADE8_ENTRY_CONTENT_BUILD_PLAN.md) — Implementation blueprint for the prerequisite content bank defined by the Grade 8 curriculum roadmap.
+
 - [ARCHITECTURE.md](ARCHITECTURE.md) describes technical architecture and implementation invariants.
 - [CONTENT_AUTHORING_STANDARD.md](CONTENT_AUTHORING_STANDARD.md) defines mandatory content-authoring and mathematical display rules.
 - [GRADE8_CURRICULUM_ROADMAP.md](GRADE8_CURRICULUM_ROADMAP.md) sets the active pedagogical direction, sequencing and priorities for Grade 8 foundational recovery.
@@ -17,7 +19,7 @@ When documents conflict, current executable code is truth for implementation sta
 
 ## HISTORICAL / DECISION LOGS
 
-The archived bodies retain their original findings, counts, examples and terminology; notices identify their status, and the former paths remain as links for existing references.
+The archived bodies retain their original findings, counts, examples and terminology; notices identify their status, and references point directly to archive.
 
 - [FOUNDATIONAL_CONTENT_AUDIT.md](archive/FOUNDATIONAL_CONTENT_AUDIT.md) preserves foundational-bank audit decisions and their successive historical counts.
 - [SIGNED_NUMBER_CONTENT_AUDIT.md](archive/SIGNED_NUMBER_CONTENT_AUDIT.md) preserves the signed-number audit and its earlier range and band decisions.
@@ -25,7 +27,7 @@ The archived bodies retain their original findings, counts, examples and termino
 - [PHASE_7B_CONTENT_REVIEW.md](archive/PHASE_7B_CONTENT_REVIEW.md) preserves the classroom content-review log and its historical bank counts.
 - [project-overview.md](archive/project-overview.md) describes the superseded Topic-oriented implementation.
 - [Old Hebrew code map](archive/מפת_בסיס_הקוד.md) preserves a map of an earlier code layout for historical reference.
-- [FUTURE_IDEAS.md](FUTURE_IDEAS.md) retains an unadopted idea backlog, including separating possible speed-based points/confidence from base difficulty.
+- [FUTURE_IDEAS.md](archive/FUTURE_IDEAS.md) retains an unadopted idea backlog, including separating possible speed-based points/confidence from base difficulty.
 
 ## Planning and implementation boundaries
 
