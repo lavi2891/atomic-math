@@ -76,20 +76,23 @@ export class StudentHomeService {
     let source: StudentHomeData["source"] = cached ? "cache" : "local";
     let connection: StudentHomeData["connection"] = this.client ? "offline" : "unconfigured";
     let warning: string | undefined;
+    let identityStatus: StudentHomeData["identityStatus"] = cached?.student?.active ? "active" : "unverified";
     if (this.client) {
       try {
         const remote = await this.client.getStudentHome(studentId);
+        const remoteStudent = normalizeStudent(remote.student);
+        identityStatus = remote.studentStatus ?? (remoteStudent ? (remoteStudent.active ? "active" : "inactive") : "unknown");
         server = {
           studentId,
-          student: normalizeStudent(remote.student),
-          assignments: normalizeAssignments(remote.activeAssignments),
-          masteryBySkill: Object.fromEntries(remote.masterySnapshots.map(normalizeSnapshot).map((snapshot) => [snapshot.skillId, snapshot])),
+          student: remoteStudent,
+          assignments: identityStatus === "active" ? normalizeAssignments(remote.activeAssignments) : [],
+          masteryBySkill: identityStatus === "active" ? Object.fromEntries(remote.masterySnapshots.map(normalizeSnapshot).map((snapshot) => [snapshot.skillId, snapshot])) : {},
           cachedAt: new Date().toISOString(),
         };
-        await this.persistence.putStudentHome(server);
+        if (identityStatus === "active") await this.persistence.putStudentHome(server);
         source = "remote";
         connection = "online";
-        if (!server.student) warning = `לא נמצא תלמיד עם המזהה ${studentId}; אפשר להמשיך בתרגול חופשי.`;
+        if (identityStatus !== "active") warning = "קוד התלמיד אינו פעיל.";
       } catch {
         warning = "אין כרגע חיבור לשרת. מוצגים הנתונים השמורים במכשיר.";
       }
@@ -124,6 +127,7 @@ export class StudentHomeService {
       masteryBySkill: Object.fromEntries(masteryEntries),
       source,
       connection,
+      identityStatus,
       warning,
       cachedAt: server?.cachedAt ?? new Date().toISOString(),
     };

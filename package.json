@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "test": "npm run test:generator && npm run test:catalog && npm run test:content && npm run test:content-review && npm run test:session && npm run test:personal-bests && npm run test:mastery && npm run test:sync && npm run test:apps-script && npm run test:student-home && npm run test:student-routing && npm run test:learning-path && npm run test:learning-path-scoring && npm run test:learning-path-ui && npm run test:student-practice",
+    "test": "npm run test:generator && npm run test:catalog && npm run test:content && npm run test:content-review && npm run test:session && npm run test:personal-bests && npm run test:mastery && npm run test:sync && npm run test:apps-script && npm run test:student-identity && npm run test:classroom-smoke && npm run test:student-home && npm run test:student-routing && npm run test:learning-path && npm run test:learning-path-scoring && npm run test:learning-path-ui && npm run test:student-practice",
     "test:mobile": "playwright test",
     "test:student-practice": "node scripts/test-student-practice.mjs",
     "test:generator": "node --import ./scripts/register-ts-node.mjs ./scripts/test-generator.ts",
@@ -19,6 +19,8 @@
     "test:mastery": "node --import ./scripts/register-ts-node.mjs ./scripts/test-mastery.ts",
     "test:sync": "node --import ./scripts/register-ts-node.mjs ./scripts/test-sync.ts",
     "test:apps-script": "node --import ./scripts/register-ts-node.mjs ./scripts/test-apps-script.ts",
+    "test:student-identity": "node --import ./scripts/register-ts-node.mjs ./scripts/test-student-identity.ts",
+    "test:classroom-smoke": "node scripts/test-classroom-backend-smoke.mjs",
     "test:student-home": "node --import ./scripts/register-ts-node.mjs ./scripts/test-student-home.ts",
     "test:student-routing": "node --import ./scripts/register-ts-node.mjs ./scripts/test-student-routing.ts",
     "test:learning-path": "node --import ./scripts/register-ts-node.mjs ./scripts/test-learning-path.ts",
@@ -27,7 +29,8 @@
     "validate-content": "node --import ./scripts/register-ts-node.mjs ./scripts/validate-content.ts",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "smoke:classroom-backend": "node scripts/classroom-backend-smoke.mjs"
   },
   "dependencies": {
     "katex": "^0.16.28",

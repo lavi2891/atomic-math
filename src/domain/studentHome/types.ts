@@ -29,6 +29,7 @@ export interface StudentHomeData {
   masteryBySkill: Record<string, MasterySnapshot>;
   source: "remote" | "cache" | "local";
   connection: "online" | "offline" | "unconfigured";
+  identityStatus: "active" | "inactive" | "unknown" | "unverified";
   warning?: string;
   cachedAt: string;
 }

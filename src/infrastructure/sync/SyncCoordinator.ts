@@ -36,6 +36,24 @@ export class SyncCoordinator {
     if (this.riddleSubmissions && (await this.riddleSubmissions.getPending(1)).length) void this.flush();
   }
 
+  async pendingCount(studentId: string): Promise<number> {
+    const [attempts, sessions, riddles] = await Promise.all([
+      this.attempts.getPendingAttempts(Number.MAX_SAFE_INTEGER),
+      this.sessions.getPendingSessions(Number.MAX_SAFE_INTEGER),
+      this.riddleSubmissions?.getPending(Number.MAX_SAFE_INTEGER) ?? Promise.resolve([]),
+    ]);
+    return attempts.filter((item) => item.studentId === studentId).length
+      + sessions.filter((item) => item.studentId === studentId).length
+      + riddles.filter((item) => item.studentId === studentId).length;
+  }
+
+  async reconnect(): Promise<void> {
+    if (!this.client) return;
+    const metadata = await this.metadata.getSyncMetadata();
+    await this.metadata.saveSyncMetadata({ ...metadata, retryCount: 0, nextRetryAt: undefined });
+    await this.flush();
+  }
+
   flush(): Promise<void> {
     if (!this.client) return Promise.resolve();
     if (this.activeFlush) return this.activeFlush;

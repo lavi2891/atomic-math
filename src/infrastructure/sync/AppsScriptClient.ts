@@ -19,7 +19,7 @@ export class RemoteApiError extends Error {
 
 export class AppsScriptClient {
   constructor(privateUrl: string, privateFetch: typeof fetch = fetch) {
-    this.url = privateUrl; this.fetchFn = privateFetch;
+    this.url = privateUrl; this.fetchFn = (input, init) => privateFetch(input, init);
   }
   private readonly url: string;
   private readonly fetchFn: typeof fetch;
@@ -52,6 +52,6 @@ export class AppsScriptClient {
     return this.request<{ sessionId: string }>(session.status === "active" ? "startSession" : "endSession", { session });
   }
   getStudentHome(studentId: string) {
-    return this.request<{ student: StudentProfile | null; activeAssignments: Assignment[]; masterySnapshots: MasterySnapshot[] }>("getStudentHome", { studentId });
+    return this.request<{ student: StudentProfile | null; studentStatus?: "active" | "inactive" | "unknown"; activeAssignments: Assignment[]; masterySnapshots: MasterySnapshot[] }>("getStudentHome", { studentId });
   }
 }

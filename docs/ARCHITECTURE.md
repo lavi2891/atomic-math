@@ -10,7 +10,15 @@ See the [documentation index](README.md) for document authority, the [Grade 8 ro
 - React screens render supplied state and dispatch user actions. `App.tsx` owns only screen composition, navigation state, and dependency wiring.
 - Content identity is Domain/Skill based. Topic identity remains only at the legacy signed-number import boundary and in the development playground.
 
-`StudentPracticeService` owns session lifecycle persistence and before/after mastery snapshots. `StudentHomeService` owns bootstrap normalization, offline fallback, local projection, and server/local reconciliation. Assignment completion and Skill Map labels remain pure domain functions.
+`StudentPracticeService` owns session lifecycle persistence and before/after mastery snapshots. `StudentHomeService` owns bootstrap normalization, offline fallback, local projection, server/local reconciliation, and the active/unknown/inactive result used to validate a code. Assignment completion and Skill Map labels remain pure domain functions.
+
+## Classroom identity
+
+The active classroom identity is a runtime UI concern. `LocalStudentIdentityStorage` owns only the remembered code in the dedicated localStorage key `atomic-math.active-student.v1`; Attempts, Sessions, RiddleSubmissions, cached Home data, and personal bests remain in their existing repositories and stay partitioned by `studentId`. Choosing “החלפת תלמיד” removes only that identity key.
+
+Startup identity precedence is a remembered runtime code, an explicitly configured `VITE_STUDENT_ID` development/test fallback, then the student-code entry screen. There is no implicit `local-student`. A new code enters the application only after `getStudentHome` returns an active student. A previously validated remembered code can use its cached/local state during an outage, while an online inactive or unknown response returns it to code entry. The browser never requests a roster.
+
+The code identifies the owner of newly created evidence; it is not authentication. The shared Apps Script transport remains appropriate only for the documented supervised pilot. Pending records are saved before network work and retain the `studentId` captured when the session or response was created, so switching the active code cannot reassign queued evidence.
 
 ## Question and evidence models
 
@@ -75,7 +83,7 @@ New product code must use Domain/Skill identity and must not extend the legacy t
 
 - No true cross-device Attempt-history reconciliation.
 - Assignment completion is derived and not written back to Sheets.
-- Temporary `VITE_STUDENT_ID`; no authentication.
+- Runtime student codes provide pilot identity but no strong authentication; `VITE_STUDENT_ID` remains development/test-only.
 - Browser-level IndexedDB integration coverage is still needed.
 - Apps Script duplicate lookup and Sheets storage target classroom-scale use, not large deployments.
 - The signed-number source bank still needs a direct-skill migration before removing `TopicId` and its adapter.
