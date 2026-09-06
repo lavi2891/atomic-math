@@ -1,5 +1,7 @@
 # Optional Learning Content
 
+See the [documentation index](README.md) for authority and the [Grade 8 roadmap](GRADE8_CURRICULUM_ROADMAP.md) for current curriculum priorities. Planned capabilities below are not implemented unless explicitly listed under Current MVP.
+
 Optional learning content is attached to a Chapter through `optionalNodes`. It is shown on a side branch and never participates in required Stage progression, stars, or atomic Skill Mastery.
 
 ## Current MVP
@@ -35,7 +37,7 @@ The `article` icon/type is reserved in the resource vocabulary. A rich internal 
 
 ### Graph renderer
 
-A future lightweight responsive SVG component may support:
+**NOT IMPLEMENTED — planned/future until graph or linear-function content needs it.** A lightweight responsive SVG component may support:
 
 - axes;
 - grid;
@@ -49,18 +51,24 @@ It should remain a focused learning renderer rather than a CAS or Desmos replace
 
 ### Geometry renderer
 
-A future lightweight SVG model may support:
+**NOT IMPLEMENTED — near-term required curriculum infrastructure.** The [Grade 8 roadmap](GRADE8_CURRICULUM_ROADMAP.md) requires diagram language early in the Geometry path. The intended SVG model should support:
 
 - points;
 - segments;
-- polygons;
-- triangles;
-- angle marks;
-- equality marks;
+- lines;
+- triangles and polygons;
 - labels;
-- lengths.
+- angle arcs;
+- a right-angle mark;
+- equal-segment marks;
+- equal-angle marks;
+- parallel marks;
+- numeric lengths and angles;
+- highlighting.
 
-Use a static SVG or image first whenever it is sufficient.
+Each meaningful geometry object should have a stable semantic object ID, independent of its screen position or visible label. This preserves the meaning of a segment, angle or triangle and allows future question types to ask students to select segment AB, the hypotenuse, or the corresponding angle.
+
+An initial rendering may be static, but its model should retain those semantic identities. Clickable diagrams and `selectDiagramObject` remain future work; this documentation does not introduce a renderer or a new question type.
 
 ### Rich media
 

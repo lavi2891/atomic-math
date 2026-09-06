@@ -6,8 +6,15 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+# Track Markdown documentation; keep source PDFs, CSV/JSON exports and attachments local.
 docs/*
-!docs/ARCHITECTURE.md
+!docs/*.md
+!docs/archive/
+docs/archive/*
+!docs/archive/*.md
+# Local source copies are not additional authoritative documents.
+docs/ATOMIC_MATH_GRADE8_CURRICULUM_ROADMAP_V1_1.md
+docs/archive/PROJECT_SNAPSHOT.md
 node_modules
 dist
 dist-ssr

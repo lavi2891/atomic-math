@@ -1,5 +1,7 @@
 # Atomic Math — manual Google Sheets and Apps Script setup
 
+See the [documentation index](docs/README.md) for document authority and current technical and curriculum guidance.
+
 Atomic Math works fully offline when no backend URL is configured. These steps add optional synchronization. Nothing in this repository deploys code or accesses a Google account automatically.
 
 ## 1. Create or select the Google Sheet
@@ -30,6 +32,7 @@ The order does not matter. Remove the editor's sample `myFunction` code. Save th
    - `Students`
    - `Attempts`
    - `Sessions`
+   - `RiddleSubmissions`
    - `Mastery`
    - `Assignments`
    - `Classes`

@@ -1,5 +1,7 @@
 # Atomic Math architecture
 
+See the [documentation index](README.md) for document authority, the [Grade 8 roadmap](GRADE8_CURRICULUM_ROADMAP.md) for pedagogical sequencing, [optional learning content](OPTIONAL_LEARNING_CONTENT.md) for media planning, and the [authoring standard](CONTENT_AUTHORING_STANDARD.md) for content rules.
+
 ## Boundaries
 
 - Domain modules contain deterministic rules and cannot depend on React, IndexedDB, fetch, or Apps Script.

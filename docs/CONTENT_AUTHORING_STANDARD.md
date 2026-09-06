@@ -41,6 +41,12 @@ Atomic Math מודד בראש ובראשונה יסודות מתמטיים. הש
 - כאשר פריט דורש קריאה או פרשנות משמעותית, מסמנים זאת בכנות ונמנעים מכך שפריטים בעלי עומס אורייני גבוה ישלטו בעדות של ה־Skill.
 - עבור אותו Skill מעדיפים כמה סוגי עדות, כדי שתלמיד לא ייראה חלש מתמטית רק משום שניסוח הפריט תובעני מבחינה לשונית.
 
+### 1.4 Explicit arithmetic fluency profiles
+
+When a Stage or Challenge explicitly measures arithmetic fluency, prompts must contain mathematical calculations only, without prose comprehension. `literacyDemand` should normally be `none`; avoid conceptual, reasoning and context items so speed measures retrieval/calculation rather than reading.
+
+The [Grade 8 roadmap](GRADE8_CURRICULUM_ROADMAP.md) requires four planned arithmetic sprints: addition, subtraction, multiplication and division. Their calculation-only items use `literacyDemand: "none"`. This strict rule belongs to an explicit fluency Stage/profile; Timed eligibility alone does not impose it on every item in a Skill. This is an authoring requirement for the planned sprints, not a claim that their Stage UI or final thresholds are implemented.
+
 ## 2. כללי Difficulty ו־Band
 
 - `A/B/C/D` מתארים שינוי פדגוגי אמיתי, לא מקום פנוי בתשתית.
@@ -83,8 +89,20 @@ Atomic Math מודד בראש ובראשונה יסודות מתמטיים. הש
 - בכתיבה דרך `authoredStudentContent`, עוטפים אובייקט מתמטי ב־`[[...]]`. `authoredChoiceContent` ממיר אפשרות מתמטית טהורה אוטומטית.
 - גם נתון מספרי שמשמש לפתרון בעיה מילולית הוא inline math: `יש [[12]] כדורים`.
 - מספר שלילי לעולם אינו נשען על כיוון RTL של text. משתמשים ב־math segment ובמינוס מתמטי.
-- אין להציג `5 + -3`, `7 - -2` או `4 × -5`; כותבים `5 + (-3)`, `7 - (-2)`, `4 × (-5)`.
+- אין להציג `5 + -3`, `7 - -2` או `4 \cdot -5`; כותבים `5 + (-3)`, `7 - (-2)`, `4 \cdot (-5)`.
 - אפשרויות `singleChoice` ו־`multiChoice` חייבות לתמוך בשילוב עברית ו־inline math דרך `ContentRenderer`.
+
+### Multiplication display invariant
+
+Student-facing mathematical multiplication MUST use LaTeX `\cdot`, rendered through the existing math/KaTeX pipeline. This applies to authored and generated prompts, numeric or variable expressions, `singleChoice` and `multiChoice` options, hints, feedback/correct-answer displays, stage/session review, riddle mathematics, and Question Review Student View.
+
+- Correct display math: `3 \cdot 4`, `2 \cdot x`, `(-3) \cdot 5`.
+- Incorrect student-facing notation: `3 * 4`, `2 * x`, `(-3) * 5`.
+- The Unicode cross `×` and LaTeX `\times` are not the Atomic Math multiplication display convention.
+- `*` remains valid in TypeScript/JavaScript calculations, evaluator logic and internal machine expressions such as `exprTemplate` and `renderedExpression`.
+- Author explicit canonical math, for example `{ kind: "math", latex: "3 \\cdot 4" }` in TypeScript or `[[3 \\cdot 4]]` inside an authored TypeScript string. The doubled backslash is string escaping; the LaTeX value contains one backslash.
+
+`multiplicationDotLatex` centralizes display normalization in the math renderer and expression display helpers. Keep evaluator expressions separate from display templates; never globally replace asterisks in source code or prose. Legitimate non-mathematical asterisks, including text annotations, are not multiplication operators.
 
 ## 7. כללי ניסוח לבעיות מילוליות
 
@@ -106,11 +124,14 @@ Atomic Math מודד בראש ובראשונה יסודות מתמטיים. הש
 - שינוי פדגוגי, שינוי תשובה, שינוי מבנה, שינוי טווח או שינוי student-facing מחייב העלאת `version` והוספה/שימור של `requires-rereview`.
 - שינוי טכני שאינו משנה את התוכן הנבדק אינו מחייב פסילת אישור; יש לתעד את ההחלטה ב־audit.
 
+Typography-only multiplication normalization to `\cdot`, preserving mathematical meaning, answers and assessed content, follows the technical-change rule: retain definition IDs, versions and review approvals. The dated correction record is in the [documentation index](README.md); this exception does not cover changes to operands, structure, answers or pedagogical intent.
+
 ## 9. כללי Validation
 
 `npm run validate-content` הוא שער blocking עבור:
 
 - math גולמי בתוך text, מספר שלילי גולמי, רצף סימנים או שבר פגום;
+- noncanonical multiplication in mathematical prompts, choices, hints, correct-answer displays and generated display templates/instances; internal evaluator syntax is exempt;
 - תשובות כפולות, תשובה נכונה חסרה, מסיח ששווה מתמטית לתשובה נכונה או metadata חסר למסיח;
 - curated עם מספרים קבועים ללא סיבה והצדקה;
 - generator לא דטרמיניסטי, ללא שונות מספקת או עם `sampledParams` שאינם תואמים להגדרה;
@@ -119,7 +140,7 @@ Atomic Math מודד בראש ובראשונה יסודות מתמטיים. הש
 - סטייה ממשפחת fact אטומית, instance חיובי בלבד ב־Skill מכוון, או משימת equation/substitution/comparison שאינה מציגה את יעד ה־Skill.
 - `supportingSkills` לא מוכרים, כפולים או זהים ל־target Skill; וכן משתנים אלגבריים גלויים מחוץ ל־Skill אלגברי ללא `ALG_VARIABLE` תומך.
 - `literacyDemand` חסר או לא תקין; וכן תוכן הקשרי מובהק שסווג בטעות כ־`none`.
-- כפל מכוון אינו משתמש בשני גורמים דו־ספרתיים שרירותיים. Band מתקדם רשאי להשתמש במבנה mental כגון `×10`, `×11`, עשרות שלמות או ריבוע מכוון, או לעבור להפשטה סימבולית.
+- כפל מכוון אינו משתמש בשני גורמים דו־ספרתיים שרירותיים. Band מתקדם רשאי להשתמש במבנה mental כגון `\cdot 10`, `\cdot 11`, עשרות שלמות או ריבוע מכוון, או לעבור להפשטה סימבולית.
 
 מספר שמופיע בתוך text רגיל מסווג כאזהרת authoring: יש להחליט אם הוא נתון מתמטי שחייב לעבור ל־inline math או פרט מקרי שמותר להשאיר כטקסט.
 
@@ -129,11 +150,11 @@ Atomic Math מודד בראש ובראשונה יסודות מתמטיים. הש
 
 | רע | טוב | הסיבה |
 |---|---|---|
-| `INT_MUL` עם `{a}*{b}`, כאשר שניהם חיוביים | `(-{m})*{n}` עם `m,n` טבעיים | מבנה הסימנים מבטיח עדות על כפל מכוון |
+| `INT_MUL` עם internal `exprTemplate` של `{a}*{b}`, כאשר שניהם חיוביים | internal `exprTemplate` של `(-{m})*{n}` עם `m,n` טבעיים; display: `(-{m})\cdot {n}` | מבנה הסימנים מבטיח עדות על כפל מכוון |
 | `EQ_ADD` עם prompt “חשבו: 12-5” | “איזה ערך משלים את `□+5=12`?” | השוויון והנעלם הם יעד ה־Skill |
 | `ALG_SUBSTITUTE` עם חישוב ביטוי מספרי בלבד | “אם `x=4`, מה מתקבל לאחר הצבה ב־`3x`?” | פעולת ההצבה מוצגת במפורש |
-| Bands של חוק סימנים שנבדלים רק ב־`max` | A: שלילי×חיובי; B: שלילי×שלילי | הקושי נובע ממבנה ולא ממזל |
-| `(-27)×(-34)` כדי “להקשות” חוק סימנים | `(-20)×(-7)` או שאלת סימן סימבולית | עומס כפל ארוך אינו העדות המבוקשת |
+| Bands של חוק סימנים שנבדלים רק ב־`max` | A: שלילי כפול חיובי; B: שלילי כפול שלילי | הקושי נובע ממבנה ולא ממזל |
+| `(-27)\cdot (-34)` כדי “להקשות” חוק סימנים | `(-20)\cdot (-7)` או שאלת סימן סימבולית | עומס כפל ארוך אינו העדות המבוקשת |
 | `יש 12 כדורים ומחלקים ל-3` כ־text | `יש [[12]] כדורים ומחלקים ל־[[3]]` | הנתונים עוברים דרך KaTeX ונשמר RTL תקין |
 | מסיח `17` אקראי | מסיח שמחבר במקום לכפול עם `misconceptionId` מתאים | המסיח מספק עדות אבחונית |
 | ארבע שאלות curated זהות עם מספרים אחרים | generator אחד עם `exprTemplate` ו־`params` | המבנה נשמר ללא magic numbers |
@@ -141,6 +162,6 @@ Atomic Math מודד בראש ובראשונה יסודות מתמטיים. הש
 
 ## 11. גבול גל התוכן הבא
 
-ה־audit הנוכחי נשאר בתוך 27 ה־Skills הפעילים. מספרים עשרוניים, פעולות בשברים ותחומי curriculum חדשים הם next-wave recommendations בלבד. לפני הוספתם יש להגדיר taxonomy אטומי, Evidence Policy ומשפחות generator מבניות; אין להכניס שאלות בודדות כתחליף לתכנון התחום.
+היקף ותיעדוף התוכן הבא נקבעים ב־[Grade 8 curriculum roadmap](GRADE8_CURRICULUM_ROADMAP.md), ולא בספירות שבמסמכי audit היסטוריים. פעולות בשברים הן יעד קרוב; שיטה עשרונית וערך ספרה אינם Core במסלול החדש, ועשרוניים יכולים לשמש כתמיכה לפי הצורך. לפני הוספת תחום יש להגדיר taxonomy אטומי, Evidence Policy ומשפחות generator מבניות; אין להכניס שאלות בודדות כתחליף לתכנון התחום. הקטלוג והקוד קובעים מה פעיל בפועל; מסמך זה אינו מפעיל או מסיר Skills.
 
 `AR_FACTORS_MULTIPLES` נשאר Skill משולב ב־MVP. ההפרדה הנוכחית בין `contentFamily` של factors לבין `contentFamily` של multiples מספיקה לייחוס evidence ברמת המשפחה, אך ייתכן שבעתיד נכון יהיה לפצל אותם לשני Skills ולשתי תחזיות Mastery. זו החלטת teacher/taxonomy פתוחה, ולא שינוי שמבצעים אגב תיקון תוכן נקודתי.
